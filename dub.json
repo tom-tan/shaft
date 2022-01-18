@@ -1,0 +1,24 @@
+{
+	"authors": [
+		"Tomoya Tanjo"
+	],
+	"buildTypes": {
+		"release-static": {
+			"buildOptions": [
+				"releaseMode",
+				"inline",
+				"optimize"
+			],
+			"dflags-posix-ldc": [
+				"-static"
+			]
+		}
+	},
+	"copyright": "Copyright © 2022, Tomoya Tanjo",
+	"description": "A workflow engine for CommandLineTool in local machine",
+	"homepage": "https://github.com/tom-tan/shaft",
+	"license": "Apache-2.0",
+	"name": "shaft",
+	"targetPath": "bin",
+	"targetType": "executable"
+}
