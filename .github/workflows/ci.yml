@@ -28,6 +28,4 @@ jobs:
           compiler: ${{ matrix.dc }}
       - name: Run tests
         run: |
-          if [ -e dub.json -o -e dub.sdl ]; then
-            dub test
-          fi
+          dub test
