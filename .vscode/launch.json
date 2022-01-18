@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "gdb",
+      "request": "launch",
+      "preLaunchTask": "${defaultBuildTask}",
+      "name": "Launch Program",
+      "target": "${workspaceRoot}/fix-this-to-your-app-name",
+      "cwd": "${workspaceRoot}",
+      "valuesFormatting": "parseText"
+    }
+  ]
+}
