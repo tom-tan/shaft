@@ -15,6 +15,9 @@
 		}
 	},
 	"copyright": "Copyright © 2022, Tomoya Tanjo",
+	"dependencies": {
+		"schema-salad-d": "~>0.2.2"
+	},
 	"description": "A workflow engine for CommandLineTool in local machine",
 	"homepage": "https://github.com/tom-tan/shaft",
 	"license": "Apache-2.0",

@@ -1,6 +1,11 @@
-import std.stdio;
+/**
+ * Authors: Tomoya Tanjo
+ * Copyright: © 2022 Tomoya Tanjo
+ * License: Apache-2.0
+ */
+import shaft.main : shaftMain;
 
-void main()
+int main(string[] args)
 {
-	writeln("Edit source/app.d to start your project.");
+	return shaftMain(args);
 }
