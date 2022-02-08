@@ -33,6 +33,7 @@ auto toURI(string pathOrURI) pure @safe
     }
 }
 
+/// See_Also: https://github.com/common-workflow-language/common-workflow-language/issues/915
 int shaftMain(string[] args)
 {
     import dyaml : Loader, Node;
@@ -113,7 +114,7 @@ EOS".outdent[0..$-1])(args[0].baseName);
     }
     catch(DocumentException e)
     {
-        return 1;
+        return 251;
     }
     catch(MatchException e)
     {
@@ -121,16 +122,13 @@ EOS".outdent[0..$-1])(args[0].baseName);
         return 33;
     }
 
-    auto cwlVersion = cmd.edig!("cwlVersion", string);
-
-    // generate evaluator for parameter references
-    // v1.0, v1.1 => reject `length` and `null`
-    // v1.2 => will accept `length` and `null`
-    // upgrade to the latest version
-
     // 3. If there are multiple process objects (due to $graph) and which process object to start with is not specified in the input object (via a cwl:tool entry)
     // or by any other means (like a URL fragment) then choose the process with the id of "#main" or "main".
     // -> done by `importFromURI``
+
+    // store current version of CWL for parameter references
+    auto cwlVersion = cmd.edig!("cwlVersion", string);
+    // TODO: upgrade document to the latest version
 
     // 4. Validate the input object against the inputs schema for the process.
     import shaft.type : enforceValidInput;
@@ -139,8 +137,43 @@ EOS".outdent[0..$-1])(args[0].baseName);
                       cmd.dig!(["requirements", "SchemaDefRequirement"], SchemaDefRequirement));
 
     // 5. Validate process requirements are met.
+    // DockeRequirement, SoftwareRequirement, ResourcceRequirement can be hints
+    // others -> should be requirements
+
+    import cwl.schema : InlineJavascriptRequirement;
+    import shaft.evaluator : Evaluator;
+
+    auto evaluator = Evaluator(
+        cmd.dig!(["requirements", "InlineJavascriptRequirement"], InlineJavascriptRequirement),
+        cwlVersion
+    );
+
+    import cwl.schema : ResourceRequirement;
+    import shaft.runtime : Runtime;
+
+    auto runtime = Runtime(inp, outdir, tmpdir,
+                           cmd.dig!(["requirements", "ResourceRequirements"], ResourceRequirement),
+                           /+cmd.dig!(["hints", "ResourceRequirements"], ResourceRequirement)+/null,
+                           evaluator);
 
     // 6. Perform any further setup required by the specific process type.
+    auto staged = stageIn(inputs, runtime,
+                          cmd.dig!(["requirements", "InitialWorkDirRequirement"], InitialWorkDirRequirement),
+                          evaluator);
+    
+    Node mapped_inputs;
+    Runtime mapped_runtime;
+    if (needed)
+    {
+        //
+        auto mapped = mapPath(staged, runtime);
+    }
+    else
+    {
+        mapped_inputs = inputs;
+        mapped_runtime = runtime;
+        mapping = (string[string]).init;
+    }
 
     // 7. Execute the process.
 
@@ -206,56 +239,4 @@ auto discoverDocumentURI(string path) @safe
                                              .find!(p => p.exists && p.isFile);
     enforce(!fs.empty);
     return fs.front.toURI~(frag.empty ? "" : "#"~frag);
-}
-
-string toJSON(Node node) @safe
-{
-    import std.algorithm : map;
-    import std.array : appender, array;
-    import std.conv : to;
-    import std.format : format;
-    import dyaml : NodeType;
-
-    switch(node.type)
-    {
-    case NodeType.null_: return "null";
-    case NodeType.boolean: return node.as!bool.to!string;
-    case NodeType.integer: return node.as!int.to!string;
-    case NodeType.decimal: return node.as!real.to!string;
-    case NodeType.string: return '"'~node.as!string~'"';
-    case NodeType.mapping:
-        return format!"{%-(%s, %)}"(node.mapping.map!((pair) {
-            return format!`"%s": %s`(pair.key.as!string, pair.value.toJSON);
-        }));
-    case NodeType.sequence:
-        return format!"[%-(%s, %)]"(node.sequence.map!toJSON.array);
-    default:
-        assert(false);
-    }
-}
-
-@safe unittest
-{
-    import dyaml : Loader;
-
-    enum yml = q"EOS
-        - 1
-        - 2
-        - 3
-EOS";
-    auto arr = Loader.fromString(yml).load;
-    assert(arr.toJSON == "[1, 2, 3]", arr.toJSON);
-}
-
-@safe unittest
-{
-    import dyaml : Loader;
-
-    enum yml = q"EOS
-        foo: 1
-        bar: 2
-        buzz: 3
-EOS";
-    auto map = Loader.fromString(yml).load;
-    assert(map.toJSON == `{"foo": 1, "bar": 2, "buzz": 3}`, map.toJSON);
 }

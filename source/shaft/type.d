@@ -24,9 +24,13 @@ void enforceValidInput(InputParameter, SchemaDefRequirement)(Node param, InputPa
 
     enforce(param.type == NodeType.mapping, "Input should be a mapping but it is not");
 
-    auto defMap = defs.types_
-                      .map!(d => tuple(d.tryMatch!(t => t.edig!("name", string)), d))
-                      .assocArray;
+    Either!(InputRecordSchema, InputEnumSchema, InputArraySchema)[string] defMap;
+    if (defs !is null)
+    {
+        defMap = defs.types_
+                     .map!(d => tuple(d.tryMatch!(t => t.edig!("name", string)), d))
+                     .assocArray;
+    }
 
     foreach(p; paramDefs)
     {
