@@ -9,6 +9,8 @@ import shaft.runtime : Runtime;
 
 import dyaml : Node;
 
+/// TODO: need cwlVersion to switch handling of `null` and `length` in parameter reference
+
 ///
 auto evaluate(JSExpReq)(string exp, Node self, Node inputs, Runtime runtime, JSExpReq req)
 {
@@ -32,4 +34,12 @@ auto evaluate_paremeter_reference(string exp, Node self, Node inputs, Runtime ru
 auto evaluate_js_expression(string exp, Node self, Node inputs, Runtime runtime, string[] expressionLibs)
 {
     //
+}
+
+struct Evaluator
+{
+    this(JSExpReq)(JSExpReq req)
+    {
+        //
+    }
 }

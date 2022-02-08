@@ -43,10 +43,11 @@ int shaftMain(string[] args)
     import std.getopt : getopt;
 	import std.range : empty;
 
-    import cwl : CommandInputParameter, CommandLineTool, DocumentRootType, importFromURI;
+    import cwl : CommandInputParameter, CommandLineTool, DocumentRootType, importFromURI, SchemaDefRequirement;
+    import salad.exception : DocumentException;
     import salad.fetcher : Fetcher;
-    import salad.type : tryMatch;
-    import salad.util : dig;
+    import salad.type : MatchException, tryMatch;
+    import salad.util : dig, edig;
 
 	string tmpdir;
 	string outdir = getcwd;
@@ -85,71 +86,126 @@ EOS".outdent[0..$-1])(args[0].baseName);
     Fetcher.instance.removeSchemeFetcher("http");
     Fetcher.instance.removeSchemeFetcher("https");
 
-    auto cwlfile = args[1].toURI;
-    auto cwl = importFromURI(cwlfile).tryMatch!(
-        (DocumentRootType doc) => doc.tryMatch!((CommandLineTool com) => com)
-    );
-
+    // See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Generic_execution_process
+    // 1. Load input object.
     auto loader = args.length == 3 ? Loader.fromFile(args[2])
                                    : Loader.fromString("{}");
-    auto param = parseInput(loader.load, cwl.dig!(["inputs"], CommandInputParameter[]));
+    auto inp = loader.load;
 
-	// hook: make a path mapping
-	// eval expressions
-	// generate command
-	// hook: tweaks command for container runtimes
+    // TODO: handle `cwl:tool` (input object must start with shebang and marked as executable)
+    // - load as YAMl
+    //   - check shebang and executable
+    //   - check cwl:tool
+    //     - yes -> input object
+    //     - no
+    // TODO: handle `cwl:requirements`
+
+    // 2. Load, process and validate a CWL document, yielding one or more process objects. The $namespaces present in the CWL document are also used when validating and processing the input object.
+    auto path = args[1];
+    auto cwlfile = discoverDocumentURI(path);
+    CommandLineTool cmd;
+    try
+    {
+        // TODO: ExpressionTool
+        cmd = importFromURI(cwlfile, "main").tryMatch!(
+            (DocumentRootType doc) => doc.tryMatch!((CommandLineTool com) => com)
+        );
+    }
+    catch(DocumentException e)
+    {
+        return 1;
+    }
+    catch(MatchException e)
+    {
+        // TODO: msg
+        return 33;
+    }
+
+    auto cwlVersion = cmd.edig!("cwlVersion", string);
+
+    // generate evaluator for parameter references
+    // v1.0, v1.1 => reject `length` and `null`
+    // v1.2 => will accept `length` and `null`
+    // upgrade to the latest version
+
+    // 3. If there are multiple process objects (due to $graph) and which process object to start with is not specified in the input object (via a cwl:tool entry)
+    // or by any other means (like a URL fragment) then choose the process with the id of "#main" or "main".
+    // -> done by `importFromURI``
+
+    // 4. Validate the input object against the inputs schema for the process.
+    import shaft.type : enforceValidInput;
+
+    enforceValidInput(inp, cmd.dig!("inputs", CommandInputParameter[]),
+                      cmd.dig!(["requirements", "SchemaDefRequirement"], SchemaDefRequirement));
+
+    // 5. Validate process requirements are met.
+
+    // 6. Perform any further setup required by the specific process type.
+
+    // 7. Execute the process.
+
+    // 8. Capture results of process execution into the output object.
+
+    // 9. Validate the output object against the outputs schema for the process.
+
+    // 10. Report the output object to the process caller.
+
+
+    // 
+
+    // get runtime
+    // proess InitWorkDiRequirement
+    // eval env
+	// path mapping (hook)
+    // construct args
+    // process ShellCommandRequirement
+    // container command prefix (hook)
+    // spawnProcess
+    // wait
+    // return result
     return 0;
 }
 
-///
-auto parseInput(InputParameter)(Node param, InputParameter[] paramDefs)
-{
-    import salad.util : dig;
-    import dyaml : NodeType;
-    import std.exception : enforce;
-    enforce(param.type == NodeType.mapping, "Input should be a mapping but it is not");
-    Node ret;
-    foreach(p; paramDefs)
-    {
-        import cwl : Any;
-        auto id = p.id_;
-        Node n;
-        if (auto val = id in param)
-        {
-            n = *val;
-        }
-        else if (auto def = p.dig!(["inputBinding", "default"], Any))
-        {
-            n = def.value_;
-        }
-        else
-        {
-            import std.format : format;
-            throw new Exception(format!"missing input parameter `%s`"(id));
-        }
-        enforceValidParameter(n, paramDefs.type_);
-        ret.add(n);
-    }
-    return ret;
-}
 
-///
-auto enforceValidParameter(Type, DefSchemaRequirement)(Node n, Type type, DefSchemaRequirement defs)
+/// See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Discovering_CWL_documents_on_a_local_filesystem
+auto discoverDocumentURI(string path) @safe
 {
-    static if (isOptional!Type && Type.Types.length == 2)
+    import std.algorithm : canFind;
+
+    // absolute URI
+    if (path.canFind("://"))
     {
-        type.match!(
-            (None none) => true, // TODO
-            others => enforceValidParameter(n, others, defs),
-        );
+        return path;
     }
-    // array<CWLType | CommandInputRecordSchema | CommandInputEnumSchema | CommandInputArraySchema | string>
-    // CWLType: null, boolean, int, long, float, double, string, file, dir
-    // Any
-    // T[]
-    // CWLType, Enum, Record, File, Directory
-    // SchemaDef-ed type (not supported)
-    return;
+
+    // relative path
+    import salad.fetcher : fragment;
+    import std.algorithm : find, map, splitter;
+    import std.exception : enforce;
+    import std.file : exists, isFile;
+    import std.path : absolutePath, buildPath;
+    import std.process : environment;
+    import std.range : chain, empty;
+
+    auto xdg_data_dirs = environment.get("XDG_DATA_DIRS", "");
+    if (xdg_data_dirs.empty)
+    {
+        xdg_data_dirs = "/usr/local/share/:/usr/share/";
+    }
+    auto dirs = xdg_data_dirs.splitter(":")
+                             .map!(p => p.buildPath("commonwl"));
+
+    auto data_home = environment.get("XDG_DATA_HOME",
+                                     buildPath(environment["HOME"], ".local/share"))
+                                .buildPath("commonwl");
+
+    auto frag = path.fragment;
+    auto pathWithoutFrag = path[0..$-frag.length+1];
+    // TODO: check `absolutePath(".")` is appropriate
+    auto fs = chain(["."], dirs, [data_home]).map!(d => pathWithoutFrag.absolutePath(d))
+                                             .find!(p => p.exists && p.isFile);
+    enforce(!fs.empty);
+    return fs.front.toURI~(frag.empty ? "" : "#"~frag);
 }
 
 string toJSON(Node node) @safe
