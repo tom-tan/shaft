@@ -157,23 +157,24 @@ EOS".outdent[0..$-1])(args[0].baseName);
                            evaluator);
 
     // 6. Perform any further setup required by the specific process type.
-    auto staged = stageIn(inputs, runtime,
-                          cmd.dig!(["requirements", "InitialWorkDirRequirement"], InitialWorkDirRequirement),
-                          evaluator);
-    
-    Node mapped_inputs;
-    Runtime mapped_runtime;
-    if (needed)
-    {
-        //
-        auto mapped = mapPath(staged, runtime);
-    }
-    else
-    {
-        mapped_inputs = inputs;
-        mapped_runtime = runtime;
-        mapping = (string[string]).init;
-    }
+
+    // auto staged = stageIn(inputs, runtime,
+    //                       cmd.dig!(["requirements", "InitialWorkDirRequirement"], InitialWorkDirRequirement),
+    //                       evaluator);
+
+    // Node mapped_inputs;
+    // Runtime mapped_runtime;
+    // if (needed)
+    // {
+    //     //
+    //     auto mapped = mapPath(staged, runtime);
+    // }
+    // else
+    // {
+    //     mapped_inputs = inputs;
+    //     mapped_runtime = runtime;
+    //     mapping = (string[string]).init;
+    // }
 
     // 7. Execute the process.
 
