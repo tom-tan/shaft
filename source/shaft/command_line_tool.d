@@ -45,14 +45,16 @@ int execute(CommandLineTool cmd, TypedParameters params, Runtime runtime, Evalua
 
 ///
 alias Param = Tuple!(
-    Tuple!(int, Breaker), "key",
+    Tuple!(int, TieBreaker), "key",
     CommandLineBinding, "binding",
     Node, "self",
     DeterminedType, "type",
 );
 
-/// Tie breaker
-alias Breaker = Either!(size_t, string);
+/**
+ * See_Also: 3 in https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding
+ */
+alias TieBreaker = Either!(size_t, string);
 
 /**
  * See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Input_binding
@@ -75,16 +77,17 @@ string[] buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime r
             a.value.match!(
                 (string s) {
                     auto val = evaluator.eval(s, params.parameters, runtime);
-                    return Param(tuple(0, Breaker(a.index)), null, val, val.guessedType);
+                    return Param(tuple(0, TieBreaker(a.index)), null, val, val.guessedType);
                 },
                 (CommandLineBinding clb) {
                     import salad.type : tryMatch;
                     auto pos = clb.position_.match!(
                         (int i) => i,
-                        none => 0, // TODO for v1.2: Expression
+                        // (string exp) => evaluator.eval!int(exp, params.parameters, runtime),  // TODO for v1.1 and later
+                        none => 0,
                     );
                     auto val = evaluator.eval(clb.valueFrom_.tryMatch!((string s) => s), params.parameters, runtime);
-                    return Param(tuple(pos, Breaker(a.index)), clb, val, val.guessedType);
+                    return Param(tuple(pos, TieBreaker(a.index)), clb, val, val.guessedType);
                 },
             )
         ).array,
@@ -92,7 +95,6 @@ string[] buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime r
 
     // 2. Collect `CommandLineBinding` objects from the `inputs` schema and associate them with values from the input object. Where the input type is a record, array, or map, recursively walk the schema and input object, collecting nested `CommandLineBinding` objects and associating them with values from the input object.
     auto inp = cmd.inputs_.map!((i) {
-        import salad.type : tryMatch;
         import salad.util : dig;
 
         auto id = i.id_;
@@ -119,6 +121,8 @@ string[] buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime r
 
                         if (params.parameters[id].type == NodeType.null_)
                         {
+                            // See_Also: `valueFrom` in https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding
+                            // If the value of the associated input parameter is `null`, `valueFrom` is not evaluated ...
                             val = params.parameters[id];
                             type = params.types[id];
                         }
@@ -131,7 +135,7 @@ string[] buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime r
                 );
             },
         );
-        return Param(tuple(pos, Breaker(id)), clb, val, type);
+        return Param(tuple(pos, TieBreaker(id)), clb, val, type);
     }).array;
 
     // 3. Create a sorting key by taking the value of the `position` field at each level leading to each leaf binding object. If `position` is not specified, it is not added to the sorting key. For bindings on arrays and maps, the sorting key must include the array index or map key following the position. If and only if two bindings have the same sort key, the tie must be broken using the ordering of the field or parameter name immediately containing the leaf binding.
