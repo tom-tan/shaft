@@ -7,7 +7,7 @@ module shaft.evaluator;
 
 import shaft.runtime : Runtime;
 
-import dyaml : Node;
+import dyaml : Node, YAMLNull;
 
 // generate evaluator for parameter references
 // v1.0, v1.1 => reject `length` and `null`
@@ -30,8 +30,13 @@ struct Evaluator
         cwlVer = cwlVersion;
     }
 
-    /// Returns: should be Node or T?
-    Node eval(string exp, Node inputs, Runtime runtime, Node self) const /+ pure +/
+    ///
+    T eval(T)(string exp, Node inputs, Runtime runtime, Node self = YAMLNull()) const /+ pure +/
+    {
+        return eval(exp, inputs, runtime, self).as!T;
+    }
+
+    Node eval(string exp, Node inputs, Runtime runtime, Node self = YAMLNull()) const /+ pure +/
     {
         return Node.init;
     }

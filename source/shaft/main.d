@@ -10,7 +10,7 @@ import dyaml : Node;
 ///
 auto toURI(string pathOrURI) pure @safe
 {
-    import salad.fetcher : scheme;
+    import salad.resolver : scheme;
     import std.range : empty;
 
     if (pathOrURI.scheme.empty)
@@ -92,6 +92,8 @@ EOS".outdent[0..$-1])(args[0].baseName);
     auto loader = args.length == 3 ? Loader.fromFile(args[2])
                                    : Loader.fromString("{}");
     auto inp = loader.load;
+    import dyaml : NodeType;
+    enforce(inp.type == NodeType.mapping, "Input should be a mapping but it is not");
 
     // TODO: handle `cwl:tool` (input object must start with shebang and marked as executable)
     // - load as YAMl
@@ -127,20 +129,23 @@ EOS".outdent[0..$-1])(args[0].baseName);
     // -> done by `importFromURI``
 
     // store current version of CWL for parameter references
-    auto cwlVersion = cmd.edig!("cwlVersion", string);
+    auto cwlVersion = cmd.cwlVersion_.tryMatch!((string s) => s);
+    enforce(cwlVersion == "v1.0");
     // TODO: upgrade document to the latest version
 
     // 4. Validate the input object against the inputs schema for the process.
-    import shaft.type : enforceValidInput;
+    import shaft.type : annotateInputParameters;
 
-    enforceValidInput(inp, cmd.dig!("inputs", CommandInputParameter[]),
-                      cmd.dig!(["requirements", "SchemaDefRequirement"], SchemaDefRequirement));
+    //
+    auto typedParams = annotateInputParameters(inp, cmd.dig!("inputs", CommandInputParameter[]),
+                                               cmd.dig!(["requirements", "SchemaDefRequirement"],
+                                                        SchemaDefRequirement));
 
     // 5. Validate process requirements are met.
     // DockeRequirement, SoftwareRequirement, ResourcceRequirement can be hints
     // others -> should be requirements
 
-    import cwl.schema : InlineJavascriptRequirement;
+    import cwl.v1_0.schema : InlineJavascriptRequirement;
     import shaft.evaluator : Evaluator;
 
     auto evaluator = Evaluator(
@@ -148,35 +153,20 @@ EOS".outdent[0..$-1])(args[0].baseName);
         cwlVersion
     );
 
-    import cwl.schema : ResourceRequirement;
+    import cwl.v1_0.schema : ResourceRequirement;
     import shaft.runtime : Runtime;
 
-    auto runtime = Runtime(inp, outdir, tmpdir,
+    auto runtime = Runtime(typedParams.parameters, outdir, tmpdir,
                            cmd.dig!(["requirements", "ResourceRequirements"], ResourceRequirement),
-                           /+cmd.dig!(["hints", "ResourceRequirements"], ResourceRequirement)+/null,
+                           cmd.dig!(["hints", "ResourceRequirements"], ResourceRequirement),
                            evaluator);
 
     // 6. Perform any further setup required by the specific process type.
-
-    // auto staged = stageIn(inputs, runtime,
-    //                       cmd.dig!(["requirements", "InitialWorkDirRequirement"], InitialWorkDirRequirement),
-    //                       evaluator);
-
-    // Node mapped_inputs;
-    // Runtime mapped_runtime;
-    // if (needed)
-    // {
-    //     //
-    //     auto mapped = mapPath(staged, runtime);
-    // }
-    // else
-    // {
-    //     mapped_inputs = inputs;
-    //     mapped_runtime = runtime;
-    //     mapping = (string[string]).init;
-    // }
-
     // 7. Execute the process.
+    import shaft.command_line_tool : execute;
+
+    auto ret = execute(cmd, typedParams, runtime, evaluator);
+
 
     // 8. Capture results of process execution into the output object.
 
@@ -213,7 +203,7 @@ auto discoverDocumentURI(string path) @safe
     }
 
     // relative path
-    import salad.fetcher : fragment;
+    import salad.resolver : fragment;
     import std.algorithm : find, map, splitter;
     import std.exception : enforce;
     import std.file : exists, isFile;
