@@ -54,7 +54,7 @@ class TypeException : Exception
 class ParameterMissing : TypeException
 {
     ///
-    this(string id, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
+    this(string id, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) @safe
     {
         import std.format : format;
 
@@ -69,7 +69,7 @@ class ParameterMissing : TypeException
 class TypeConflicts : TypeException
 {
     this(string id, DeclaredType expected, DeterminedType actual,
-         string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
+         string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) @trusted
     {
         import std.format : format;
 
@@ -87,7 +87,7 @@ class TypeConflicts : TypeException
 class InvalidObject : TypeException
 {
     this(string id, string field, DeterminedType actual,
-         string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null)
+         string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) @trusted
     {
         import std.format : format;
 
@@ -130,10 +130,12 @@ in(params.type == NodeType.mapping)
         import salad.util : edig;
         import std.algorithm : map;
 
-        defMap = defs.types_
-                     .map!(d => d.match!(t => tuple(t.edig!("name", string),
-                                                    DeclaredType(t.toCommandSchema))))
-                     .assocArray;
+        defMap = () @trusted {
+            return defs.types_
+                       .map!(d => d.match!(t => tuple(t.edig!("name", string),
+                                                      DeclaredType(t.toCommandSchema))))
+                       .assocArray;
+        }();
     }
 
     Node retNode;
@@ -173,7 +175,7 @@ in(params.type == NodeType.mapping)
         k.setStyle(ScalarStyle.doubleQuoted);
         retNode.add(k, v.value);
     }
-    auto types = retTuple.assocArray;
+    auto types = () @trusted { return retTuple.assocArray; }();
     return typeof(return)(retNode, types);
 }
 
@@ -184,18 +186,18 @@ struct TypedValue
     DeterminedType type;
 
     ///
-    this(Node v, DeterminedType t)
+    this(Node v, DeterminedType t) @safe
     {
-        value = toJSONNode(v);
+        value = v.toJSONNode;
         type = t;
     }
 
     ///
-    this(Node v, DeclaredType t)
+    this(Node v, DeclaredType t) @safe
     {
         import salad.type : match;
 
-        value = toJSONNode(v);
+        value = v.toJSONNode;
 
         alias T = DeterminedType;
         type = t.match!(
@@ -210,38 +212,43 @@ struct TypedValue
     private import std.meta : ApplyLeft, Filter;
     private import std.traits : isImplicitlyConvertible;
     ///
-    this(Type)(Node v, Type t)
+    this(Type)(Node v, Type t) @safe
         if (Filter!(ApplyLeft!(isImplicitlyConvertible, Type), DeterminedType.Types).length > 0)
     {
         this(v, DeterminedType(t));
     }
+}
 
-private:
-    /*
-     * Returns: a shallow copied node with JSON-compatible style
-     * See_Also: https://github.com/dlang-community/D-YAML/issues/284
-     */
-    Node toJSONNode(Node v)
+/*
+ * Returns: a shallow copied node with JSON-compatible style
+ * See_Also: https://github.com/dlang-community/D-YAML/issues/284
+ */
+Node toJSONNode(Node v) @safe
+{
+    import dyaml : CollectionStyle, NodeType, ScalarStyle;
+
+    auto ret = Node(v);
+    switch (v.type)
     {
-        import dyaml : CollectionStyle, NodeType, ScalarStyle;
-
-        auto ret = Node(v);
-        switch(v.type)
-        {
-        case NodeType.null_, NodeType.boolean, NodeType.integer, NodeType.decimal:
-            ret.setStyle(ScalarStyle.plain);
-            break;
-        case NodeType.string:
-            ret.setStyle(ScalarStyle.doubleQuoted);
-            break;
-        case NodeType.mapping, NodeType.sequence: // may be redundant
-            ret.setStyle(CollectionStyle.flow);
-            break;
-        default:
-            assert(false);
-        }
-        return ret;
+    case NodeType.null_, NodeType.boolean, NodeType.integer, NodeType.decimal:
+        ret.setStyle(ScalarStyle.plain);
+        break;
+    case NodeType.string:
+        ret.setStyle(ScalarStyle.doubleQuoted);
+        break;
+    case NodeType.mapping, NodeType.sequence: // may be redundant
+        ret.setStyle(CollectionStyle.flow);
+        break;
+    default:
+        assert(false);
     }
+    return ret;
+}
+
+/// ditto
+Node toJSONNode(T)(T val) @safe
+{
+    return Node(val).toJSONNode;
 }
 
 /// 
@@ -328,7 +335,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
     );
 }
 
-auto guessedType(Node val)
+auto guessedType(Node val) @safe
 {
     import dyaml : NodeType;
 

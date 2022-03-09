@@ -9,6 +9,7 @@ import cwl.v1_0.schema : ResourceRequirement;
 import dyaml : Node;
 import shaft.evaluator : Evaluator;
 
+/// See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Runtime_environment
 struct Runtime
 {
     string outdir;
@@ -18,9 +19,10 @@ struct Runtime
     long outdirSize;
     long tmpdirSize;
 
+    ///
     this(Node inputs, string outdir, string tmpdir,
          ResourceRequirement req, ResourceRequirement hint,
-         Evaluator evaluator)
+         Evaluator evaluator) @safe
     {
         this.outdir = outdir;
         this.tmpdir = tmpdir;
@@ -31,10 +33,29 @@ struct Runtime
         outdirSize = reserved!"outdir"(availableOutdir, inputs, req, hint, evaluator);
         tmpdirSize = reserved!"tmpdir"(availableTmpdir, inputs, req, hint, evaluator);
     }
+
+    ///
+    Node opCast(T: Node)() const @safe
+    {
+        import dyaml : CollectionStyle, ScalarStyle;
+        import shaft.type : toJSONNode;
+
+        Node ret;
+        ret.setStyle(CollectionStyle.flow);
+
+        ret.add("outdir".toJSONNode, outdir.toJSONNode);
+        ret.add("tmpdir".toJSONNode, tmpdir.toJSONNode);
+        ret.add("cores".toJSONNode, cores.toJSONNode);
+        ret.add("ram".toJSONNode, ram.toJSONNode);
+        ret.add("outdirSize".toJSONNode, outdirSize.toJSONNode);
+        ret.add("tmpdirSize".toJSONNode, tmpdirSize.toJSONNode);
+
+        return ret;
+    }
 }
 
 ///
-auto availableCores()
+auto availableCores() @safe
 {
     import std.parallelism : totalCPUs;
 
@@ -43,19 +64,19 @@ auto availableCores()
 }
 
 ///
-auto availableRam()
+auto availableRam() @safe
 {
     return 1024; // default in cwltool
 }
 
 ///
-auto availableOutdir()
+auto availableOutdir() @safe
 {
     return long.init;
 }
 
 ///
-auto availableTmpdir()
+auto availableTmpdir() @safe
 {
     return long.init;
 }
@@ -64,7 +85,7 @@ auto availableTmpdir()
 auto reserved(string prop)(
     long avail, Node inputs,
     ResourceRequirement req, ResourceRequirement hint,
-    Evaluator evaluator) // must be pure
+    Evaluator evaluator) @safe // must be pure
 {
     import salad.type : match, None;
     import std.algorithm : min;
