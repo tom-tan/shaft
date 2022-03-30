@@ -54,7 +54,7 @@ jobs:
       - name: Run conformance tests
         id: run-conformance
         # uses: common-workflow-lab/run-conformance-tests@v1
-        uses: .github/actions/run-conformance
+        uses: ./.github/actions/run-conformance
         with:
           cwlVersion: v1.0
           runner: ${{ github.workspace }}/bin/shaft
