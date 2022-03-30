@@ -34,3 +34,27 @@ jobs:
       - name: Run tests
         run: |
           dub test
+  
+  conformance:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - uses: actions/cache@v2
+        with:
+          path: ~/.dub
+          key: ${{ runner.os }}-dub-ldc-latest-${{ hashFiles('**/dub.json') }}
+      - uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ldc-latest
+      - run: dub build -b release
+      - name: Run conformance tests
+        id: run-conformance
+        uses: common-workflow-lab/run-conformance-tests@v1
+        with:
+          cwlVersion: v1.0
+          runner: ${{ github.workspace }}/bin/shaft
+          timeout: 30
