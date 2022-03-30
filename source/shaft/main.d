@@ -44,7 +44,7 @@ int shaftMain(string[] args)
 		"version", "show version information", &showversion,
 	);
 
-	if (opts.helpWanted || args.empty || args.length > 3)
+	if (opts.helpWanted || args.length <= 1 || args.length > 3)
 	{
 		import std.getopt : defaultGetoptPrinter;
         import std.path : baseName;
