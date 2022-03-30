@@ -61,7 +61,7 @@ struct Evaluator
     Node eval(string exp, Node inputs, Runtime runtime, Node self = YAMLNull()) const /+ pure +/ @safe
     {
         auto rtNode = Node(runtime);
-        return Node.init;
+        return Node(exp); // TODO
     }
 
 private:

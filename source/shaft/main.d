@@ -7,32 +7,6 @@ module shaft.main;
 
 import dyaml : Node;
 
-///
-auto toURI(string pathOrURI) pure @safe
-{
-    import salad.resolver : scheme;
-    import std.range : empty;
-
-    if (pathOrURI.scheme.empty)
-    {
-        import std.algorithm : startsWith;
-
-        if (pathOrURI.startsWith("/"))
-        {
-            return "file://"~pathOrURI;
-        }
-        else
-        {
-            import std.path : absolutePath;
-            return "file://"~pathOrURI.absolutePath;
-        }
-    }
-    else
-    {
-        return pathOrURI;
-    }
-}
-
 /// See_Also: https://github.com/common-workflow-language/common-workflow-language/issues/915
 int shaftMain(string[] args)
 {
@@ -116,6 +90,8 @@ EOS".outdent[0..$-1])(args[0].baseName);
     }
     catch(DocumentException e)
     {
+        import std;
+        stderr.writeln(e.msg);
         return 251;
     }
     catch(MatchException e)
@@ -126,24 +102,12 @@ EOS".outdent[0..$-1])(args[0].baseName);
 
     // 3. If there are multiple process objects (due to $graph) and which process object to start with is not specified in the input object (via a cwl:tool entry)
     // or by any other means (like a URL fragment) then choose the process with the id of "#main" or "main".
-    // -> done by `importFromURI``
+    // -> done by `importFromURI`
 
     // store current version of CWL for parameter references
     auto cwlVersion = cmd.cwlVersion_.tryMatch!((string s) => s);
     enforce(cwlVersion == "v1.0");
     // TODO: upgrade document to the latest version
-
-    // 4. Validate the input object against the inputs schema for the process.
-    import shaft.type : annotateInputParameters;
-
-    //
-    auto typedParams = annotateInputParameters(inp, cmd.dig!("inputs", CommandInputParameter[]),
-                                               cmd.dig!(["requirements", "SchemaDefRequirement"],
-                                                        SchemaDefRequirement));
-
-    // 5. Validate process requirements are met.
-    // DockeRequirement, SoftwareRequirement, ResourcceRequirement can be hints
-    // others -> should be requirements
 
     import cwl.v1_0.schema : InlineJavascriptRequirement;
     import shaft.evaluator : Evaluator;
@@ -152,6 +116,18 @@ EOS".outdent[0..$-1])(args[0].baseName);
         cmd.dig!(["requirements", "InlineJavascriptRequirement"], InlineJavascriptRequirement),
         cwlVersion
     );
+
+    // 4. Validate the input object against the inputs schema for the process.
+    import shaft.type : annotateInputParameters;
+
+    // TODO: pass evaluator (CommandInputRecordField may have an Expression)
+    auto typedParams = annotateInputParameters(inp, cmd.dig!("inputs", CommandInputParameter[]),
+                                               cmd.dig!(["requirements", "SchemaDefRequirement"],
+                                                        SchemaDefRequirement));
+
+    // 5. Validate process requirements are met.
+    // DockerRequirement, SoftwareRequirement, ResourceRequirement can be hints
+    // others -> should be requirements
 
     import cwl.v1_0.schema : ResourceRequirement;
     import shaft.runtime : Runtime;
@@ -169,24 +145,14 @@ EOS".outdent[0..$-1])(args[0].baseName);
 
 
     // 8. Capture results of process execution into the output object.
+    import shaft.command_line_tool : captureOutputs;
+    auto outs = captureOutputs(cmd, runtime, evaluator);
 
     // 9. Validate the output object against the outputs schema for the process.
 
     // 10. Report the output object to the process caller.
+    dumpOutput(outs);
 
-
-    // 
-
-    // get runtime
-    // proess InitWorkDiRequirement
-    // eval env
-	// path mapping (hook)
-    // construct args
-    // process ShellCommandRequirement
-    // container command prefix (hook)
-    // spawnProcess
-    // wait
-    // return result
     return 0;
 }
 
@@ -194,7 +160,9 @@ EOS".outdent[0..$-1])(args[0].baseName);
 /// See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Discovering_CWL_documents_on_a_local_filesystem
 auto discoverDocumentURI(string path) @safe
 {
-    import std.algorithm : canFind;
+    import std.algorithm : canFind, startsWith;
+    import std.exception : enforce;
+    import std.file : exists, getcwd, isFile;
 
     // absolute URI
     if (path.canFind("://"))
@@ -203,10 +171,8 @@ auto discoverDocumentURI(string path) @safe
     }
 
     // relative path
-    import salad.resolver : fragment;
+    import salad.resolver : fragment, withoutFragment, toURI;
     import std.algorithm : find, map, splitter;
-    import std.exception : enforce;
-    import std.file : exists, isFile;
     import std.path : absolutePath, buildPath;
     import std.process : environment;
     import std.range : chain, empty;
@@ -224,10 +190,26 @@ auto discoverDocumentURI(string path) @safe
                                 .buildPath("commonwl");
 
     auto frag = path.fragment;
-    auto pathWithoutFrag = path[0..$-frag.length+1];
-    // TODO: check `absolutePath(".")` is appropriate
-    auto fs = chain(["."], dirs, [data_home]).map!(d => pathWithoutFrag.absolutePath(d))
+    auto pathWithoutFrag = path.withoutFragment;
+    auto fs = chain([getcwd], dirs, [data_home]).map!(d => pathWithoutFrag.absolutePath(d))
                                              .find!(p => p.exists && p.isFile);
     enforce(!fs.empty);
     return fs.front.toURI~(frag.empty ? "" : "#"~frag);
+}
+
+///
+void dumpOutput(Node outs)
+{
+    import dyaml : dumper;
+    import std.array : appender;
+    import std.regex : ctRegex, replaceAll;
+    import std.stdio : write;
+
+    auto d = dumper();
+    d.YAMLVersion = null;
+
+    auto app = appender!string;
+    d.dump(app, outs);
+    auto str = app[].replaceAll(ctRegex!`\n\s+`, " ");
+    write(str);
 }

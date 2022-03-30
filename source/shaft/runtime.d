@@ -7,6 +7,7 @@ module shaft.runtime;
 
 import cwl.v1_0.schema : ResourceRequirement;
 import dyaml : Node;
+import salad.type : Optional;
 import shaft.evaluator : Evaluator;
 
 /// See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Runtime_environment
@@ -18,6 +19,7 @@ struct Runtime
     long ram;
     long outdirSize;
     long tmpdirSize;
+    Optional!int code;
 
     ///
     this(Node inputs, string outdir, string tmpdir,
@@ -38,6 +40,7 @@ struct Runtime
     Node opCast(T: Node)() const @safe
     {
         import dyaml : CollectionStyle, ScalarStyle;
+        import salad.type : match;
         import shaft.type : toJSONNode;
 
         Node ret;
@@ -50,6 +53,11 @@ struct Runtime
         ret.add("outdirSize".toJSONNode, outdirSize.toJSONNode);
         ret.add("tmpdirSize".toJSONNode, tmpdirSize.toJSONNode);
 
+        code.match!(
+            (int c) => ret.add("code".toJSONNode, c.toJSONNode),
+            (none) {},
+        );
+
         return ret;
     }
 }
@@ -60,6 +68,7 @@ auto availableCores() @safe
     import std.parallelism : totalCPUs;
 
     // TODO: use `sched_getaffinity` in Linux to check CPUs reserved to this process
+    // It cares `sched_getaffinity` since dmd 2.099.0
     return totalCPUs;
 }
 

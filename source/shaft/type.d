@@ -36,6 +36,8 @@ alias DeterminedType = Either!(
     CommandInputArraySchema,
 );
 
+///
+alias TypedParameters = Tuple!(Node, "parameters", DeterminedType[string], "types");
 
 /*
 parameter missing: missig/`%s` is missing
@@ -102,9 +104,6 @@ class InvalidObject : TypeException
     DeterminedType type_;
 }
 
-///
-alias TypedParameters = Tuple!(Node, "parameters", DeterminedType[string], "types");
-
 /**
  *
  * Returns: a tuple that consists of:
@@ -163,17 +162,16 @@ in(params.type == NodeType.mapping)
             n = Node(YAMLNull());
         }
 
-        DeclaredType type = p.type_.match!(
-            (None _) => DeclaredType("Any"), // v1.0 only: assumes Any, TODO: investigate corresponding conformance test
+        auto type = p.type_.match!(
+            (None _) => DeclaredType("Any"), // v1.0 only: assumes Any, TODO: check corresponding conformance test
+            (CWLType t) => DeclaredType(t),
             (string s) => defMap[s], // TODO
             others => DeclaredType(others),
         );
 
         auto v = n.bindType(type, defMap);
         retTuple ~= tuple(id, v.type);
-        auto k = Node(id);
-        k.setStyle(ScalarStyle.doubleQuoted);
-        retNode.add(k, v.value);
+        retNode.add(id.toJSONNode, v.value);
     }
     auto types = () @trusted { return retTuple.assocArray; }();
     return typeof(return)(retNode, types);
@@ -251,7 +249,7 @@ Node toJSONNode(T)(T val) @safe
     return Node(val).toJSONNode;
 }
 
-/// 
+///
 TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
 {
     import salad.type : match;
@@ -272,6 +270,9 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                 return TypedValue(n, t);
             case "float", "double":
                 enforce(n.type == NodeType.decimal, new TypeConflicts("TODO: guess type", type, n.guessedType));
+                return TypedValue(n, t);
+            case "string":
+                enforce(n.type == NodeType.string, new TypeConflicts("TODO: guess type", type, n.guessedType));
                 return TypedValue(n, t);
             case "File":
                 enforce(n.type == NodeType.mapping, new TypeConflicts("TODO: guess type", type, n.guessedType));
