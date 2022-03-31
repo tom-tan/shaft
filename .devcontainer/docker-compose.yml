@@ -1,0 +1,29 @@
+version: "3.7"
+services:
+  dind:
+    image: docker:stable-dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ''
+    working_dir: /workspaces/shaft
+    volumes:
+      - ..:/workspaces/shaft
+      - /tmp:/tmp
+    command: dockerd-entrypoint.sh
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DOCKER_HOST: tcp://dind:2375/
+    working_dir: /workspaces/shaft
+    volumes:
+      - ..:/workspaces/shaft
+      - /tmp:/tmp
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    command: sleep infinity
+    depends_on:
+      - "dind"
