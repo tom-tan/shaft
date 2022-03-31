@@ -164,7 +164,6 @@ in(params.type == NodeType.mapping)
 
         auto type = p.type_.match!(
             (None _) => DeclaredType("Any"), // v1.0 only: assumes Any, TODO: check corresponding conformance test
-            (CWLType t) => DeclaredType(t),
             (string s) => defMap[s], // TODO
             others => DeclaredType(others),
         );

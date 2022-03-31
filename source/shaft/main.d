@@ -105,7 +105,8 @@ EOS".outdent[0..$-1])(args[0].baseName);
     // -> done by `importFromURI`
 
     // store current version of CWL for parameter references
-    auto cwlVersion = cmd.cwlVersion_.tryMatch!((string s) => s);
+    import cwl : CWLVersion;
+    auto cwlVersion = cmd.cwlVersion_.tryMatch!((CWLVersion ver) => ver.value_);
     enforce(cwlVersion == "v1.0");
     // TODO: upgrade document to the latest version
 
