@@ -15,8 +15,7 @@
 		}
 	},
 	"preBuildCommands": [
-		"if [ -d .git ]; then git describe --always --dirty > resources/version; fi",
-		"if [ ! -d .git ]; then cp VERSION resources/version; fi"
+		"./gen-version.sh > resources/version"
 	],
 	"stringImportPaths": [
 		"resources"
