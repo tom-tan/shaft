@@ -58,4 +58,4 @@ jobs:
           cwlVersion: v1.0
           runner: ${{ github.workspace }}/bin/shaft
           timeout: 30
-          tags: command_line_tool
+          tags: command_line_tool,expression_tool
