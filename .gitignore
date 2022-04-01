@@ -24,5 +24,6 @@ docs/
 *.lst
 
 bin/
+resources/version
 
 cwl-v1.0
