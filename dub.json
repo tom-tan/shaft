@@ -14,10 +14,12 @@
 			]
 		}
 	},
+	"preGenerateCommands": [
+		"mkdir -p resources"
+	],
 	"preBuildCommands": [
-		"mkdir -p resources",
-		"test -d .git && git describe --always --dirty > resources/version",
-		"test -d .git || cp VERSION resources/version"
+		"if [ -d .git ]; then git describe --always --dirty > resources/version; fi",
+		"if [ ! -d .git ]; then cp VERSION resources/version; fi"
 	],
 	"stringImportPaths": [
 		"resources"
