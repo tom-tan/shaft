@@ -8,7 +8,7 @@ module shaft.main;
 import dyaml : Node;
 
 ///
-enum suppertedVersions = ["v1.0"];
+static immutable suppertedVersions = ["v1.0"];
 
 ///
 enum LeaveTmpdir
