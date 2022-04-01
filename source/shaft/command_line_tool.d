@@ -21,6 +21,7 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     import salad.type : match;
     import std.array : join;
     import std.exception : enforce;
+    import std.path : buildPath;
     import std.process : Config, environment, Pid, spawnProcess, wait;
     import std.stdio : File;
     // 6. Perform any further setup required by the specific process type.
@@ -39,9 +40,9 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
             auto path = evaluator.eval(exp, params.parameters, runtime);
             enforce(path.type == NodeType.string);
             // TODO:  If ..., or the resulting path contains illegal characters (such as the path separator /) it is an error.
-            return File(path.as!string, "w");
+            return File(buildPath(runtime.outdir, path.as!string), "w");
         },
-        none => File("stdout.txt", "w"),
+        none => File(buildPath(runtime.logdir, "stdout.txt"), "w"),
     );
 
     auto stderr = clt.stderr_.match!(
@@ -50,9 +51,9 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
             auto path = evaluator.eval(exp, params.parameters, runtime);
             enforce(path.type == NodeType.string);
             // TODO:  If ..., or the resulting path contains illegal characters (such as the path separator /) it is an error.
-            return File(path.as!string, "w");
+            return File(buildPath(runtime.outdir, path.as!string), "w");
         },
-        none => File("stderr.txt", "w"),
+        none => File(buildPath(runtime.logdir, "stderr.txt"), "w"),
     );
 
     version(none) // TODO
@@ -268,7 +269,7 @@ EOS";
     auto args = buildCommandLine(
         clt,
         params,
-        Runtime(params.parameters, "outDir", "tmpDir", null, null, evaluator),
+        Runtime(params.parameters, "outDir", "tmpDir", "loogDir", null, null, evaluator),
         evaluator
     );
 

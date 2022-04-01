@@ -20,14 +20,16 @@ struct Runtime
     long outdirSize;
     long tmpdirSize;
     Optional!int code;
+    string logdir; /// internal use only
 
     ///
-    this(Node inputs, string outdir, string tmpdir,
+    this(Node inputs, string outdir, string tmpdir, string logdir,
          ResourceRequirement req, ResourceRequirement hint,
          Evaluator evaluator) @safe
     {
         this.outdir = outdir;
         this.tmpdir = tmpdir;
+        this.logdir = logdir;
 
         cores = reserved!"cores"(availableCores, inputs, req, hint, evaluator);
         ram = reserved!"ram"(availableRam, inputs, req, hint, evaluator);

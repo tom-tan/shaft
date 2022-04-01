@@ -7,6 +7,17 @@ module shaft.main;
 
 import dyaml : Node;
 
+///
+enum suppertedVersions = ["v1.0"];
+
+///
+enum LeaveTmpdir
+{
+    always,
+    onErrors,
+    never,
+}
+
 /// See_Also: https://github.com/common-workflow-language/common-workflow-language/issues/915
 int shaftMain(string[] args)
 {
@@ -15,7 +26,7 @@ int shaftMain(string[] args)
     import std.file : getcwd;
     import std.exception : enforce;
     import std.format : format;
-    import std.getopt : getopt;
+    import std.getopt : getopt, GetOptException;
 	import std.range : empty;
 
     import cwl : CommandInputParameter, CommandLineTool, DocumentRootType, importFromURI, SchemaDefRequirement;
@@ -24,42 +35,114 @@ int shaftMain(string[] args)
     import salad.type : MatchException, tryMatch;
     import salad.util : dig, edig;
 
-	string tmpdir;
+	string baseTmpdir;
 	string outdir = getcwd;
-	bool b;
+	LeaveTmpdir ltopt = LeaveTmpdir.onErrors;
 	bool verbose;
-	bool showversion;
 	bool computeChecksum = true;
-	auto opts = args.getopt(
-		"tmpdir", "directory for temporary files", &tmpdir,
-		"outdir", "directory for output objects", &outdir,
-		"leave-tmpdir", "always leave temporary directory", &b,
-		"leave-tmpdir-on-errors", "leave temporary directory on errors (default)", &b,
-		"remove-tmpdir", "always remove temporary directory", &b,
-		"quiet", "only print warnings and errors", &verbose,
-		"verbose", "verbose output", &verbose,
-		"veryverbose", "more verbose output", &verbose,
-		"compute-checksum", "compute checksum of contents (default)", () { computeChecksum = true; },
-		"no-compute-checksum", "do not compute checksum of contents", () { computeChecksum = false; },
-		"version", "show version information", &showversion,
-	);
 
-	if (opts.helpWanted || args.length <= 1 || args.length > 3)
-	{
-		import std.getopt : defaultGetoptPrinter;
-        import std.path : baseName;
-        import std.string : outdent;
+    try
+    {
+    	bool showVersion;
+        bool showSupportedVersions;
 
-		immutable baseMessage = format!(q"EOS
-			Shaft: A workflow engine for CommandLineTool in local machine
-			Usage: %s [options] cwl [jobfile]
-EOS".outdent[0..$-1])(args[0].baseName);
-		defaultGetoptPrinter(baseMessage, opts.options);
-		return 0;
-	}
+	    auto opts = args.getopt(
+    		"base-tmpdir", "directory for temporary files", &baseTmpdir,
+	    	"outdir", "directory for output objects", &outdir,
+    		"leave-tmpdir", "always leave temporary directory", () { ltopt = LeaveTmpdir.always; },
+	    	"leave-tmpdir-on-errors", "leave temporary directory on errors (default)", () { ltopt = LeaveTmpdir.onErrors; },
+    		"remove-tmpdir", "always remove temporary directory", () { ltopt = LeaveTmpdir.never; },
+	    	"quiet", "only print warnings and errors", &verbose,
+    		"verbose", "verbose output", &verbose,
+	    	"veryverbose", "more verbose output", &verbose,
+    		"compute-checksum", "compute checksum of contents (default)", () { computeChecksum = true; },
+	    	"no-compute-checksum", "do not compute checksum of contents", () { computeChecksum = false; },
+    		"print-supported-versions", "print supported CWL specs", &showSupportedVersions,
+		    "version", "show version information", &showVersion,
+    	);
+
+        if (showVersion)
+        {
+            import std.stdio : writeln;
+            writeln("v0.0.0");
+            return 0;
+        }
+        else if (showSupportedVersions)
+        {
+            import std.stdio : writefln;
+            writefln("%-(%s\n%)", suppertedVersions);
+            return 0;
+        }
+        else if (opts.helpWanted || args.length <= 1 || args.length > 3)
+        {
+            import std.getopt : defaultGetoptFormatter;
+            import std.path : baseName;
+            import std.string : outdent;
+            import std.stdio : stdout;
+
+            immutable baseMessage = format!(q"EOS
+                Shaft: A workflow engine for CommandLineTool in local machine
+                Usage: %s [options] cwl [jobfile]
+EOS".outdent[0 .. $ - 1])(args[0].baseName);
+
+            defaultGetoptFormatter(
+                stdout.lockingTextWriter, baseMessage,
+                opts.options, "%-*s %-*s%*s%s\x0a",
+            );
+            return 0;
+        }
+    }
+    catch(GetOptException e)
+    {
+        import std.stdio : writeln;
+
+        writeln(e.msg);
+        return 1;
+    }
 
     Fetcher.instance.removeSchemeFetcher("http");
     Fetcher.instance.removeSchemeFetcher("https");
+
+    import std.path : buildPath;
+    if (baseTmpdir.empty)
+    {
+        import std.file : tempDir;
+        import std.path : absolutePath;
+        import std.uuid : randomUUID;
+        baseTmpdir = buildPath(tempDir, "shaft-"~randomUUID().toString()).absolutePath;
+    }
+    else
+    {
+        import std.path : absolutePath;
+        baseTmpdir = baseTmpdir.absolutePath;
+    }
+    import std.file : exists;
+    import std.file : mkdirRecurse;
+
+    enforce(!baseTmpdir.exists, format!"%s already exists"(baseTmpdir));
+
+    auto routdir = buildPath(baseTmpdir, "output");
+    mkdirRecurse(routdir);
+    auto rtmpdir = buildPath(baseTmpdir, "temporary");
+    mkdirRecurse(rtmpdir);
+    auto rlogdir = buildPath(baseTmpdir, "log");
+    mkdirRecurse(rlogdir);
+    scope(success)
+    {
+        if (ltopt != LeaveTmpdir.always)
+        {
+            import std.file : rmdirRecurse;
+            rmdirRecurse(baseTmpdir);    
+        }
+    }
+    scope(failure)
+    {
+        if (ltopt == LeaveTmpdir.never)
+        {
+            import std.file : rmdirRecurse;
+            rmdirRecurse(baseTmpdir);
+        }
+    }
 
     // See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Generic_execution_process
     // 1. Load input object.
@@ -133,7 +216,7 @@ EOS".outdent[0..$-1])(args[0].baseName);
     import cwl.v1_0.schema : ResourceRequirement;
     import shaft.runtime : Runtime;
 
-    auto runtime = Runtime(typedParams.parameters, outdir, tmpdir,
+    auto runtime = Runtime(typedParams.parameters, routdir, rtmpdir, rlogdir,
                            cmd.dig!(["requirements", "ResourceRequirements"], ResourceRequirement),
                            cmd.dig!(["hints", "ResourceRequirements"], ResourceRequirement),
                            evaluator);
