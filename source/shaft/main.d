@@ -63,8 +63,8 @@ int shaftMain(string[] args)
 
         if (showVersion)
         {
-            import std.stdio : writeln;
-            writeln("v0.0.0");
+            import std.stdio : write;
+            write(import("version"));
             return 0;
         }
         else if (showSupportedVersions)

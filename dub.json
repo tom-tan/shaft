@@ -14,6 +14,14 @@
 			]
 		}
 	},
+	"preBuildCommands": [
+		"mkdir -p resources",
+		"test -d .git && git describe --always --dirty > resources/version",
+		"test -d .git || cp VERSION resources/version"
+	],
+	"stringImportPaths": [
+		"resources"
+	],
 	"copyright": "Copyright © 2022, Tomoya Tanjo",
 	"dependencies": {
 		"schema-salad-d": "~>0.6.1"
