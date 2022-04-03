@@ -62,13 +62,14 @@ jobs:
           timeout: 30
           tags: command_line_tool,expression_tool
           extra: --remove-tmpdir
-      # - name: Save badges
-      #   if: success() && github.event_name == 'push'
-      #   uses: common-workflow-lab/upload-conformance-badges@v1
-      #   with:
-      #     cwlVersion: v1.0
-      #     runner-name: shaft
-      #     badgedir: ${{ steps.run-conformance.outputs.badgedir }}
-      #     repository: ${{ github.repository_owner }}/stub-conformance
-      #     upload-default-branch: true
-      #     token: ${{ secrets.STUB_KEY }}
+      - name: Save badges
+        if: success() && github.event_name == 'push'
+        uses: ./.github/actions/upload-badges
+        # uses: common-workflow-lab/upload-conformance-badges@v1
+        with:
+          cwlVersion: v1.0
+          runner-name: shaft
+          badgedir: ${{ steps.run-conformance.outputs.badgedir }}
+          repository: ${{ github.repository_owner }}/stub-conformance
+          upload-default-branch: true
+          ssh-key: ${{ secrets.STUB_KEY }}
