@@ -87,7 +87,7 @@ runs:
           nopt="-n=${{ inputs.n }}"
         fi
 
-        ./run_test.sh RUNNER=${{inputs.runner}} --badgedir=$basedir/badges --junit-xml=$basedir/junit.xml --timeout=${{inputs.timeout}} $tagopt $n || true
+        ./run_test.sh RUNNER=${{inputs.runner}} --badgedir=$basedir/badges --junit-xml=$basedir/junit.xml --timeout=${{inputs.timeout}} $tagopt $nopt || true
         echo "::set-output name=badgedir::$GITHUB_WORKSPACE/cwl-run-conformance-${{ inputs.cwlVersion }}/badges"
         echo "::set-output name=result::$GITHUB_WORKSPACE/cwl-run-conformance-${{ inputs.cwlVersion }}/junit.xml"
       env:
