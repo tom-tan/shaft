@@ -98,15 +98,6 @@ jobs:
           upload-default-branch: true
           ssh-key: ${{ secrets.CONFORMANCE_KEY }}
 
-  wip:
-    runs-on: ubuntu-latest
-    needs: [info, conformance]
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: shaft-master
-      - run: ls -l
-
   release:
     runs-on: ubuntu-latest
     needs: [info, conformance]
@@ -130,6 +121,7 @@ jobs:
           cwlVersion: v1.0
           tag: ${{ needs.info.outputs.tag }}
       - uses: actions/create-release@v1
+        id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -139,3 +131,15 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: shaft-master
+      - run: |
+          chmod +x shaft
+          tar cf ${GITHUB_WORKSPACE}/shaft.tar.gz shaft
+      - name: Upload shaft
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/shaft.tar.gz
+          asset_name: shaft-linux-x86_64.tar.gz
+          asset_content_type: application/tar+gzip
