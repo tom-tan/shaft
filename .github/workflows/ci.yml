@@ -49,12 +49,10 @@ jobs:
           key: ${{ runner.os }}-dub-ldc-latest-${{ hashFiles('**/dub.json') }}
       - run: |
           docker run --rm -i -v $PWD:/workdir -w /workdir alpine:edge sh alpine-build.sh
-          cd bin
-          tar cf ${GITHUB_WORKSPACE}/shaft.tar.gz shaft
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-master
-          path: ${{ github.workspace }}/shaft.tar.gz
+          path: ${{ github.workspace }}/bin/shaft
       - name: Run conformance tests
         id: run-conformance
         uses: common-workflow-lab/run-conformance-tests@v1
