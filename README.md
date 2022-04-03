@@ -2,7 +2,7 @@
 [![CI](https://github.com/tom-tan/shaft/actions/workflows/ci.yml/badge.svg)](https://github.com/tom-tan/shaft/actions/workflows/ci.yml)
 [![license](https://badgen.net/github/license/tom-tan/shaft)](https://github.com/tom-tan/shaft/blob/main/LICENSE)
 
-Shaft is a workflow engine for the [Common Workflow Language](https://www.commonwl.org/) (CWL) to be used as a "shaft" of other workflow engines.
+Shaft is a workflow engine to be used as a "shaft" of other workflow engines for the [Common Workflow Language](https://www.commonwl.org/) (CWL).
 
 The main purpose of this engine is to be embedded in more enhanced workflow engines such as [ep3](https://github.com/tom-tan/ep3) and therefore it focuses on supporting [CommandLineTool](https://www.commonwl.org/v1.2/CommandLineTool.html) and [ExpressionTool](https://www.commonwl.org/v1.2/Workflow.html#ExpressionTool) documents in local machines.
 
