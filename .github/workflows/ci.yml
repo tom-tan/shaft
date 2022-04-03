@@ -9,6 +9,30 @@ on:
   pull_request: {}
 
 jobs:
+  info:
+    runs-on: ubuntu-latest
+    outputs:
+      has_tag: ${{ steps.get_info.outputs.has_tag }}
+      tag: ${{ steps.get_info.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - id: get_info
+        run: |
+          tag="${GITHUB_REF##*/}"
+          echo "::set-output name=has_tag::$has_tag"
+          echo "::set-output name=tag::$tag"
+        env:
+          has_tag: ${{ startsWith(github.ref, 'refs/tags/') }}
+      - name: Validate version tag
+        if: github.event_name == 'push' && steps.get_info.outputs.has_tag == 'true'
+        run: |
+          if [ $(cat VERSION) != ${{ steps.get_info.outputs.tag }} ]; then
+            echo "::error file=VERSION,line=1,col=1::Version string in VERSION ($(cat VERSION)) does not match the tag string (${{ steps.get_info.outputs.tag }})"
+            exit 1
+          fi
+
   test:
     strategy:
       matrix:
@@ -72,3 +96,33 @@ jobs:
           repository: ${{ github.repository_owner }}/conformance
           upload-default-branch: true
           ssh-key: ${{ secrets.CONFORMANCE_KEY }}
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [info, conformance]
+    if: github.event_name == 'push' && needs.info.outputs.has_tag == 'true'
+    steps:
+      - name: Generate release text
+        run: |
+          cat << EOS > $GITHUB_WORKSPACE/release.md
+          ## Conformance tests for CWL ${cwlVersion}
+          [![version](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/version.json)](https://github.com/tom-tan/shaft/releases/tag/${tag}) [![commit](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/commit.json)](https://github.com/tom-tan/shaft/tree/${tag})
+          ### Classes
+          [![CommandLineTool](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/command_line_tool.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html) [![ExpressionTool](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/expression_tool.json?icon=commonwl)](https://www.commonwl.org/v1.0/Workflow.html#ExpressionTool)
+
+          ### Required features
+          [![Required](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/required.json?icon=commonwl)](https://www.commonwl.org/v1.0/)
+
+          ### Optional features
+          [![DockerRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/docker.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#DockerRequirement) [![EnvVarRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/env_var.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#EnvVarRequirement) [![InitialWorkDirRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/initial_work_dir.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#InitialWorkDirRequirement) [![InlineJavascriptRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/inline_javascript.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#InlineJavascriptRequirement) [![ResourceRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/resource.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#ResourceRequirement) [![SchemaDefRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/schema_def.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#SchemaDefRequirement) [![ShellCommandRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/shell_command.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#ShellCommandRequirement)
+          EOS
+        env:
+          cwlVersion: v1.0
+          tag: ${{ needs.info.outputs.tag }}
+      - uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.info.outputs.tag }}
+          release_name: ${{ needs.info.outputs.tag }}
+          body_path: ${{ github.workspace }}/release.md
