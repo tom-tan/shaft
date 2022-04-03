@@ -38,6 +38,10 @@ jobs:
   conformance:
     needs: test
     runs-on: ubuntu-latest
+    container:
+      image: alpine:edge
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
 
     steps:
       - uses: actions/checkout@v2
@@ -47,10 +51,14 @@ jobs:
         with:
           path: ~/.dub
           key: ${{ runner.os }}-dub-ldc-latest-${{ hashFiles('**/dub.json') }}
-      - uses: dlang-community/setup-dlang@v1
+      - run: |
+          apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static
+          dub build -b release-static
+          strip bin/shaft
+      - uses: actions/upload-artifact@v2
         with:
-          compiler: ldc-latest
-      - run: dub build -b release
+          name: shaft-master
+          path: ${{ github.workspace }}/bin/
       - name: Run conformance tests
         id: run-conformance
         uses: common-workflow-lab/run-conformance-tests@v1
