@@ -27,7 +27,10 @@ inputs:
   n:
     description: 'specify tests by their numbers (e.g., "1-5,10,13")'
     required: false
-  # TODO: EXTRA, -j
+  extra:
+    description: 'extra arguments for the given CWL runner'
+    required: false
+  # TODO: -j
 outputs:
   badgedir:
     description: 'The directory name that stores conformance badges'
@@ -87,7 +90,11 @@ runs:
           nopt="-n=${{ inputs.n }}"
         fi
 
-        ./run_test.sh RUNNER=${{inputs.runner}} --badgedir=$basedir/badges --junit-xml=$basedir/junit.xml --timeout=${{inputs.timeout}} $tagopt $nopt || true
+        if [ -n "${{ inputs.extra }}" ]; then
+          extraopt="EXTRA='${{ inputs.extra }}'"
+        fi
+
+        ./run_test.sh RUNNER=${{inputs.runner}} --badgedir=$basedir/badges --junit-xml=$basedir/junit.xml --timeout=${{inputs.timeout}} $tagopt $nopt $extraopt || true
         echo "::set-output name=badgedir::$GITHUB_WORKSPACE/cwl-run-conformance-${{ inputs.cwlVersion }}/badges"
         echo "::set-output name=result::$GITHUB_WORKSPACE/cwl-run-conformance-${{ inputs.cwlVersion }}/junit.xml"
       env:
