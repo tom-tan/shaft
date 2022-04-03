@@ -91,7 +91,7 @@ runs:
         fi
 
         if [ -n "${{ inputs.extra }}" ]; then
-          extraopt="EXTRA='${{ inputs.extra }}'"
+          extraopt="EXTRA=${{ inputs.extra }}"
         fi
 
         ./run_test.sh RUNNER=${{inputs.runner}} --badgedir=$basedir/badges --junit-xml=$basedir/junit.xml --timeout=${{inputs.timeout}} $tagopt $nopt $extraopt || true
