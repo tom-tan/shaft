@@ -73,7 +73,7 @@ jobs:
           path: ~/.dub
           key: ${{ runner.os }}-dub-ldc-latest-${{ hashFiles('**/dub.json') }}
       - run: |
-          docker run --rm -i -v $PWD:/workdir -w /workdir alpine:edge sh alpine-build.sh
+          docker run --rm -i -v $PWD:/workdir -w /workdir -e GITHUB_REF=$GITHUB_REF alpine:edge sh alpine-build.sh
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-master
