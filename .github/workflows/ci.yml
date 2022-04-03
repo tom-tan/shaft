@@ -34,6 +34,7 @@ jobs:
           fi
 
   test:
+    needs: [info]
     strategy:
       matrix:
         dc: [dmd-2.098.1, ldc-latest]
