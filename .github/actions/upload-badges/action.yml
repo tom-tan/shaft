@@ -23,12 +23,12 @@ inputs:
     description: 'whether uploading the result of HEAD in the default branch'
     required: false
     default: false
-  token:
-    description: 'personal access token to commit the repository specified in the `repository` field. Either `token` or `ssh-key` is needed'
-    required: false
+  # token:
+  #   description: 'personal access token to commit the repository specified in the `repository` field. Either `token` or `ssh-key` is needed'
+  #   required: false
   ssh-key:
     description: 'deploy key to commit the repository specified in the `repository` field. Either `token` or `ssh-key` is needed'
-    required: false
+    required: true
 
 runs:
   using: 'composite'
@@ -37,7 +37,6 @@ runs:
       with:
         repository: ${{ inputs.repository }}
         path: conformance
-        token: ${{ inputs.token }}
         ssh-key: ${{ inputs.ssh-key }}
     - name: Save badges
       working-directory: conformance
