@@ -64,12 +64,11 @@ jobs:
           extra: --remove-tmpdir
       - name: Save badges
         if: success() && github.event_name == 'push'
-        uses: ./.github/actions/upload-badges
-        # uses: common-workflow-lab/upload-conformance-badges@v1
+        uses: common-workflow-lab/upload-conformance-badges@v1
         with:
           cwlVersion: v1.0
           runner-name: shaft
           badgedir: ${{ steps.run-conformance.outputs.badgedir }}
-          repository: ${{ github.repository_owner }}/stub-conformance
+          repository: ${{ github.repository_owner }}/conformance
           upload-default-branch: true
-          ssh-key: ${{ secrets.STUB_KEY }}
+          ssh-key: ${{ secrets.CONFORMANCE_KEY }}
