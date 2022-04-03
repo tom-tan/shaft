@@ -52,7 +52,7 @@ jobs:
           path: ~/.dub
           key: ${{ runner.os }}-dub-ldc-latest-${{ hashFiles('**/dub.json') }}
       - run: |
-          apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static bash docker-cli
+          apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static python3 py3-pip bash docker-cli
           dub build -b release-static
           strip bin/shaft
       - uses: actions/upload-artifact@v2
@@ -67,3 +67,4 @@ jobs:
           runner: ${{ github.workspace }}/bin/shaft
           timeout: 30
           tags: command_line_tool,expression_tool
+          skip-python-install: true
