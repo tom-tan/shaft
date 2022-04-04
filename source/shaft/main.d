@@ -121,6 +121,8 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
     enforce(!baseTmpdir.exists, format!"%s already exists"(baseTmpdir));
 
+    // auto rstagedir = buildPath(baseTmpdir, "output");
+    // mkdirRecurse(rstagedir);
     auto routdir = buildPath(baseTmpdir, "output");
     mkdirRecurse(routdir);
     auto rtmpdir = buildPath(baseTmpdir, "temporary");
@@ -201,6 +203,8 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         cwlVersion
     );
 
+    // inp = stageIn(inp, rstagedir)
+
     // 4. Validate the input object against the inputs schema for the process.
     import shaft.type : annotateInputParameters;
 
@@ -227,10 +231,13 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
     auto ret = execute(cmd, typedParams, runtime, evaluator);
 
+    // runtime.exitCode = ret; // v1.1 and later
 
     // 8. Capture results of process execution into the output object.
     import shaft.command_line_tool : captureOutputs;
     auto outs = captureOutputs(cmd, runtime, evaluator);
+
+    // outs = stageOut(outs, outdir)
 
     // 9. Validate the output object against the outputs schema for the process.
 

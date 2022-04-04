@@ -19,7 +19,7 @@ struct Runtime
     long ram;
     long outdirSize;
     long tmpdirSize;
-    Optional!int code;
+    Optional!int exitCode; // v1.1 and later
     string logdir; /// internal use only
 
     ///
@@ -55,8 +55,8 @@ struct Runtime
         ret.add("outdirSize".toJSONNode, outdirSize.toJSONNode);
         ret.add("tmpdirSize".toJSONNode, tmpdirSize.toJSONNode);
 
-        code.match!(
-            (int c) => ret.add("code".toJSONNode, c.toJSONNode),
+        exitCode.match!(
+            (int c) => ret.add("exitCode".toJSONNode, c.toJSONNode),
             (none) {},
         );
 
