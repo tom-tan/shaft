@@ -104,16 +104,15 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     Fetcher.instance.removeSchemeFetcher("https");
 
     import std.path : buildPath;
+    import std.path : absolutePath;
     if (baseTmpdir.empty)
     {
         import std.file : tempDir;
-        import std.path : absolutePath;
         import std.uuid : randomUUID;
         baseTmpdir = buildPath(tempDir, "shaft-"~randomUUID().toString()).absolutePath;
     }
     else
     {
-        import std.path : absolutePath;
         baseTmpdir = baseTmpdir.absolutePath;
     }
     import std.file : exists;
@@ -148,7 +147,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
     // See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Generic_execution_process
     // 1. Load input object.
-    auto loader = args.length == 3 ? Loader.fromFile(args[2])
+    auto loader = args.length == 3 ? Loader.fromFile(args[2].absolutePath)
                                    : Loader.fromString("{}");
     auto inp = loader.load;
     import dyaml : NodeType;
