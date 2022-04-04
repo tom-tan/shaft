@@ -269,7 +269,7 @@ EOS";
     auto args = buildCommandLine(
         clt,
         params,
-        Runtime(params.parameters, "outDir", "tmpDir", "loogDir", null, null, evaluator),
+        Runtime(params.parameters, "outDir", "tmpDir", "logDir", null, null, evaluator),
         evaluator
     );
 
