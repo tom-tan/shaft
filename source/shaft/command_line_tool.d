@@ -282,6 +282,7 @@ EOS";
 string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
 {
     import salad.type : match;
+    import shaft.type : ArrayType, EnumType, RecordType;
     import std.exception : enforce;
 
     alias toCmdElems = (string[] val) {
@@ -334,18 +335,18 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
                 return toCmdElems([self["path_"].as!string]);
             }
         },
-        (CommandInputRecordSchema s) {
+        (RecordType record) {
             // Add `prefix` only, and recursively add object fields for which `inputBinding` is specified.
             enforce(false, "Record type is not supported yet");
             return (string[]).init;
         },
-        (CommandInputEnumSchema s) {
+        (EnumType e) {
             // TODO: handle s.inputBinding
             // same as strings
             enforce(false, "Enum type is not supported yet");
             return toCmdElems([self.as!string]);
         },
-        (CommandInputArraySchema s) {
+        (ArrayType atype) {
             import dyaml : NodeType;
             import std.array : array;
             import std.range : empty;

@@ -8,7 +8,7 @@ module shaft.type;
 import dyaml : Node, NodeType;
 
 import cwl.v1_0.schema;
-import salad.type : Either;
+import salad.type : Either, Optional, This;
 
 import std.typecons : Tuple;
 
@@ -29,12 +29,21 @@ alias DeclaredType = Either!(
 );
 
 ///
+alias EnumType = Tuple!(string, "name", Optional!CommandLineBinding, "inputBinding");
+
+///
 alias DeterminedType = Either!(
     CWLType,
-    CommandInputRecordSchema,
-    CommandInputEnumSchema,
-    CommandInputArraySchema,
+    EnumType,
+    Tuple!(This*[], "types", Optional!CommandLineBinding, "inputBinding"),
+    Tuple!(string, "name", This*[string], "fields"),
 );
+
+///
+alias ArrayType = Tuple!(DeterminedType*[], "types", Optional!CommandLineBinding, "inputBinding");
+
+///
+alias RecordType = Tuple!(string, "name", DeterminedType*[string], "fields");
 
 ///
 alias TypedParameters = Tuple!(Node, "parameters", DeterminedType[string], "types");
@@ -82,7 +91,8 @@ class TypeConflicts : TypeException
         );
         auto ac = actual.match!(
             (CWLType t) => cast(string)t.value_,
-            other => other.stringof,
+            (ArrayType arr) => "Array[]",
+            other => other.name.length == 0 ? other.stringof : other.name,
         );
 
         super(format!"Type conflicts for `%s` (expected: `%s`, actual: `%s`)"(id, ex, ac));
@@ -208,23 +218,6 @@ struct TypedValue
         type = t;
     }
 
-    ///
-    this(Node v, DeclaredType t) @safe
-    {
-        import salad.type : match;
-
-        value = v.toJSONNode;
-
-        alias T = DeterminedType;
-        type = t.match!(
-            (CWLType t) => T(t),
-            (CommandInputRecordSchema s) => T(s),
-            (CommandInputEnumSchema s) => T(s),
-            (CommandInputArraySchema s) => T(s),
-            others => assert(false),
-        );
-    }
-
     private import std.meta : ApplyLeft, Filter;
     private import std.traits : isImplicitlyConvertible;
     ///
@@ -275,6 +268,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
 
     return type.match!(
         (CWLType t) {
+            import salad.type : None;
             final switch(t.value_)
             {
             case "null":
@@ -311,27 +305,51 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
             }
         },
         (CommandInputRecordSchema s) {
+            import std.algorithm : fold, map;
             enforce(n.type == NodeType.mapping, new TypeConflicts("TODO: guess type", type, n.guessedType));
-            // bindType for each field
-            return TypedValue(n, s);
+
+            auto tv = s.fields_
+                       .match!(
+                           (CommandInputRecordField[] fs) => fs,
+                           _ => (CommandInputRecordField[]).init,
+                       )
+                       .map!((f) {
+                           import std.typecons : tuple;
+                           auto name = f.name_;
+                           auto dt = n[name].bindType(f.type_, defMap);
+                           return tuple(name, dt.type, dt.value);
+                       })
+                       .fold!(
+                           (acc, e) { acc.add(e[0].toJSONNode, e[2]); return acc; },
+                           (acc, e) {
+                               acc[e[0]] = &e[1];
+                               return acc;
+                           },
+                       )(Node.init, (DeterminedType*[string]).init);
+            return TypedValue(tv[0], RecordType(s.name_.match!((string n) => n, _ => ""), tv[1]));
         },
         (CommandInputEnumSchema s) {
+            import std.algorithm : canFind;
             enforce(n.type == NodeType.string, new TypeConflicts("TODO: guess type", type, n.guessedType));
-            // enum or string?
-            return TypedValue(n, s);
+            enforce(s.symbols_.canFind(n.as!string));
+            return TypedValue(n, EnumType(s.name_.match!((string n) => n, _ => ""), s.inputBinding_));
         },
         (CommandInputArraySchema s) {
             import std.algorithm : fold, map;
-            import std.array : array;
             enforce(n.type == NodeType.sequence, new TypeConflicts("TODO: guess type", type, n.guessedType));
+
             auto tvals = n.sequence
-                          .map!(e => e.bindType(s.items_, defMap)).array
+                          .map!(e => e.bindType(s.items_, defMap))
                           .fold!(
                               (acc, e) { acc.add(e.value); return acc; },
-                              (acc, e) => acc ~ e.type,
-                          )(Node.init, (DeterminedType[]).init);
-            // bindType for each elem
-            return TypedValue(tvals[0].toJSONNode, s);
+                              (acc, e) {
+                                  import std.algorithm : moveEmplace;
+                                  auto dt = new DeterminedType;
+                                  moveEmplace(e.type, *dt);
+                                  return acc ~ dt;
+                              },
+                          )(Node.init, (DeterminedType*[]).init);
+            return TypedValue(tvals[0].toJSONNode, ArrayType(tvals[1], s.inputBinding_));
         },
         (string s) {
             if (s == "Any")
@@ -374,42 +392,60 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
 auto guessedType(Node val) @safe
 {
     import dyaml : NodeType;
+    import salad.type : None;
 
     switch(val.type)
     {
     case NodeType.null_:
-        return DeterminedType(new CWLType(Node("null")));
+        return DeterminedType(new CWLType("null"));
     case NodeType.boolean:
-        return DeterminedType(new CWLType(Node("boolean")));
+        return DeterminedType(new CWLType("boolean"));
     case NodeType.integer:
-        return DeterminedType(new CWLType(Node("long")));
+        return DeterminedType(new CWLType("long"));
     case NodeType.decimal:
-        return DeterminedType(new CWLType(Node("double")));
+        return DeterminedType(new CWLType("double"));
     case NodeType.string:
-        return DeterminedType(new CWLType(Node("string")));
+        return DeterminedType(new CWLType("string"));
     case NodeType.mapping:
+        import std.algorithm : fold;
+
         if (auto class_ = "class" in val)
         {
             if (*class_ == "File" || *class_ == "Directory")
             {
-                return DeterminedType(new CWLType(Node(*class_)));
+                return DeterminedType(new CWLType(*class_));
             }
         }
-        auto record = new CommandInputRecordSchema;
-        // TODO
-        return DeterminedType(record);
+        auto ts = val.mapping
+                     .fold!((acc, e) @trusted {
+                         import std.algorithm : moveEmplace;
+                         auto t = guessedType(e.value);
+                         auto dt = new DeterminedType;
+                         moveEmplace(t, *dt);
+                         acc[e.key.as!string] = dt;
+                         return acc;
+                     })((DeterminedType*[string]).init);
+        return DeterminedType(RecordType("", ts));
     case NodeType.sequence:
         import std.algorithm : map;
         import std.array : array;
-        auto seq = new CommandInputArraySchema;
-        // seq.items_ = val.sequence
-        //                 .map!(e => guessType(e))
-        //                 // .uniq
-        //                 // .map!toItemType
-        //                 .array;
-        return DeterminedType(seq);
+
+        return DeterminedType(
+            ArrayType(
+                val.sequence
+                   .map!((e) @trusted {
+                       import std.algorithm : moveEmplace;
+                       auto t = guessedType(e);
+                       auto dt = new DeterminedType;
+                       moveEmplace(t, *dt);
+                       return dt;
+                   })
+                   .array,
+                Optional!CommandLineBinding.init
+            )
+        );
     default:
-        assert(false);
+        throw new TypeException("Unsuppported type: "~val.nodeTypeString);
     }
 }
 
