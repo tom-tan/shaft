@@ -511,42 +511,6 @@ void enforceValid(File file) pure
     // TODO: how to deal with dirname, nameroot, nameext, and format
 }
 
-///
-auto absoluteURI(string pathOrURI, string base) nothrow pure @safe
-{
-    import salad.resolver : isAbsoluteURI;
-    import std.path : isAbsolute;
-
-    if (pathOrURI.isAbsoluteURI)
-    {
-        return pathOrURI;
-    }
-    else if (pathOrURI.isAbsolute)
-    {
-        return pathOrURI;
-    }
-    else if (base.isAbsolute)
-    {
-        import std.exception : assumeUnique, assumeWontThrow;
-        import std.path : absolutePath, asNormalizedPath;
-        import std.array : array;
-        auto absPath = pathOrURI.absolutePath(base)
-                                .assumeWontThrow
-                                .asNormalizedPath
-                                .array;
-        return "file://"~(() @trusted => absPath.assumeUnique)();
-    }
-    else
-    {
-        import salad.resolver : scheme;
-
-        assert(base.isAbsoluteURI);
-        auto sc = base.scheme; // assumes `base` starts with `$sc://`
-        auto abs = pathOrURI.absoluteURI(base[sc.length+2..$]);
-        return sc~abs[4..$];
-    }
-}
-
 /**
  * It canonicalizes a given File object. A canonicalized File object can be:
  * - a file literal, or
@@ -557,6 +521,7 @@ auto absoluteURI(string pathOrURI, string base) nothrow pure @safe
  */
 File canonicalForm(File file, string baseURI)
 {
+    import salad.resolver : absoluteURI;
     import salad.type : match, None, Optional, tryMatch;
     import std.algorithm : map;
     import std.array : array;

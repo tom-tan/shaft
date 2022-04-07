@@ -287,7 +287,7 @@ auto discoverDocumentURI(string path) @safe
     }
 
     // relative path
-    import salad.resolver : fragment, withoutFragment, toURI;
+    import salad.resolver : absoluteURI, fragment, withoutFragment;
     import std.algorithm : find, map, splitter;
     import std.path : absolutePath, buildPath;
     import std.process : environment;
@@ -310,7 +310,7 @@ auto discoverDocumentURI(string path) @safe
     auto fs = chain([getcwd], dirs, [data_home]).map!(d => pathWithoutFrag.absolutePath(d))
                                              .find!(p => p.exists && p.isFile);
     enforce(!fs.empty);
-    return fs.front.toURI~(frag.empty ? "" : "#"~frag);
+    return fs.front.absoluteURI~(frag.empty ? "" : "#"~frag);
 }
 
 ///
