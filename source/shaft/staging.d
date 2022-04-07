@@ -5,56 +5,145 @@
  */
 module shaft.staging;
 
-import cwl.v1_0.schema : InitialWorkDirRequirement;
-version(none):
-import dyaml : Node;
-import shaft.evaluator : Evaluator;
-import shaft.runtime : Runtime;
+import dyaml : Node, NodeType;
 
+import salad.resolver : scheme;
+import shaft.type : TypedParameters, TypedValue;
+
+import std.file : isDir;
+import std.range : empty;
+import std.typecons : Flag, Yes;
+
+/**
+ * 
+ */
+auto staging(TypedParameters params, string destURI, Flag!"keepStructure" keepStructure)
+in(params.parameters.type == NodeType.mapping)
+in(destURI.scheme.empty || destURI.isDir)
+{
+    import shaft.type : toJSONNode;
+
+    Node ret;
+    foreach(string k, Node v; params.parameters)
+    {
+
+        auto p = stagingParam(TypedValue(v, params.types[k]), destURI, keepStructure);
+        ret.add(k.toJSONNode, p);
+    }
+    return TypedParameters(ret.toJSONNode, params.types);
+}
 
 ///
-auto stageIn(Node inputs, Runtime runtime,
-             InitialWorkDirRequirement req, Evaluator evaluator)
+Node stagingParam(TypedValue tv, string dest, Flag!"keepStructure" keepStructure)
+in(dest.isDir)
 {
-    if (req is null)
-    {
-        //
-    }
-    //
-}
-/+
-auto processInitialWorkDir(InitialWorkDirRequirement req, Node inputs, Runtime runtime, Evaluator evaluator)
-{
-    import cwl.schema : Directory, Dirent, File;
-    import salad.type : Either;
+    import cwl.v1_0.schema : CWLType;
+    import salad.type : match;
+    import shaft.type : ArrayType, EnumType, RecordType;
 
-    req.listing_.match!(
-        (string exp) => evaluator.eval!(Either!(File, Directory)[])(exp, inputs, runtime)
-                                 .map!(e => staging(e, inputs, runtime, evaluator)),
-        others => others.each!((e) {
-            e.match!(
-                (File file) => staging(file, inputs, runtime, evaluator),
-                (Directory dir) => staging(dir, inputs, runtime, evaluator),
-                (Dirent ent) => staging(ent, inputs, runtime, evaluator),
-                (string exp) => evaluator.eval!(Either!(File, Directory)[])(exp, inputs, runtime)
-                                         .map!(e => staging(e, inputs, runtime, evaluator)),
-            ),
-        }),
+    return tv.type.match!(
+        (CWLType t) {
+            switch(t.value_) {
+            case "File" : {
+                import shaft.file : toStagedFile;
+                import shaft.type : toJSONNode;
+                import std.path : buildPath;
+
+                auto node = tv.value;
+
+                auto mkdirIfNeeded(string dst)
+                {
+                    if (keepStructure == Yes.keepStructure)
+                    {
+                        return dst;
+                    }
+                    else
+                    {
+                        import std.file : mkdirRecurse;
+                        import std.path : buildPath;
+                        import std.uuid : randomUUID;
+
+                        auto base = buildPath(dst, randomUUID.toString);
+                        mkdirRecurse(base);
+                        return base;
+                    }
+                }
+
+                string stagedPath;
+
+                if (auto con = "contents" in node)
+                {
+                    // file literal
+                    import std.file : write;
+
+                    string bname;
+                    if (auto bn_ = "basename" in node)
+                    {
+                        bname = bn_.as!string;
+                    }
+                    else
+                    {
+                        import std.uuid : randomUUID;
+                        bname = randomUUID.toString;
+                    }
+                    auto dir = mkdirIfNeeded(dest);
+                    stagedPath = buildPath(dir, bname);
+                    stagedPath.write(con.as!string);
+                }
+                else
+                {
+                    import salad.resolver : path;
+                    import std.path : baseName;
+
+                    auto bname = node["basename"].as!string;
+                    auto loc = node["location"].as!string.path;
+                    if (loc.baseName != bname)
+                    {
+                        import std.file : copy;
+
+                        auto dir = mkdirIfNeeded(dest);
+                        stagedPath = buildPath(dir, bname);
+                        loc.copy(stagedPath);
+                    }
+                    else
+                    {
+                        stagedPath = loc;
+                    }
+                }
+                // TODO: secondaryFiles
+                // TODO: validate format?
+                // TODO: contents (need `loadContents`)
+                return node.toStagedFile(stagedPath).toJSONNode;
+            }
+            case "Directory": {
+                return tv.value; // TODO
+            }
+            default:
+                return tv.value;
+            }
+        },
+        (EnumType et) => tv.value,
+        (ArrayType at) {
+            import dyaml : NodeType;
+            import shaft.type : toJSONNode;
+            import std.algorithm : map;
+            import std.range : array, StoppingPolicy, zip;
+
+            auto node = tv.value;
+            assert(node.type == NodeType.sequence);
+
+            auto staged = zip(StoppingPolicy.requireSameLength, at.types, node.sequence).map!((tpl) {
+                return stagingParam(TypedValue(tpl[1], *tpl[0]), dest, keepStructure);
+            }).array;
+            return staged.toJSONNode;
+        },
+        (RecordType rt) => tv.value, // TODO
     );
 }
 
-auto staging(File file, Node inputs, Runtime runtime, Evaluator evaluator)
+///
+auto fetch(TypedParameters params, string dest)
 {
-    //
+    import std.typecons : No;
+    return staging(params, dest, No.keepStructure);
 }
-
-auto staging(Directory dir, Node inputs, Runtime runtime, Evaluator evaluator)
-{
-    //
-}
-
-auto staging(Dirent ent, Node inputs, Runtime runtime, Evaluator evaluator)
-{
-    evaluator.eval!(Either!(string, File))(ent.entry_, inputs, runtime);
-}
-+/

@@ -548,7 +548,12 @@ auto absoluteURI(string pathOrURI, string base) nothrow pure @safe
 }
 
 /**
- * Returns: File object
+ * It canonicalizes a given File object. A canonicalized File object can be:
+ * - a file literal, or
+ * - a File object that has only `location` to show an absolute URI, `basename`,
+ *   `secondaryFiles` (optional) and `format`.
+ *
+ * Returns: A canonicalized File object
  */
 File canonicalForm(File file, string baseURI)
 {

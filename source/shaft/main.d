@@ -7,6 +7,9 @@ module shaft.main;
 
 import dyaml : Node;
 
+import std.range : isOutputRange;
+import std.stdio : stdout;
+
 ///
 static immutable suppertedVersions = ["v1.0"];
 
@@ -120,8 +123,8 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
     enforce(!baseTmpdir.exists, format!"%s already exists"(baseTmpdir));
 
-    // auto rstagedir = buildPath(baseTmpdir, "output");
-    // mkdirRecurse(rstagedir);
+    auto rstagedir = buildPath(baseTmpdir, "stagein");
+    mkdirRecurse(rstagedir);
     auto routdir = buildPath(baseTmpdir, "output");
     mkdirRecurse(routdir);
     auto rtmpdir = buildPath(baseTmpdir, "temporary");
@@ -202,8 +205,6 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         cwlVersion
     );
 
-    // inp = stageIn(inp, rstagedir)
-
     // 4. Validate the input object against the inputs schema for the process.
     import shaft.type : annotateInputParameters;
 
@@ -212,6 +213,9 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                                                cmd.dig!(["requirements", "SchemaDefRequirement"],
                                                         SchemaDefRequirement));
 
+    import shaft.staging : fetch;
+    auto fetched = typedParams.fetch(rstagedir);
+
     // 5. Validate process requirements are met.
     // DockerRequirement, SoftwareRequirement, ResourceRequirement can be hints
     // others -> should be requirements
@@ -219,7 +223,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     import cwl.v1_0.schema : ResourceRequirement;
     import shaft.runtime : Runtime;
 
-    auto runtime = Runtime(typedParams.parameters, routdir, rtmpdir, rlogdir,
+    auto runtime = Runtime(fetched.parameters, routdir, rtmpdir, rlogdir,
                            cmd.dig!(["requirements", "ResourceRequirements"], ResourceRequirement),
                            cmd.dig!(["hints", "ResourceRequirements"], ResourceRequirement),
                            evaluator);
@@ -228,7 +232,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     // 7. Execute the process.
     import shaft.command_line_tool : execute;
 
-    auto ret = execute(cmd, typedParams, runtime, evaluator);
+    auto ret = execute(cmd, fetched, runtime, evaluator);
 
     // runtime.exitCode = ret; // v1.1 and later
 
@@ -288,7 +292,8 @@ auto discoverDocumentURI(string path) @safe
 }
 
 ///
-void dumpOutput(Node outs)
+void dumpOutput(Writer)(Node outs, Writer w = stdout.lockingTextWriter)
+if (isOutputRange!(Writer, char))
 {
     import dyaml : dumper;
     import std.array : appender;
@@ -301,5 +306,5 @@ void dumpOutput(Node outs)
     auto app = appender!string;
     d.dump(app, outs);
     auto str = app[].replaceAll(ctRegex!`\n\s+`, " ");
-    write(str);
+    w.put(str);
 }

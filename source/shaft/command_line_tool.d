@@ -148,7 +148,7 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
             a.value.match!(
                 (string s) {
                     auto val = evaluator.eval(s, params.parameters, runtime);
-                    return Param(tuple(0, TieBreaker(a.index)), null, val, val.guessedType);
+                    return Param(tuple(0, TieBreaker(a.index)), new CommandLineBinding, val, val.guessedType);
                 },
                 (CommandLineBinding clb) {
                     import salad.type : tryMatch;
@@ -285,17 +285,17 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
     import shaft.type : ArrayType, EnumType, RecordType;
     import std.exception : enforce;
 
-    alias toCmdElems = (string[] val) {
+    alias toCmdElems = (string[] val, CommandLineBinding clb) {
         import std.array : join;
 
-        if (binding is null)
+        if (clb is null)
         {
             return (string[]).init;
         }
 
-        auto sep = binding.separate_.orElse(true);
+        auto sep = clb.separate_.orElse(true);
         // TODO: handle ShellCommandRequirement?
-        return binding.prefix_.match!(
+        return clb.prefix_.match!(
             // TODO: how to join an array of elems for arrays?
             (string pr) => sep ? pr~val : [pr~val.join],
             none => val,
@@ -328,30 +328,27 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
                 }
             case "int", "long", "float", "double", "string":
                 // Add `prefix` and the string (or decimal representation for numbers) to command line.
-                return toCmdElems([self.as!string]);
+                return toCmdElems([self.as!string], binding);
             case "File", "Directory":
-                assert("path_" in self);
+                assert("path" in self);
                 // Add `prefix` and the value of `File.path` (or `Directory.path`) to the command line.
-                return toCmdElems([self["path_"].as!string]);
+                return toCmdElems([self["path"].as!string], binding);
             }
         },
-        (RecordType record) {
+        (RecordType rtype) {
             // Add `prefix` only, and recursively add object fields for which `inputBinding` is specified.
             enforce(false, "Record type is not supported yet");
             return (string[]).init;
         },
-        (EnumType e) {
-            // TODO: handle s.inputBinding
-            // same as strings
-            enforce(false, "Enum type is not supported yet");
-            return toCmdElems([self.as!string]);
+        (EnumType etype) {
+            return toCmdElems(toCmdElems([self.as!string], etype.inputBinding.orElse(CommandLineBinding.init)),
+                              binding);
         },
         (ArrayType atype) {
             import dyaml : NodeType;
             import std.array : array;
             import std.range : empty;
 
-            enforce(false, "Array type is not supported yet");
             assert(self.type == NodeType.sequence);
             auto arr = self.sequence.array;
             if (arr.empty)
@@ -362,18 +359,20 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
             else
             {
                 import salad.type : orElse;
-                import shaft.type : guessedType;
                 import std.algorithm : map;
                 import std.array : join;
+                import std.range : zip;
 
-                //auto strs = self.sequence.map!(e => applyRules(s.inputBinding_.orElse(CommandLineBinding.init), e, e.guessedType));
-                string[] strs;
-                // TODO
+                auto strs = zip(atype.types, self.sequence)
+                                .map!(tpl => applyRules(new CommandLineBinding, tpl[1], *tpl[0]))
+                                .join;
+
+                // TODO: atype.inputBindin
                 return binding.itemSeparator_.match!(
                     // If `itemSeparator` is specified, add `prefix` and the join the array into a single string with `itemSeparator` separating the items.
-                    (string isep) => toCmdElems([strs.join(isep)]),
+                    (string isep) => toCmdElems([strs.join(isep)], binding),
                     // Otherwise first add `prefix`, then recursively process individual elements.
-                    none => toCmdElems(strs),
+                    none => toCmdElems(strs, binding),
                 );
             }
         },
