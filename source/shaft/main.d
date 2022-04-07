@@ -218,7 +218,29 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
     // 5. Validate process requirements are met.
     // DockerRequirement, SoftwareRequirement, ResourceRequirement can be hints
-    // others -> should be requirements
+    // others -> should be requirements (warning if exists in reqs)
+    import std.meta : AliasSeq;
+    import cwl.v1_0.schema : DockerRequirement, SoftwareRequirement, InitialWorkDirRequirement,
+                             EnvVarRequirement, ShellCommandRequirement, ResourceRequirement;
+
+    alias UnsupportedRequirements = AliasSeq!(
+        InlineJavascriptRequirement,
+        DockerRequirement,
+        SoftwareRequirement,
+        InitialWorkDirRequirement,
+        EnvVarRequirement,
+        ShellCommandRequirement,
+        ResourceRequirement,
+    );
+    static foreach(req; UnsupportedRequirements)
+    {
+        if (cmd.dig!(["requirements", req.stringof], req))
+        {
+            import std.stdio : stderr;
+            stderr.writeln(req.stringof, " is not supported yet");
+            return 33;
+        }
+    }
 
     import cwl.v1_0.schema : ResourceRequirement;
     import shaft.runtime : Runtime;
