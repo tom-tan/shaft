@@ -127,7 +127,7 @@ class ParameterMissing : TypeException
 ///
 class TypeConflicts : TypeException
 {
-    this(string id, DeclaredType expected, DeterminedType actual,
+    this(DeclaredType expected, DeterminedType actual, string id = "",
          string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure @trusted
     {
         import std.format : format;
@@ -233,7 +233,7 @@ in(params.type == NodeType.mapping)
         }
         catch(TypeConflicts e)
         {
-            throw new TypeConflicts(id, e.expected_, e.actual_);
+            throw new TypeConflicts(e.expected_, e.actual_, id);
         }
         retTuple ~= tuple(id, v.type);
         retNode.add(id.toJSONNode, v.value);
@@ -310,23 +310,23 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
             final switch(t.value_)
             {
             case "null":
-                enforce(n.type == NodeType.null_, new TypeConflicts("TODO: guess type", type, n.guessedType));
+                enforce(n.type == NodeType.null_, new TypeConflicts(type, n.guessedType));
                 return TypedValue(n, t);
             case "boolean":
-                enforce(n.type == NodeType.boolean, new TypeConflicts("TODO: guess type", type, n.guessedType));
+                enforce(n.type == NodeType.boolean, new TypeConflicts(type, n.guessedType));
                 return TypedValue(n, t);
             case "int", "long":
-                enforce(n.type == NodeType.integer, new TypeConflicts("TODO: guess type", type, n.guessedType));
+                enforce(n.type == NodeType.integer, new TypeConflicts(type, n.guessedType));
                 return TypedValue(n, t);
             case "float", "double":
-                enforce(n.type == NodeType.decimal, new TypeConflicts("TODO: guess type", type, n.guessedType));
+                enforce(n.type == NodeType.decimal, new TypeConflicts(type, n.guessedType));
                 return TypedValue(n, t);
             case "string":
-                enforce(n.type == NodeType.string, new TypeConflicts("TODO: guess type", type, n.guessedType));
+                enforce(n.type == NodeType.string, new TypeConflicts(type, n.guessedType));
                 return TypedValue(n, t);
             case "File":
                 import std.path : dirName;
-                enforce(n.type == NodeType.mapping, new TypeConflicts("TODO: guess type", type, n.guessedType));
+                enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
                 auto file = new File(n);
                 file.enforceValid;
@@ -334,7 +334,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                 return TypedValue(file.toJSONNode, t);
             case "Directory":
                 import std.path : dirName;
-                enforce(n.type == NodeType.mapping, new TypeConflicts("TODO: guess type", type, n.guessedType));
+                enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
                 auto dir = new Directory(n);
                 dir.enforceValid;
@@ -344,7 +344,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
         },
         (CommandInputRecordSchema s) {
             import std.algorithm : fold, map;
-            enforce(n.type == NodeType.mapping, new TypeConflicts("TODO: guess type", type, n.guessedType));
+            enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
             auto tv = s.fields_
                        .match!(
@@ -368,13 +368,13 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
         },
         (CommandInputEnumSchema s) {
             import std.algorithm : canFind;
-            enforce(n.type == NodeType.string, new TypeConflicts("TODO: guess type", type, n.guessedType));
-            enforce(s.symbols_.canFind(n.as!string));
+            enforce(n.type == NodeType.string, new TypeConflicts(type, n.guessedType));
+            enforce(s.symbols_.canFind(n.as!string), new TypeConflicts(type, n.guessedType));
             return TypedValue(n, EnumType(s.name_.match!((string n) => n, _ => ""), s.inputBinding_));
         },
         (CommandInputArraySchema s) {
             import std.algorithm : fold, map;
-            enforce(n.type == NodeType.sequence, new TypeConflicts("TODO: guess type", type, n.guessedType));
+            enforce(n.type == NodeType.sequence, new TypeConflicts(type, n.guessedType));
 
             auto tvals = n.sequence
                           .map!(e => e.bindType(s.items_, defMap))
@@ -392,11 +392,11 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
         (string s) {
             if (s == "Any")
             {
-                throw new Exception("TODO: guess type");
+                throw new Exception("TODO: supporting Any type (v1.0 only)");
             }
             else
             {
-                auto def = *enforce(s in defMap, new TypeConflicts("TODO: guess type", type, n.guessedType));
+                auto def = *enforce(s in defMap, new TypeConflicts(type, n.guessedType));
                 return n.bindType(def, defMap);
             }
         },
@@ -420,7 +420,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                     return Optional!TypedValue.init;
                 }
             }).find!(t => t.match!((TypedValue _) => true, none => false));
-            enforce(!rng.empty, new TypeConflicts("TODO: guess type", type, n.guessedType));
+            enforce(!rng.empty, new TypeConflicts(type, n.guessedType));
             return rng.front.tryMatch!((TypedValue v) => v);
         },
     );
