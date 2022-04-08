@@ -402,7 +402,7 @@ auto captureOutputs(CommandLineTool clt, Runtime runtime, Evaluator evaluator)
     import std.path : buildPath;
 
     auto outJSON = runtime.outdir.buildPath("cwl.output.json");
-    Node ret;
+    auto ret = Node((Node[string]).init);
     if (outJSON.exists)
     {
         ret = Loader.fromFile(outJSON).load;
