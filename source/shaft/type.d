@@ -195,7 +195,7 @@ in(params.type == NodeType.mapping)
         }();
     }
 
-    Node retNode;
+    auto retNode = Node((Node[string]).init);
     Tuple!(string, DeterminedType)[] retTuple;
     foreach(p; paramDefs)
     {

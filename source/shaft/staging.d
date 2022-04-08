@@ -23,7 +23,7 @@ in(destURI.scheme.empty || destURI.isDir)
 {
     import shaft.type : toJSONNode;
 
-    Node ret;
+    auto ret = Node((Node[string]).init);
     foreach(string k, Node v; params.parameters)
     {
 
