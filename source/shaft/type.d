@@ -385,7 +385,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                                   moveEmplace(e.type, *dt);
                                   return acc ~ dt;
                               },
-                          )(Node.init, (DeterminedType*[]).init);
+                          )(Node((Node[]).init), (DeterminedType*[]).init);
             return TypedValue(tvals[0].toJSONNode, ArrayType(tvals[1], s.inputBinding_));
         },
         (string s) {
