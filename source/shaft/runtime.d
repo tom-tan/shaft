@@ -125,3 +125,10 @@ auto reserved(string prop)(
 
     return min(rmax, avail);
 }
+
+unittest
+{
+    auto hint = new ResourceRequirement;
+    hint.coresMin_ = 2;
+    assert(reserved!"cores"(10, Node(), null, hint, Evaluator.init) == 2);
+}
