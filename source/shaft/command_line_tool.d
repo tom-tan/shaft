@@ -364,10 +364,15 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
                 import std.range : zip;
 
                 auto strs = zip(atype.types, self.sequence)
-                                .map!(tpl => applyRules(new CommandLineBinding, tpl[1], *tpl[0]))
+                                .map!((tpl) {
+                                    auto clb = atype.inputBinding.match!(
+                                        (CommandLineBinding clb) => clb,
+                                        none => new CommandLineBinding
+                                    );
+                                    return applyRules(clb, tpl[1], *tpl[0]);
+                                })
                                 .join;
 
-                // TODO: atype.inputBindin
                 return binding.itemSeparator_.match!(
                     // If `itemSeparator` is specified, add `prefix` and the join the array into a single string with `itemSeparator` separating the items.
                     (string isep) => toCmdElems([strs.join(isep)], binding),
