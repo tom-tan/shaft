@@ -222,7 +222,6 @@ in(params.type == NodeType.mapping)
 
         auto type = p.type_.match!(
             (None _) => DeclaredType("Any"), // v1.0 only: assumes Any, TODO: check corresponding conformance test
-            (string s) => defMap[s], // TODO
             others => DeclaredType(others),
         );
 
@@ -392,7 +391,37 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
         (string s) {
             if (s == "Any")
             {
-                throw new Exception("TODO: supporting Any type (v1.0 only)");
+                import salad.type : tryMatch;
+
+                return n.guessedType.tryMatch!(
+                    (CWLType t) {
+                        if (t.value_ == "null")
+                        {
+                            throw new Exception("Any type must not be null");
+                        }
+                        return n.bindType(DeclaredType(t), defMap);
+                    },
+                    (ArrayType _) {
+                        assert(n.type == NodeType.sequence);
+                        auto schema = new CommandInputArraySchema;
+                        schema.items_ = "Any";
+                        return n.bindType(DeclaredType(schema), defMap);
+                    },
+                    (RecordType r) {
+                        import std.algorithm : map;
+                        import std.array : array;
+
+                        assert(n.type == NodeType.mapping);
+                        auto schema = new CommandInputRecordSchema;
+                        schema.fields_ = r.fields.byKey.map!((k) {
+                            auto fschema = new CommandInputRecordField;
+                            fschema.name_ = k;
+                            fschema.type_ = "Any";
+                            return fschema;
+                        }).array;
+                        return n.bindType(DeclaredType(schema), defMap);
+                    },
+                );
             }
             else
             {
