@@ -33,7 +33,7 @@ struct Evaluator
      *         and non-null when expressions are JavaScript expressions
      *   cwlVersion = is used to encapsulate the difference of interpretation of parameter references
      */
-    this(InlineJavascriptRequirement req, string cwlVersion) @safe
+    this(InlineJavascriptRequirement req, string cwlVersion) @nogc nothrow pure @safe
     {
         if (req !is null)
         {
@@ -133,7 +133,7 @@ private:
     string cwlVer;
 }
 
-auto matchParameterReferenceFirst(string exp) @safe
+auto matchParameterReferenceFirst(string exp) pure @safe
 {
     import std.format : format;
     import std.regex : ctRegex, matchFirst;

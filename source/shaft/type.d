@@ -48,12 +48,6 @@ alias RecordType = Tuple!(string, "name", DeterminedType*[string], "fields");
 ///
 alias TypedParameters = Tuple!(Node, "parameters", DeterminedType[string], "types");
 
-/*
-parameter missing: missig/`%s` is missing
-confilcts: (expected, actual) -> id, expected, actual
-Invalid: (missing, type) -> id, missing, type
-*/
-
 ///
 class TypeException : Exception
 {
@@ -65,7 +59,7 @@ class TypeException : Exception
 class ParameterMissing : TypeException
 {
     ///
-    this(string id, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) @safe
+    this(string id, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure @safe
     {
         import std.format : format;
 
@@ -80,7 +74,7 @@ class ParameterMissing : TypeException
 class TypeConflicts : TypeException
 {
     this(string id, DeclaredType expected, DeterminedType actual,
-         string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) @trusted
+         string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure @trusted
     {
         import std.format : format;
         import salad.type : match;
@@ -342,7 +336,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                           .map!(e => e.bindType(s.items_, defMap))
                           .fold!(
                               (acc, e) { acc.add(e.value); return acc; },
-                              (acc, e) {
+                              (acc, e) @trusted {
                                   import std.algorithm : moveEmplace;
                                   auto dt = new DeterminedType;
                                   moveEmplace(e.type, *dt);
@@ -463,7 +457,7 @@ unittest
 /**
  * Throws: Exception if some fields are not valid
  */
-void enforceValid(File file) pure
+void enforceValid(File file) pure @safe
 {
     import salad.type : match, None, tryMatch;
     import std.ascii : isHexDigit;
@@ -575,7 +569,7 @@ File canonicalForm(File file, string baseURI)
 /**
  * Throws: Exception if some fields are not valid
  */
-void enforceValid(Directory dir) pure
+void enforceValid(Directory dir) pure @safe
 {
 }
 
@@ -583,43 +577,6 @@ void enforceValid(Directory dir) pure
 Directory canonicalForm(Directory dir, string baseURI)
 {
     return dir;
-}
-
-///
-bool isValidRecord(RecordSchema)(
-    in Node node, RecordSchema schema,
-    Either!(InputRecordSchema, InputEnumSchema, InputArraySchema)[string] defMap
-)
-{
-    import dyaml : NodeType;
-    import salad.type : match, None;
-    import std.algorithm : all;
-
-    return node.type == NodeType.mapping &&
-        schema.fields_.match!(
-            (None _) => true,
-            fs => fs.all!(f => f.name_ in node && node[f.name_].isValidParameter(f.type_, defMap)),
-        );
-}
-
-///
-bool isValidEnum(EnumSchema)(in Node node, EnumSchema schema)
-{
-    import dyaml : NodeType;
-    import std.algorithm : canFind;
-    return node.type == NodeType.string && schema.symbols_.canFind(node.as!string);
-}
-
-///
-bool isValidArray(ArraySchema)(
-    in Node node, ArraySchema schema,
-    Either!(InputRecordSchema, InputEnumSchema, InputArraySchema)[string] defMap
-)
-{
-    import dyaml : NodeType;
-    import std.algorithm : all;
-    return node.type == NodeType.sequence &&
-        node.sequence.all!(e => isValidParameter(e, schema.items_, defMap));
 }
 
 /// only for v1.0
@@ -680,7 +637,7 @@ CommandInputRecordField toCommandField(InputRecordField field)
 }
 
 /// only for v1.0
-CommandInputEnumSchema toCommandSchema(InputEnumSchema schema)
+CommandInputEnumSchema toCommandSchema(InputEnumSchema schema) nothrow pure
 {
     auto ret = new typeof(return);
     ret.symbols_ = schema.symbols_;
