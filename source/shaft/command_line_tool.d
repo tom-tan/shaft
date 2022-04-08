@@ -1,3 +1,8 @@
+/**
+ * Authors: Tomoya Tanjo
+ * Copyright: © 2022 Tomoya Tanjo
+ * License: Apache-2.0
+ */
 module shaft.command_line_tool;
 
 import cwl.v1_0.schema;
