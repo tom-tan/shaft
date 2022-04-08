@@ -246,8 +246,8 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     import shaft.runtime : Runtime;
 
     auto runtime = Runtime(fetched.parameters, routdir, rtmpdir, rlogdir,
-                           cmd.dig!(["requirements", "ResourceRequirements"], ResourceRequirement),
-                           cmd.dig!(["hints", "ResourceRequirements"], ResourceRequirement),
+                           cmd.dig!(["requirements", "ResourceRequirement"], ResourceRequirement),
+                           cmd.dig!(["hints", "ResourceRequirement"], ResourceRequirement),
                            evaluator);
 
     // 6. Perform any further setup required by the specific process type.
