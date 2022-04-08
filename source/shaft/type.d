@@ -605,8 +605,8 @@ File canonicalForm(File file, string baseURI)
     )(file.path_, file.location_);
 
     ret.basename_ = file.basename_.match!(
-        (string name) => name,
-        _ => ret.location_.tryMatch!((string s) => s.baseName),
+        (string name) => OStr(name),
+        _ => ret.location_.match!((string s) => OStr(s.baseName), none => OStr.init),
     );
 
     // ret.dirname_ = file.dirname_.match!(
