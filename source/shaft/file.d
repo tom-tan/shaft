@@ -47,7 +47,7 @@ in(node["class"] == "File")
     ret.nameext_ = stagedPath.extension;
 
     ret.checksum_ = stagedPath.digestFile!SHA1;
-    ret.size_ = stagedPath.getSize.to!int; // TODO: Fix the scheme in schema-salad-d!
+    ret.size_ = stagedPath.getSize.to!long;
 
     alias SFType = typeof(ret.secondaryFiles_);
     ret.secondaryFiles_ = secondaryFiles.empty ? SFType.init : SFType(secondaryFiles);
