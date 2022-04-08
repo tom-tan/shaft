@@ -73,7 +73,7 @@ string toStr(DeclaredType dt) pure @safe
             CommandInputEnumSchema,
             CommandInputArraySchema,
             string
-        )[] un) => format!"(%(%s|%))"(un.map!(e => e.match!funs).array),
+        )[] un) => format!"(%-(%s|%))"(un.map!(e => e.match!funs).array),
     );
 }
 
@@ -419,8 +419,8 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                 {
                     return Optional!TypedValue.init;
                 }
-            }).find!(t => t.match!((None _) => false, another => true));
-            enforce(rng.empty);
+            }).find!(t => t.match!((TypedValue _) => true, none => false));
+            enforce(!rng.empty, new TypeConflicts("TODO: guess type", type, n.guessedType));
             return rng.front.tryMatch!((TypedValue v) => v);
         },
     );
