@@ -4,7 +4,7 @@
 		"cachetools": "0.3.1",
 		"dyaml": {"version":"20f5ba33444a8acfe1a3737f4477c2fe8730bdba","repository":"git+https://github.com/dlang-community/D-YAML.git"},
 		"requests": "2.0.4",
-		"schema-salad-d": "0.7.1",
+		"schema-salad-d": "0.7.2",
 		"sumtype": "1.1.4",
 		"tinyendian": "0.2.0"
 	}

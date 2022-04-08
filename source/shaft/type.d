@@ -45,6 +45,60 @@ alias ArrayType = Tuple!(DeterminedType*[], "types", Optional!CommandLineBinding
 ///
 alias RecordType = Tuple!(string, "name", DeterminedType*[string], "fields");
 
+string toStr(DeclaredType dt) pure @safe
+{
+    import salad.type : match, orElse;
+
+    import std.algorithm : map;
+    import std.array : array;
+    import std.format : format;
+    import std.meta : AliasSeq;
+
+    alias funs = AliasSeq!(
+        (CWLType t) => cast(string)t.value_,
+        (CommandInputRecordSchema s) => 
+            s.name_.orElse(format!"Record(%-(%s, %))"(s.fields_
+                                                      .orElse([])
+                                                      .map!(f => f.name_~": "~toStr(f.type_)).array)),
+        (CommandInputEnumSchema s) => s.name_.orElse("enum"),
+        (CommandInputArraySchema s) => "array",
+        (string s) => s,
+    );
+
+    return dt.match!(
+        funs,
+        (Either!(
+            CWLType,
+            CommandInputRecordSchema,
+            CommandInputEnumSchema,
+            CommandInputArraySchema,
+            string
+        )[] un) => format!"(%(%s|%))"(un.map!(e => e.match!funs).array),
+    );
+}
+
+string toStr(DeterminedType dt) pure @safe
+{
+    import salad.type : match;
+    import std.algorithm : map;
+    import std.array : array, byPair;
+    import std.format : format;
+    import std.range : empty;
+
+    return dt.match!(
+        (CWLType t) => cast(string)t.value_,
+        (EnumType e) => e.name.empty ? "enum" : e.name,
+        (ArrayType a) => format!"[%-(%s, %)]"(a.types.map!(e => toStr(*e)).array),
+        (RecordType r) => 
+            r.name.length > 0 ? r.name
+                              : format!"Record(%-(%s, %))"(
+                                    r.fields
+                                     .byPair
+                                     .map!(kv => kv.key~": "~toStr(*kv.value))
+                                     .array),
+    );
+}
+
 ///
 alias TypedParameters = Tuple!(Node, "parameters", DeterminedType[string], "types");
 
@@ -79,17 +133,7 @@ class TypeConflicts : TypeException
         import std.format : format;
         import salad.type : match;
 
-        auto ex = expected.match!(
-            (CWLType t) => cast(string)t.value_,
-            other => other.stringof,
-        );
-        auto ac = actual.match!(
-            (CWLType t) => cast(string)t.value_,
-            (ArrayType arr) => "Array[]",
-            other => other.name.length == 0 ? other.stringof : other.name,
-        );
-
-        super(format!"Type conflicts for `%s` (expected: `%s`, actual: `%s`)"(id, ex, ac));
+        super(format!"Type conflicts for `%s` (expected: `%s`, actual: `%s`)"(id, expected.toStr, actual.toStr));
         id_ = id;
         expected_ = expected;
         actual_ = actual;
@@ -352,7 +396,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
             }
             else
             {
-                auto def = *enforce(s in defMap);
+                auto def = *enforce(s in defMap, new TypeConflicts("TODO: guess type", type, n.guessedType));
                 return n.bindType(def, defMap);
             }
         },
