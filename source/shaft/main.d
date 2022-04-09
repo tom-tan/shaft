@@ -221,14 +221,13 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     // others -> should be requirements (warning if exists in reqs)
     import std.meta : AliasSeq;
     import cwl.v1_0.schema : DockerRequirement, SoftwareRequirement, InitialWorkDirRequirement,
-                             EnvVarRequirement, ShellCommandRequirement, ResourceRequirement;
+                             ShellCommandRequirement, ResourceRequirement;
 
     alias UnsupportedRequirements = AliasSeq!(
         InlineJavascriptRequirement,
         DockerRequirement,
         SoftwareRequirement,
         InitialWorkDirRequirement,
-        EnvVarRequirement,
         ShellCommandRequirement,
         ResourceRequirement,
     );
