@@ -216,8 +216,29 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
     }).array;
 
     // 4. Sort elements using the assigned sorting keys. Numeric entries sort before strings.
-    auto collectedParams = args~inp;
-    collectedParams.multiSort!(
+    // 5. In the sorted order, apply the rules defined in `CommandLineBinding` to convert bindings to actual command line elements.
+    // TODO: pass ShellCommandRequirement?
+    auto cmdElems = processParameters(args~inp);
+    
+    // 6. Insert elements from `baseCommand` at the beginning of the command line.
+    auto base = cmd.baseCommand_.match!(
+        (string s) => [s],
+        (string[] ss) => ss,
+        _ => (string[]).init,
+    );
+
+    return base~cmdElems;
+}
+
+///
+auto processParameters(Param[] params)
+{
+    import salad.type : match;
+    import std.algorithm : map, multiSort;
+    import std.array : join;
+
+    // 4. Sort elements using the assigned sorting keys. Numeric entries sort before strings.
+    params.multiSort!(
         "a.key[0] < b.key[0]",
         (a, b) => match!(
             (size_t lhs, string rhs) => true,
@@ -227,17 +248,7 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
     );
 
     // 5. In the sorted order, apply the rules defined in `CommandLineBinding` to convert bindings to actual command line elements.
-    // 6. Insert elements from `baseCommand` at the beginning of the command line.
-    // TODO: pass ShellCommandRequirement?
-    auto cmdElems = collectedParams.map!(p => applyRules(p.tupleof[1..$])).join;
-    
-    auto base = cmd.baseCommand_.match!(
-        (string s) => [s],
-        (string[] ss) => ss,
-        _ => (string[]).init,
-    );
-
-    return base~cmdElems;
+    return params.map!(p => applyRules(p.tupleof[1..$])).join;
 }
 
 //
