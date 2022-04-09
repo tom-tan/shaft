@@ -178,10 +178,8 @@ TypedParameters annotateInputParameters(
 in(params.type == NodeType.mapping)
 {
     import std.algorithm : map;
-    import std.array : array;
     import std.container.rbtree : redBlackTree;
     import std.exception : enforce;
-    import std.format : format;
     import std.typecons : tuple, Tuple;
 
     DeclaredType[string] defMap;
@@ -203,7 +201,7 @@ in(params.type == NodeType.mapping)
     auto rest = redBlackTree(params.mappingKeys.map!(a => a.as!string));
 
     auto retNode = Node((Node[string]).init);
-    Tuple!(string, DeterminedType)[] retTuple;
+    DeterminedType[string] types;
     foreach(p; paramDefs)
     {
         import cwl : Any;
@@ -241,16 +239,18 @@ in(params.type == NodeType.mapping)
         {
             throw new TypeConflicts(e.expected_, e.actual_, id);
         }
-        retTuple ~= tuple(id, v.type);
+        types[id] = v.type;
         retNode.add(id.toJSONNode, v.value);
         rest.removeKey(id);
     }
-    enforce(rest.empty,
-            format!"Input parameters contain undeclared parameters: %-(%s, %)"(rest.array));
-    auto types = () @trusted {
-        import std.range : assocArray;
-        return retTuple.assocArray;
-    }();
+
+    if (!rest.empty)
+    {
+        import std.array : array;
+        // must not be permanent failure
+        // See_Also: conformance test #2
+        // warning: Input parameters contain undeclared parameters: rest.array
+    }
     return typeof(return)(retNode.toJSONNode, types);
 }
 
