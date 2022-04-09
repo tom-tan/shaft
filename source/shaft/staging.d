@@ -122,7 +122,7 @@ in(dest.isDir)
                 return tv.value;
             }
         },
-        (EnumType et) => tv.value,
+        (EnumType _) => tv.value,
         (ArrayType at) {
             import dyaml : NodeType;
             import shaft.type : toJSONNode;

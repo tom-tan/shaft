@@ -354,6 +354,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
             }
         },
         (CommandInputRecordSchema s) {
+            import salad.type : orElse;
             import std.algorithm : fold, map;
             enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
@@ -376,13 +377,14 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                                return acc;
                            },
                        )(Node.init, (Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
-            return TypedValue(tv[0], RecordType(s.name_.match!((string n) => n, _ => ""), tv[1]));
+            return TypedValue(tv[0], RecordType(s.name_.orElse(""), tv[1]));
         },
         (CommandInputEnumSchema s) {
+            import salad.type : orElse;
             import std.algorithm : canFind;
             enforce(n.type == NodeType.string, new TypeConflicts(type, n.guessedType));
             enforce(s.symbols_.canFind(n.as!string), new TypeConflicts(type, n.guessedType));
-            return TypedValue(n, EnumType(s.name_.match!((string n) => n, _ => ""), s.inputBinding_));
+            return TypedValue(n, EnumType(s.name_.orElse(""), s.inputBinding_));
         },
         (CommandInputArraySchema s) {
             import std.algorithm : fold, map;

@@ -275,7 +275,7 @@ EOS";
 
     auto params = TypedParameters(
         Loader.fromString(inpDoc).load,
-        ["inp1": DeterminedType(new CWLType(Node("int")))],
+        ["inp1": DeterminedType(new CWLType("int"))],
     );
 
     auto clt = Loader.fromString(cwlDoc).load.as!CommandLineTool;
@@ -361,14 +361,11 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
 
             auto cmdElems = rtype.fields
                                  .byPair
-                                 .filter!(pair => pair.value[1].match!(
-                                     (None _) => false,
-                                     clb => true,
-                                 ))
+                                 .filter!(pair => pair.value[1].orElse(null))
                                  .map!(pair => 
                                      Param(
                                          tuple(pair.value[1].dig!"position"(0), TieBreaker(pair.key)),
-                                         pair.value[1].orElse(CommandLineBinding.init),
+                                         pair.value[1].orElse(null),
                                          self[pair.key],
                                          *pair.value[0],
                                      )
@@ -378,7 +375,7 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
             return toCmdElems(cmdElems, binding);
         },
         (EnumType etype) {
-            return toCmdElems(toCmdElems([self.as!string], etype.inputBinding.orElse(CommandLineBinding.init)),
+            return toCmdElems(toCmdElems([self.as!string], etype.inputBinding.orElse(null)),
                               binding);
         },
         (ArrayType atype) {
@@ -402,10 +399,7 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
 
                 auto strs = zip(atype.types, self.sequence)
                                 .map!((tpl) {
-                                    auto clb = atype.inputBinding.match!(
-                                        (CommandLineBinding clb) => clb,
-                                        none => new CommandLineBinding
-                                    );
+                                    auto clb = atype.inputBinding.orElse(new CommandLineBinding);
                                     return applyRules(clb, tpl[1], *tpl[0]);
                                 })
                                 .join;

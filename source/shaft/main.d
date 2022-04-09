@@ -209,7 +209,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     import shaft.type : annotateInputParameters;
 
     // TODO: pass evaluator (CommandInputRecordField may have an Expression)
-    auto typedParams = annotateInputParameters(inp, cmd.dig!("inputs", CommandInputParameter[]),
+    auto typedParams = annotateInputParameters(inp, cmd.inputs_,
                                                cmd.dig!(["requirements", "SchemaDefRequirement"],
                                                         SchemaDefRequirement));
 
