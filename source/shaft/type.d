@@ -36,14 +36,14 @@ alias DeterminedType = Either!(
     CWLType,
     EnumType,
     Tuple!(This*[], "types", Optional!CommandLineBinding, "inputBinding"),
-    Tuple!(string, "name", This*[string], "fields"),
+    Tuple!(string, "name", Tuple!(This*, Optional!CommandLineBinding)[string], "fields"),
 );
 
 ///
 alias ArrayType = Tuple!(DeterminedType*[], "types", Optional!CommandLineBinding, "inputBinding");
 
 ///
-alias RecordType = Tuple!(string, "name", DeterminedType*[string], "fields");
+alias RecordType = Tuple!(string, "name", Tuple!(DeterminedType*, Optional!CommandLineBinding)[string], "fields");
 
 string toStr(DeclaredType dt) pure @safe
 {
@@ -94,7 +94,7 @@ string toStr(DeterminedType dt) pure @safe
                               : format!"Record(%-(%s, %))"(
                                     r.fields
                                      .byPair
-                                     .map!(kv => kv.key~": "~toStr(*kv.value))
+                                     .map!(kv => kv.key~": "~toStr(*kv.value[0]))
                                      .array),
     );
 }
@@ -366,15 +366,16 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                            import std.typecons : tuple;
                            auto name = f.name_;
                            auto dt = n[name].bindType(f.type_, defMap);
-                           return tuple(name, dt.type, dt.value);
+                           return tuple(name, dt.type, dt.value, f.inputBinding_);
                        })
                        .fold!(
                            (acc, e) { acc.add(e[0].toJSONNode, e[2]); return acc; },
                            (acc, e) {
-                               acc[e[0]] = &e[1];
+                               import std.typecons : tuple;
+                               acc[e[0]] = tuple(&e[1], e[3]);
                                return acc;
                            },
-                       )(Node.init, (DeterminedType*[string]).init);
+                       )(Node.init, (Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
             return TypedValue(tv[0], RecordType(s.name_.match!((string n) => n, _ => ""), tv[1]));
         },
         (CommandInputEnumSchema s) {
@@ -498,12 +499,13 @@ auto guessedType(Node val) @safe
         auto ts = val.mapping
                      .fold!((acc, e) @trusted {
                          import std.algorithm : moveEmplace;
+                         import std.typecons : tuple;
                          auto t = guessedType(e.value);
                          auto dt = new DeterminedType;
                          moveEmplace(t, *dt);
-                         acc[e.key.as!string] = dt;
+                         acc[e.key.as!string] = tuple(dt, Optional!CommandLineBinding.init);
                          return acc;
-                     })((DeterminedType*[string]).init);
+                     })((Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
         return DeterminedType(RecordType("", ts));
     case NodeType.sequence:
         import std.algorithm : map;
