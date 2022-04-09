@@ -353,8 +353,29 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
         },
         (RecordType rtype) {
             // Add `prefix` only, and recursively add object fields for which `inputBinding` is specified.
-            enforce(false, "Record type is not supported yet");
-            return (string[]).init;
+            import salad.type : orElse;
+            import salad.util : dig;
+            import std.algorithm : filter, map;
+            import std.array : array, byPair;
+            import std.typecons : tuple;
+
+            auto cmdElems = rtype.fields
+                                 .byPair
+                                 .filter!(pair => pair.value[1].match!(
+                                     (None _) => false,
+                                     clb => true,
+                                 ))
+                                 .map!(pair => 
+                                     Param(
+                                         tuple(pair.value[1].dig!"position"(0), TieBreaker(pair.key)),
+                                         pair.value[1].orElse(CommandLineBinding.init),
+                                         self[pair.key],
+                                         *pair.value[0],
+                                     )
+                                 )
+                                 .array
+                                 .processParameters;
+            return toCmdElems(cmdElems, binding);
         },
         (EnumType etype) {
             return toCmdElems(toCmdElems([self.as!string], etype.inputBinding.orElse(CommandLineBinding.init)),
