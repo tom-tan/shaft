@@ -177,7 +177,11 @@ TypedParameters annotateInputParameters(
     SchemaDefRequirement defs)
 in(params.type == NodeType.mapping)
 {
-    import std.range : assocArray;
+    import std.algorithm : map;
+    import std.array : array;
+    import std.container.rbtree : redBlackTree;
+    import std.exception : enforce;
+    import std.format : format;
     import std.typecons : tuple, Tuple;
 
     DeclaredType[string] defMap;
@@ -186,6 +190,7 @@ in(params.type == NodeType.mapping)
         import salad.type : match;
         import salad.util : edig;
         import std.algorithm : map;
+        import std.range : assocArray;
 
         defMap = () @trusted {
             return defs.types_
@@ -194,6 +199,8 @@ in(params.type == NodeType.mapping)
                        .assocArray;
         }();
     }
+
+    auto rest = redBlackTree(params.mappingKeys.map!(a => a.as!string));
 
     auto retNode = Node((Node[string]).init);
     Tuple!(string, DeterminedType)[] retTuple;
@@ -236,9 +243,14 @@ in(params.type == NodeType.mapping)
         }
         retTuple ~= tuple(id, v.type);
         retNode.add(id.toJSONNode, v.value);
+        rest.removeKey(id);
     }
-    // TODO: reject undeclared parameters
-    auto types = () @trusted { return retTuple.assocArray; }();
+    enforce(rest.empty,
+            format!"Input parameters contain undeclared parameters: %-(%s, %)"(rest.array));
+    auto types = () @trusted {
+        import std.range : assocArray;
+        return retTuple.assocArray;
+    }();
     return typeof(return)(retNode.toJSONNode, types);
 }
 

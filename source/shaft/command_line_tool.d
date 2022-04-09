@@ -88,7 +88,7 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     ];
 
     import salad.util : dig;
-    if (auto e = clt.dig!(["requirements", "EnvVarRequirement"])(EnvVarRequirement.init))
+    if (auto e = clt.dig!(["requirements", "EnvVarRequirement"], EnvVarRequirement))
     {
         foreach(def; e.envDef_)
         {
@@ -397,15 +397,23 @@ auto captureOutputs(CommandLineTool clt, Runtime runtime, Evaluator evaluator)
     import dyaml : Loader, NodeType;
     import shaft.type : toJSONNode;
     import std.algorithm : each, filter, map;
-    import std.array : array, assocArray;
+    import std.array : array;
+    import std.exception : enforce;
     import std.file : exists;
+    import std.format : format;
     import std.path : buildPath;
 
     auto outJSON = runtime.outdir.buildPath("cwl.output.json");
     auto ret = Node((Node[string]).init);
     if (outJSON.exists)
     {
+        import std.container.rbtree : redBlackTree;
+
         ret = Loader.fromFile(outJSON).load;
+        enforce(ret.type == NodeType.mapping);
+
+        auto rest = redBlackTree(ret.mappingKeys.map!(a => a.as!string));
+
         clt.outputs_.each!((o) {
             import shaft.type : bindType, DeclaredType;
             auto id = o.id_;
@@ -419,7 +427,10 @@ auto captureOutputs(CommandLineTool clt, Runtime runtime, Evaluator evaluator)
                 auto null_ = Node(YAMLNull());
                 //bindType(null_, o.type_, (DeclaredType[string]).init);
             }
+            rest.removeKey(id);
         });
+        enforce(rest.empty,
+                format!"cwl.output.json contains undeclared output parameters: %-(%s, %)"(rest.array));
     }
     else
     {
