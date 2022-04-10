@@ -15,20 +15,26 @@ import std.digest : isDigest;
 import std.file : exists;
 
 /**
- * A subset of File object for canonicalized internal File representation.
+ * A subset of File that represents canonicalized internal File representation.
  * It can be:
  * - a file literal, or
  * - a File object that has only `location` with an absolute URI, `basename`,
  *   `secondaryFiles` (optional) and `format`.
+ *
+ * Note: It is introduced for documentation rather than type-based validation.
  */
 alias URIFile = File;
 
 /**
- * A subset of File object for already staged local file.
+ * A subset of File that represents already staged local file.
  * It is a File object that provides all the fields (except optional fields) and
  * `path` and `location` have the same local path.
+ *
+ * Note: It is introduced for documentation rather than type-based validation.
  */
 alias StagedFile = File;
+
+
 
 /**
  * Params:
@@ -101,7 +107,7 @@ Directory toURIDirectory(Directory dir, string baseURI)
  *   node = represnts URIFile to complete `format` (TODO: complete extension fields)
  *   seccondaryFils = Files and Directories for stageed `secondaryFiles`
  */
-StagedFile toStagedFile(string path, Node node, Either!(File, Directory)[] secondaryFiles = [])
+StagedFile toStagedFile(string path, Node node, Either!(StagedFile, Directory)[] secondaryFiles = [])
 in(path.exists)
 in(node.type == NodeType.mapping)
 in(node["class"] == "File")
