@@ -34,7 +34,7 @@ alias StagedFile = File;
  * Params:
  *   path = is a path to the staged file to complete `path`, `location`, `basename`,
             `dirname`, `nameroot`, and `namext`
- *   node = represnts URIFile to complete `format` and extension fields
+ *   node = represnts URIFile to complete `format` (TODO: complete extension fields)
  *   seccondaryFils = Files and Directories for stageed `secondaryFiles`
  */
 auto toStagedFile(string path, Node node, Either!(File, Directory)[] secondaryFiles = [])
