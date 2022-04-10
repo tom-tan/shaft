@@ -113,7 +113,7 @@ in(dest.isDir)
                 // TODO: secondaryFiles
                 // TODO: validate format?
                 // TODO: contents (need `loadContents`)
-                return node.toStagedFile(stagedPath).toJSONNode;
+                return stagedPath.toStagedFile(node).toJSONNode;
             }
             case "Directory": {
                 return tv.value; // TODO

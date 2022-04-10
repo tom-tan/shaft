@@ -30,9 +30,15 @@ alias URIFile = File;
  */
 alias StagedFile = File;
 
-///
-auto toStagedFile(Node node, string stagedPath, Either!(File, Directory)[] secondaryFiles = [])
-in(stagedPath.exists)
+/**
+ * Params:
+ *   path = is a path to the staged file to complete `path`, `location`, `basename`,
+            `dirname`, `nameroot`, and `namext`
+ *   node = represnts URIFile to complete `format` and extension fields
+ *   seccondaryFils = Files and Directories for stageed `secondaryFiles`
+ */
+auto toStagedFile(string path, Node node, Either!(File, Directory)[] secondaryFiles = [])
+in(path.exists)
 in(node.type == NodeType.mapping)
 in(node["class"] == "File")
 {
@@ -44,15 +50,15 @@ in(node["class"] == "File")
 
     auto ret = new File;
 
-    ret.location_ = stagedPath;
-    ret.path_ = stagedPath;
-    ret.basename_ = stagedPath.baseName;
-    ret.dirname_ = stagedPath.dirName;
-    ret.nameroot_ = stagedPath.stripExtension;
-    ret.nameext_ = stagedPath.extension;
+    ret.location_ = path;
+    ret.path_ = path;
+    ret.basename_ = path.baseName;
+    ret.dirname_ = path.dirName;
+    ret.nameroot_ = path.stripExtension;
+    ret.nameext_ = path.extension;
 
-    ret.checksum_ = stagedPath.digestFile!SHA1;
-    ret.size_ = stagedPath.getSize.to!long;
+    ret.checksum_ = path.digestFile!SHA1;
+    ret.size_ = path.getSize.to!long;
 
     alias SFType = typeof(ret.secondaryFiles_);
     ret.secondaryFiles_ = secondaryFiles.empty ? SFType.init : SFType(secondaryFiles);
