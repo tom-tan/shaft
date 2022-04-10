@@ -336,20 +336,22 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                 enforce(n.type == NodeType.string, new TypeConflicts(type, n.guessedType));
                 return TypedValue(n, t);
             case "File":
+                import shaft.file : toURIFile;
                 import std.path : dirName;
                 enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
                 auto file = new File(n);
                 file.enforceValid;
-                file = file.canonicalForm(n.startMark.name.dirName);
+                file = file.toURIFile(n.startMark.name.dirName);
                 return TypedValue(file.toJSONNode, t);
             case "Directory":
+                import shaft.file : toURIDirectory;
                 import std.path : dirName;
                 enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
                 auto dir = new Directory(n);
                 dir.enforceValid;
-                dir = dir.canonicalForm(n.startMark.name.dirName);
+                dir = dir.toURIDirectory(n.startMark.name.dirName);
                 return TypedValue(dir.toJSONNode, t);
             }
         },
@@ -595,77 +597,10 @@ void enforceValid(File file) pure @safe
 }
 
 /**
- * It canonicalizes a given File object. A canonicalized File object can be:
- * - a file literal, or
- * - a File object that has only `location` to show an absolute URI, `basename`,
- *   `secondaryFiles` (optional) and `format`.
- *
- * Returns: A canonicalized File object
- */
-File canonicalForm(File file, string baseURI)
-{
-    import salad.resolver : absoluteURI;
-    import salad.type : match, None, Optional, tryMatch;
-    import std.algorithm : map;
-    import std.array : array;
-    import std.path : baseName, dirName, extension, stripExtension;
-
-    alias OStr = Optional!string;
-
-    auto ret = new File;
-    ret.location_ = match!(
-        (None _1, None _2) => OStr.init,
-        (None _, string loc) => OStr(loc.absoluteURI(baseURI)),
-        (string path, None _) => OStr(path.absoluteURI(baseURI)), // TODO
-        (string path, string loc) => OStr(loc.absoluteURI(baseURI)),
-    )(file.path_, file.location_);
-
-    ret.basename_ = file.basename_.match!(
-        (string name) => OStr(name),
-        _ => ret.location_.match!((string s) => OStr(s.baseName), none => OStr.init),
-    );
-
-    // ret.dirname_ = file.dirname_.match!(
-    //     (string name) => name,
-    //     _ => ret.location_.tryMatch!((string s) => s.dirName),
-    // );
-    // ret.nameroot_ = file.nameroot_.match!(
-    //     (string root) => root,
-    //     _ => ret.basename_.tryMatch!((string s) => s.stripExtension),
-    // );
-    // ret.nameext_ = file.nameext_.match!(
-    //     (string ext) => ext,
-    //     _ => ret.basename_.tryMatch!((string s) => s.extension),
-    // );
-
-    // ret.checksum_ = file.checksum_; // TODO
-    // ret.size_ = file.size_; // TODO
-
-    ret.secondaryFiles_ = file.secondaryFiles_.match!(
-        (Either!(File, Directory)[] ff) => typeof(ret.secondaryFiles_)(ff.map!(f => f.match!(
-            (File f) => Either!(File, Directory)(f.canonicalForm(baseURI)),
-            (Directory dir) => Either!(File, Directory)(dir.canonicalForm(baseURI)),
-        )).array),
-        _ => typeof(ret.secondaryFiles_).init,
-    );
-    
-    ret.format_ = file.format_;
-    ret.contents_ = file.contents_;
-
-    return ret;
-}
-
-/**
  * Throws: Exception if some fields are not valid
  */
 void enforceValid(Directory dir) pure @safe
 {
-}
-
-/// TODO
-Directory canonicalForm(Directory dir, string baseURI)
-{
-    return dir;
 }
 
 /// only for v1.0
