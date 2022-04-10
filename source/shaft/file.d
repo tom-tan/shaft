@@ -152,3 +152,61 @@ if (isDigest!Hash)
     auto file = StdFile(filename);
     return digest!Hash(file.byChunk(4096 * 1024)).toHexString!(LetterCase.lower);
 }
+
+/**
+ * Throws: Exception if some fields are not valid
+ */
+void enforceValid(File file) pure @safe
+{
+    import salad.type : match, None, tryMatch;
+    import std.ascii : isHexDigit;
+    import std.algorithm : all, canFind, each, endsWith, startsWith;
+    import std.exception : enforce;
+
+    match!(
+        (None _1, None _2) => file.contents_.match!(
+            (string s) => enforce(s.length <= 64*2^^10, "too large `contents` field"),
+            none => enforce(false),
+        ),
+        (None _, string loc) => enforce(file.contents_.tryMatch!((None _) => true),
+                                        "`location` and `contents` fields are exclusive"),
+        (string path, None _) => enforce(file.contents_.tryMatch!((None _) => true),
+                                         "`path` and `contents` fields are exclusive"),
+        (string path, string loc) => enforce(loc.endsWith(path),
+                                             "`path` and `location` have inconsistent values"), // TODO
+    )(file.path_, file.location_);
+
+    file.basename_.match!(
+        (string s) => enforce(!s.canFind("/"), "basename must not include `/`"),
+        _ => true,
+    );
+
+    // file.checksum_.match!(
+    //     (string checksum) => enforce(checksum.startsWith("sha1$") && checksum[5..$].all!isHexDigit,
+    //                                  "Invalid checksum: "~checksum),
+    //     _ => true,
+    // );
+
+    // file.size_.match!(
+    //     (long s) => enforce(s >= 0, "file size must be zero or positive"),
+    //     _ => true,
+    // );
+
+    file.secondaryFiles_.match!(
+        (Either!(File, Directory)[] files) => files.each!(
+            ff => ff.match!(
+                (File f) => f.enforceValid,
+                (Directory d) => d.enforceValid,
+            )
+        ),
+        _ => true,
+    );
+    // TODO: how to deal with dirname, nameroot, nameext, and format
+}
+
+/**
+ * Throws: Exception if some fields are not valid
+ */
+void enforceValid(Directory dir) pure @safe
+{
+}
