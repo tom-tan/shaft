@@ -74,6 +74,9 @@ struct TypedValue
     }
 }
 
+///
+alias TypedParameters = Tuple!(Node, "parameters", DeterminedType[string], "types");
+
 /*
  * Returns: a shallow copied node with JSON-compatible style
  * See_Also: https://github.com/dlang-community/D-YAML/issues/284

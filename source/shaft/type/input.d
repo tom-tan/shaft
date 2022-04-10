@@ -28,7 +28,7 @@ alias DeclaredType = Either!(
     )[],
 );
 
-public import shaft.type.common : EnumType, DeterminedType, ArrayType, RecordType, TypedValue, toJSONNode;
+public import shaft.type.common : EnumType, DeterminedType, ArrayType, RecordType, TypedParameters, TypedValue, toJSONNode;
 
 string toStr(DeclaredType dt) pure @safe
 {
@@ -61,9 +61,6 @@ string toStr(DeclaredType dt) pure @safe
         )[] un) => format!"(%-(%s|%))"(un.map!(e => e.match!funs).array),
     );
 }
-
-///
-alias TypedParameters = Tuple!(Node, "parameters", DeterminedType[string], "types");
 
 ///
 class TypeException : Exception
