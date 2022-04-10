@@ -9,6 +9,7 @@ import dyaml : Node, NodeType;
 
 import cwl.v1_0.schema;
 import salad.type : Either, Optional, This;
+import shaft.type.common : DeterminedType, TypedParameters, TypedValue;
 
 import std.typecons : Tuple;
 
@@ -28,7 +29,6 @@ alias DeclaredType = Either!(
     )[],
 );
 
-import shaft.type.common : EnumType, DeterminedType, ArrayType, RecordType, TypedParameters, TypedValue, toJSONNode;
 
 string toStr(DeclaredType dt) pure @safe
 {
@@ -138,6 +138,7 @@ TypedParameters annotateInputParameters(
     SchemaDefRequirement defs)
 in(params.type == NodeType.mapping)
 {
+    import shaft.type.common : toJSONNode;
     import std.algorithm : map;
     import std.container.rbtree : redBlackTree;
     import std.exception : enforce;
@@ -219,6 +220,7 @@ in(params.type == NodeType.mapping)
 TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
 {
     import salad.type : match;
+    import shaft.type.common : toJSONNode;
     import std.exception : enforce;
 
     return type.match!(
@@ -263,6 +265,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
         },
         (CommandInputRecordSchema s) {
             import salad.type : orElse;
+            import shaft.type.common : RecordType;
             import std.algorithm : fold, map;
             enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
@@ -289,12 +292,14 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
         },
         (CommandInputEnumSchema s) {
             import salad.type : orElse;
+            import shaft.type.common : EnumType;
             import std.algorithm : canFind;
             enforce(n.type == NodeType.string, new TypeConflicts(type, n.guessedType));
             enforce(s.symbols_.canFind(n.as!string), new TypeConflicts(type, n.guessedType));
             return TypedValue(n, EnumType(s.name_.orElse(""), s.inputBinding_));
         },
         (CommandInputArraySchema s) {
+            import shaft.type.common : ArrayType;
             import std.algorithm : fold, map;
             enforce(n.type == NodeType.sequence, new TypeConflicts(type, n.guessedType));
 
@@ -315,6 +320,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
             if (s == "Any")
             {
                 import salad.type : tryMatch;
+                import shaft.type.common : ArrayType, RecordType;
 
                 return n.guessedType.tryMatch!(
                     (CWLType t) {
@@ -397,6 +403,7 @@ auto guessedType(Node val) @safe
     case NodeType.string:
         return DeterminedType(new CWLType("string"));
     case NodeType.mapping:
+        import shaft.type.common : RecordType;
         import std.algorithm : fold;
 
         if (auto class_ = "class" in val)
@@ -418,6 +425,7 @@ auto guessedType(Node val) @safe
                      })((Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
         return DeterminedType(RecordType("", ts));
     case NodeType.sequence:
+        import shaft.type.common : ArrayType;
         import std.algorithm : map;
         import std.array : array;
 
