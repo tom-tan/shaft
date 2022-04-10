@@ -13,7 +13,7 @@ import salad.type : Either, orElse;
 
 import shaft.evaluator : Evaluator;
 import shaft.runtime : Runtime;
-import shaft.type.input : DeterminedType, TypedParameters;
+import shaft.type.common : DeterminedType, TypedParameters;
 
 import std.typecons : Tuple;
 
@@ -298,7 +298,7 @@ EOS";
 string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
 {
     import salad.type : match;
-    import shaft.type.input : ArrayType, EnumType, RecordType;
+    import shaft.type.common : ArrayType, EnumType, RecordType;
     import std.exception : enforce;
 
     alias toCmdElems = (string[] val, CommandLineBinding clb) {
@@ -421,7 +421,7 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
 auto captureOutputs(CommandLineTool clt, Runtime runtime, Evaluator evaluator)
 {
     import dyaml : Loader, NodeType;
-    import shaft.type.input : toJSONNode;
+    import shaft.type.common : toJSONNode;
     import std.algorithm : each, filter, map;
     import std.array : array;
     import std.exception : enforce;

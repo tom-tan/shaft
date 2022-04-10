@@ -28,7 +28,7 @@ alias DeclaredType = Either!(
     )[],
 );
 
-public import shaft.type.common : EnumType, DeterminedType, ArrayType, RecordType, TypedParameters, TypedValue, toJSONNode;
+import shaft.type.common : EnumType, DeterminedType, ArrayType, RecordType, TypedParameters, TypedValue, toJSONNode;
 
 string toStr(DeclaredType dt) pure @safe
 {
