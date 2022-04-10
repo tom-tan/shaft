@@ -13,7 +13,7 @@ import salad.type : Either, orElse;
 
 import shaft.evaluator : Evaluator;
 import shaft.runtime : Runtime;
-import shaft.type : DeterminedType, TypedParameters;
+import shaft.type.input : DeterminedType, TypedParameters;
 
 import std.typecons : Tuple;
 
@@ -139,7 +139,7 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
 {
     import salad.type : match, None, orElse;
 
-    import shaft.type : guessedType;
+    import shaft.type.input : guessedType;
 
     import std.algorithm : map, multiSort;
     import std.array : array, join;
@@ -298,7 +298,7 @@ EOS";
 string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
 {
     import salad.type : match;
-    import shaft.type : ArrayType, EnumType, RecordType;
+    import shaft.type.input : ArrayType, EnumType, RecordType;
     import std.exception : enforce;
 
     alias toCmdElems = (string[] val, CommandLineBinding clb) {
@@ -421,7 +421,7 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
 auto captureOutputs(CommandLineTool clt, Runtime runtime, Evaluator evaluator)
 {
     import dyaml : Loader, NodeType;
-    import shaft.type : toJSONNode;
+    import shaft.type.input : toJSONNode;
     import std.algorithm : each, filter, map;
     import std.array : array;
     import std.exception : enforce;
@@ -441,7 +441,6 @@ auto captureOutputs(CommandLineTool clt, Runtime runtime, Evaluator evaluator)
         auto rest = redBlackTree(ret.mappingKeys.map!(a => a.as!string));
 
         clt.outputs_.each!((o) {
-            import shaft.type : bindType, DeclaredType;
             auto id = o.id_;
             if (auto n = id in ret)
             {
@@ -491,7 +490,6 @@ import salad.type : None, Optional;
 auto collectOutputParameter(CommandOutputBinding binding, DeterminedType type, Runtime runtime, Evaluator evaluator,
                             bool streamable = false, Optional!string format = None.init, string[] secondaryFiles = [])
 {
-    import shaft.type : toJSONNode;
     import std.typecons : tuple;/+
 
     auto n = cop.type_.match!(

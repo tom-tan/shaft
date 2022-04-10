@@ -206,7 +206,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     );
 
     // 4. Validate the input object against the inputs schema for the process.
-    import shaft.type : annotateInputParameters;
+    import shaft.type.input : annotateInputParameters;
 
     // TODO: pass evaluator (CommandInputRecordField may have an Expression)
     auto typedParams = annotateInputParameters(inp, cmd.inputs_,

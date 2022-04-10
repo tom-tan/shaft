@@ -3,7 +3,7 @@
  * Copyright: © 2022 Tomoya Tanjo
  * License: Apache-2.0
  */
-module shaft.type;
+module shaft.type.input;
 
 import dyaml : Node, NodeType;
 

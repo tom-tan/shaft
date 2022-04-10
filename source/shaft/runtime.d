@@ -43,7 +43,7 @@ struct Runtime
     {
         import dyaml : CollectionStyle, ScalarStyle;
         import salad.type : match;
-        import shaft.type : toJSONNode;
+        import shaft.type.input : toJSONNode;
 
         Node ret;
         ret.setStyle(CollectionStyle.flow);

@@ -8,7 +8,7 @@ module shaft.staging;
 import dyaml : Node, NodeType;
 
 import salad.resolver : scheme;
-import shaft.type : TypedParameters, TypedValue;
+import shaft.type.input : TypedParameters, TypedValue;
 
 import std.file : isDir;
 import std.range : empty;
@@ -21,7 +21,7 @@ auto staging(TypedParameters params, string destURI, Flag!"keepStructure" keepSt
 in(params.parameters.type == NodeType.mapping)
 in(destURI.scheme.empty || destURI.isDir)
 {
-    import shaft.type : toJSONNode;
+    import shaft.type.input : toJSONNode;
 
     auto ret = Node((Node[string]).init);
     foreach(string k, Node v; params.parameters)
@@ -39,14 +39,14 @@ in(dest.isDir)
 {
     import cwl.v1_0.schema : CWLType;
     import salad.type : match;
-    import shaft.type : ArrayType, EnumType, RecordType;
+    import shaft.type.input : ArrayType, EnumType, RecordType;
 
     return tv.type.match!(
         (CWLType t) {
             switch(t.value_) {
             case "File" : {
                 import shaft.file : toStagedFile;
-                import shaft.type : toJSONNode;
+                import shaft.type.input : toJSONNode;
                 import std.path : buildPath;
 
                 auto node = tv.value;
@@ -125,7 +125,7 @@ in(dest.isDir)
         (EnumType _) => tv.value,
         (ArrayType at) {
             import dyaml : NodeType;
-            import shaft.type : toJSONNode;
+            import shaft.type.input : toJSONNode;
             import std.algorithm : map;
             import std.range : array, StoppingPolicy, zip;
 
