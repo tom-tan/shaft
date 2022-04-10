@@ -18,7 +18,7 @@ import std.file : exists;
  * A subset of File object for canonicalized internal File representation.
  * It can be:
  * - a file literal, or
- * - a File object that has only `location` to show an absolute URI, `basename`,
+ * - a File object that has only `location` with an absolute URI, `basename`,
  *   `secondaryFiles` (optional) and `format`.
  */
 alias URIFile = File;
