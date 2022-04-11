@@ -131,7 +131,8 @@ in(node.type == NodeType.null_ || node["class"] == "File")
     }
     else
     {
-        ret.nameext_ = ""; // due to bug of null-initialized string
+        // workaround for https://github.com/dlang-community/D-YAML/issues/286
+        ret.nameext_ = "";
     }
 
     ret.checksum_ = path.digestFile!SHA1;
