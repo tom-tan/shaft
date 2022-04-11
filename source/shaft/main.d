@@ -7,7 +7,6 @@ module shaft.main;
 
 import dyaml : Node;
 
-import std.range : isOutputRange;
 import std.stdio : stdout;
 
 ///
@@ -258,15 +257,16 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     // runtime.exitCode = ret; // v1.1 and later
 
     // 8. Capture results of process execution into the output object.
-    import shaft.command_line_tool : captureOutputs;
-    auto outs = captureOutputs(cmd, runtime, evaluator);
+    import shaft.type.output : captureOutputs;
+    auto outs = captureOutputs(cmd, fetched.parameters, runtime, evaluator); // TODO: fetched or typedParams?
 
     // outs = stageOut(outs, outdir)
 
     // 9. Validate the output object against the outputs schema for the process.
 
     // 10. Report the output object to the process caller.
-    dumpOutput(outs);
+    import shaft.type.common : dumpJSON;
+    dumpJSON(outs, stdout.lockingTextWriter);
 
     return 0;
 }
@@ -310,22 +310,4 @@ auto discoverDocumentURI(string path) @safe
                                              .find!(p => p.exists && p.isFile);
     enforce(!fs.empty);
     return fs.front.absoluteURI~(frag.empty ? "" : "#"~frag);
-}
-
-///
-void dumpOutput(Writer)(Node outs, Writer w = stdout.lockingTextWriter)
-if (isOutputRange!(Writer, char))
-{
-    import dyaml : dumper;
-    import std.array : appender;
-    import std.regex : ctRegex, replaceAll;
-    import std.stdio : write;
-
-    auto d = dumper();
-    d.YAMLVersion = null;
-
-    auto app = appender!string;
-    d.dump(app, outs);
-    auto str = app[].replaceAll(ctRegex!`\n\s+`, " ");
-    w.put(str);
 }

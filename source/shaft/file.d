@@ -7,7 +7,7 @@ module shaft.file;
 
 import cwl.v1_0.schema : Directory, File;
 
-import dyaml : Node, NodeType;
+import dyaml : Node, NodeType, YAMLNull;
 
 import salad.type : Either, None;
 
@@ -107,10 +107,10 @@ Directory toURIDirectory(Directory dir, string baseURI)
  *   node = represnts URIFile to complete `format` (TODO: complete extension fields)
  *   seccondaryFils = Files and Directories for stageed `secondaryFiles`
  */
-StagedFile toStagedFile(string path, Node node, Either!(StagedFile, Directory)[] secondaryFiles = [])
+StagedFile toStagedFile(string path, Node node = YAMLNull(), Either!(StagedFile, Directory)[] secondaryFiles = [])
 in(path.exists)
-in(node.type == NodeType.mapping)
-in(node["class"] == "File")
+in(node.type == NodeType.mapping || node.type == NodeType.null_)
+in(node.type == NodeType.null_ || node["class"] == "File")
 {
     import std.conv : to;
     import std.digest.sha : SHA1;
@@ -125,7 +125,14 @@ in(node["class"] == "File")
     ret.basename_ = path.baseName;
     ret.dirname_ = path.dirName;
     ret.nameroot_ = path.stripExtension;
-    ret.nameext_ = path.extension;
+    if (auto ext = path.extension)
+    {
+        ret.nameext_ = path.extension;
+    }
+    else
+    {
+        ret.nameext_ = ""; // due to bug of null-initialized string
+    }
 
     ret.checksum_ = path.digestFile!SHA1;
     ret.size_ = path.getSize.to!long;
@@ -133,13 +140,13 @@ in(node["class"] == "File")
     alias SFType = typeof(ret.secondaryFiles_);
     ret.secondaryFiles_ = secondaryFiles.empty ? SFType.init : SFType(secondaryFiles);
 
-    if (auto f = "format" in node)
+    if (node.type == NodeType.mapping)
     {
-        ret.format_ = f.as!string;
+        if (auto f = "format" in node)
+        {
+            ret.format_ = f.as!string;
+        }
     }
-
-    // ret.contents_ = "";
-
     return ret;
 }
 
@@ -147,10 +154,11 @@ auto digestFile(Hash)(string filename)
 if (isDigest!Hash)
 {
     import std.digest : digest, LetterCase, toHexString;
+    import std.format : format;
     import std.stdio : StdFile = File;
 
     auto file = StdFile(filename);
-    return digest!Hash(file.byChunk(4096 * 1024)).toHexString!(LetterCase.lower);
+    return format!"sha1$%s"(digest!Hash(file.byChunk(4096 * 1024)).toHexString!(LetterCase.lower));
 }
 
 /**

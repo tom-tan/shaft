@@ -10,6 +10,7 @@ import cwl.v1_0.schema;
 import dyaml : Node;
 
 import salad.type : Either, Optional, This;
+import std.range : isOutputRange;
 import std.typecons : Tuple;
 
 ///
@@ -107,4 +108,29 @@ Node toJSONNode(Node v) @safe
 Node toJSONNode(T)(T val) @safe
 {
     return Node(val).toJSONNode;
+}
+
+///
+void dumpJSON(Node outs)
+{
+    import std.stdio : serr = stderr;
+    dumpJSON(outs, serr.lockingTextWriter);
+}
+
+///
+void dumpJSON(Writer)(Node outs, Writer w)
+if (isOutputRange!(Writer, char))
+{
+    import dyaml : dumper;
+    import std.array : appender;
+    import std.regex : ctRegex, replaceAll;
+    import std.stdio : write;
+
+    auto d = dumper();
+    d.YAMLVersion = null;
+
+    auto app = appender!string;
+    d.dump(app, outs);
+    auto str = app[].replaceAll(ctRegex!`\n\s+`, " ");
+    w.put(str);
 }

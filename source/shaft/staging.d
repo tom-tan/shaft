@@ -44,7 +44,7 @@ in(dest.isDir)
     return tv.type.match!(
         (CWLType t) {
             switch(t.value_) {
-            case "File" : {
+            case "File": {
                 import shaft.file : toStagedFile;
                 import shaft.type.common : toJSONNode;
                 import std.path : buildPath;
