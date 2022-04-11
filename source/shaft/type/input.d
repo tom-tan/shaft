@@ -270,10 +270,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
             enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
             auto tv = s.fields_
-                       .match!(
-                           (CommandInputRecordField[] fs) => fs,
-                           _ => (CommandInputRecordField[]).init,
-                       )
+                       .orElse([])
                        .map!((f) {
                            import std.typecons : tuple;
                            auto name = f.name_;
