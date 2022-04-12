@@ -173,7 +173,6 @@ in(binding !is null)
         .map!((pat) {
             //  If an array is provided, find files that match any pattern in the array.
             import std.file : dirEntries, SpanMode;
-            import std.path : buildPath;
             return dirEntries(runtime.outdir, pat, SpanMode.shallow);
         })
         .joiner

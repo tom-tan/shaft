@@ -7,8 +7,6 @@ module shaft.main;
 
 import dyaml : Node;
 
-import std.stdio : stdout;
-
 ///
 static immutable suppertedVersions = ["v1.0"];
 
@@ -266,6 +264,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
     // 10. Report the output object to the process caller.
     import shaft.type.common : dumpJSON;
+    import std.stdio : stdout;
     dumpJSON(outs, stdout.lockingTextWriter);
 
     return 0;
