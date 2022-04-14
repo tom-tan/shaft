@@ -28,6 +28,7 @@ int shaftMain(string[] args)
     import std.format : format;
     import std.getopt : getopt, GetOptException;
 	import std.range : empty;
+    import std.typecons : Flag, No, Yes;
 
     import cwl : CommandInputParameter, CommandLineTool, DocumentRootType, importFromURI, SchemaDefRequirement;
     import salad.exception : DocumentException;
@@ -40,6 +41,7 @@ int shaftMain(string[] args)
 	LeaveTmpdir ltopt = LeaveTmpdir.onErrors;
 	bool verbose;
 	bool computeChecksum = true;
+    Flag!"overwrite" forceOverwrite = No.overwrite;
 
     try
     {
@@ -57,6 +59,8 @@ int shaftMain(string[] args)
 	    	"veryverbose", "more verbose output", &verbose,
     		"compute-checksum", "compute checksum of contents (default)", () { computeChecksum = true; },
 	    	"no-compute-checksum", "do not compute checksum of contents", () { computeChecksum = false; },
+            "force-overwrite", "overwrite existing files and directories with output object",
+            () { forceOverwrite = Yes.overwrite; },
     		"print-supported-versions", "print supported CWL specs", &showSupportedVersions,
 		    "version", "show version information", &showVersion,
     	);
@@ -258,14 +262,15 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     import shaft.type.output : captureOutputs;
     auto outs = captureOutputs(cmd, fetched.parameters, runtime, evaluator);
 
-    // outs = stageOut(outs, outdir)
+    import shaft.staging : stageOut;
+    auto staged = stageOut(outs, outdir, forceOverwrite);
 
     // 9. Validate the output object against the outputs schema for the process.
 
     // 10. Report the output object to the process caller.
     import shaft.type.common : dumpJSON;
     import std.stdio : stdout;
-    dumpJSON(outs.parameters, stdout.lockingTextWriter);
+    dumpJSON(staged.parameters, stdout.lockingTextWriter);
 
     return 0;
 }

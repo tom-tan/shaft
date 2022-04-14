@@ -12,12 +12,31 @@ import shaft.type.common : TypedParameters, TypedValue;
 
 import std.file : isDir;
 import std.range : empty;
-import std.typecons : Flag, Yes;
+import std.typecons : Flag, No, Yes;
+
+
+///
+auto fetch(TypedParameters params, string dest)
+{
+    return staging(params, dest, No.keepStructure);
+}
+
+///
+auto stageOut(TypedParameters params, string dest, Flag!"overwrite" overwrite = No.overwrite)
+{
+    return staging(params, dest, Yes.keepStructure, Yes.forceStaging, overwrite);
+}
 
 /**
- * 
+ * Params:
+ *   destURI = is a destination directory path.
+ *
+ * TODO: `dest` will be extended to URI in the future release.
  */
-auto staging(TypedParameters params, string destURI, Flag!"keepStructure" keepStructure)
+auto staging(
+    TypedParameters params, string destURI, Flag!"keepStructure" keepStructure,
+    Flag!"forceStaging" forceStaging = No.forceStaging, Flag!"overwrite" overwrite = No.overwrite,
+)
 in(params.parameters.type == NodeType.mapping)
 in(destURI.scheme.empty || destURI.isDir)
 {
@@ -27,14 +46,25 @@ in(destURI.scheme.empty || destURI.isDir)
     foreach(string k, Node v; params.parameters)
     {
 
-        auto p = stagingParam(TypedValue(v, params.types[k]), destURI, keepStructure);
+        auto p = stagingParam(
+            TypedValue(v, params.types[k]), destURI, keepStructure,
+            forceStaging, overwrite,
+        );
         ret.add(k.toJSONNode, p);
     }
     return TypedParameters(ret.toJSONNode, params.types);
 }
 
-///
-Node stagingParam(TypedValue tv, string dest, Flag!"keepStructure" keepStructure)
+/**
+ * Params:
+ *   dest = is a destination directory path.
+ *
+ * TODO: `dest` will be extended to URI in the future release.
+ */
+Node stagingParam(
+    TypedValue tv, string dest, Flag!"keepStructure" keepStructure,
+    Flag!"forceStaging" forceStaging = No.forceStaging, Flag!"overwrite" overwrite = No.overwrite,
+)
 in(dest.isDir)
 {
     import cwl.v1_0.schema : CWLType;
@@ -97,12 +127,16 @@ in(dest.isDir)
 
                     auto bname = node["basename"].as!string;
                     auto loc = node["location"].as!string.path;
-                    if (loc.baseName != bname)
+                    if (loc.baseName != bname || forceStaging == Yes.forceStaging)
                     {
-                        import std.file : copy;
+                        import std.exception : enforce;
+                        import std.file : copy, exists;
+                        import std.format : format;
 
                         auto dir = mkdirIfNeeded(dest);
                         stagedPath = buildPath(dir, bname);
+                        enforce(overwrite == Yes.overwrite || !stagedPath.exists,
+                            format!"File already exists: %s"(stagedPath));
                         loc.copy(stagedPath);
                     }
                     else
@@ -141,9 +175,3 @@ in(dest.isDir)
     );
 }
 
-///
-auto fetch(TypedParameters params, string dest)
-{
-    import std.typecons : No;
-    return staging(params, dest, No.keepStructure);
-}
