@@ -78,6 +78,77 @@ struct TypedValue
 ///
 alias TypedParameters = Tuple!(Node, "parameters", DeterminedType[string], "types");
 
+///
+class TypeException : Exception
+{
+    import std.exception : basicExceptionCtors;
+    mixin basicExceptionCtors;
+}
+
+///
+auto guessedType(Node val) @safe
+{
+    import dyaml : NodeType;
+    import salad.type : None;
+
+    switch(val.type)
+    {
+    case NodeType.null_:
+        return DeterminedType(new CWLType("null"));
+    case NodeType.boolean:
+        return DeterminedType(new CWLType("boolean"));
+    case NodeType.integer:
+        return DeterminedType(new CWLType("long"));
+    case NodeType.decimal:
+        return DeterminedType(new CWLType("double"));
+    case NodeType.string:
+        return DeterminedType(new CWLType("string"));
+    case NodeType.mapping:
+        import shaft.type.common : RecordType;
+        import std.algorithm : fold;
+
+        if (auto class_ = "class" in val)
+        {
+            if (*class_ == "File" || *class_ == "Directory")
+            {
+                return DeterminedType(new CWLType(*class_));
+            }
+        }
+        auto ts = val.mapping
+                     .fold!((acc, e) @trusted {
+                         import std.algorithm : moveEmplace;
+                         import std.typecons : tuple;
+                         auto t = guessedType(e.value);
+                         auto dt = new DeterminedType;
+                         moveEmplace(t, *dt);
+                         acc[e.key.as!string] = tuple(dt, Optional!CommandLineBinding.init);
+                         return acc;
+                     })((Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
+        return DeterminedType(RecordType("", ts));
+    case NodeType.sequence:
+        import shaft.type.common : ArrayType;
+        import std.algorithm : map;
+        import std.array : array;
+
+        return DeterminedType(
+            ArrayType(
+                val.sequence
+                   .map!((e) @trusted {
+                       import std.algorithm : moveEmplace;
+                       auto t = guessedType(e);
+                       auto dt = new DeterminedType;
+                       moveEmplace(t, *dt);
+                       return dt;
+                   })
+                   .array,
+                Optional!CommandLineBinding.init
+            )
+        );
+    default:
+        throw new TypeException("Unsuppported type: "~val.nodeTypeString);
+    }
+}
+
 /*
  * Returns: a shallow copied node with JSON-compatible style
  * See_Also: https://github.com/dlang-community/D-YAML/issues/284

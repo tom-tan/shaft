@@ -386,8 +386,20 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             );
         },
         (string s) {
-            enforce(false, "Unimplemented");
-            return TypedValue.init;
+            import shaft.type.common : guessedType;
+            import std.format : format;
+
+            enforce(s == "Any", format!"Unknown output type: `%s`"(s));
+
+            auto node = nodeOrBinding.match!(
+                (Node n) => n,
+                (CommandOutputBinding binding) {
+                    enforce(binding !is null, "Any must not be null");
+                    return processBinding(binding, inputs, runtime, evaluator);
+                }
+            );
+            enforce(node.type != NodeType.null_, "Any must not be null");
+            return TypedValue(node, node.guessedType);
         },
         (Either!(
             CWLType,

@@ -139,7 +139,7 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
 {
     import salad.type : match, None, orElse;
 
-    import shaft.type.input : guessedType;
+    import shaft.type.common : guessedType;
 
     import std.algorithm : map, multiSort;
     import std.array : array, join;
