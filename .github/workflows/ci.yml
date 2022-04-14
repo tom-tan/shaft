@@ -51,14 +51,14 @@ jobs:
           fetch-depth: 1
       - uses: actions/cache@v2
         with:
-          path: ~/.dub
+          path: ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles('**/dub.json') }}
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
       - name: Run tests
         run: |
-          dub test
+          dub --cache=local test
   
   conformance:
     needs: test
@@ -70,7 +70,7 @@ jobs:
           fetch-depth: 1
       - uses: actions/cache@v2
         with:
-          path: ~/.dub
+          path: ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-dub-ldc-latest-${{ hashFiles('**/dub.json') }}
       - run: |
           docker run --rm -i -v $PWD:/workdir -w /workdir -e GITHUB_REF=$GITHUB_REF alpine:edge ./alpine-build.sh
