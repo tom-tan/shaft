@@ -11,7 +11,7 @@ import cwl.v1_0.schema;
 import salad.type : Either, Optional, This;
 import shaft.type.common : DeterminedType, TypedParameters, TypedValue;
 
-import std.typecons : Tuple;
+import std.typecons : Flag, Tuple, Yes;
 
 ///
 alias DeclaredType = Either!(
@@ -217,7 +217,7 @@ in(params.type == NodeType.mapping)
 }
 
 ///
-TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
+TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap, Flag!"declared" declared = Yes.declared)
 {
     import salad.type : match;
     import shaft.type.common : toJSONNode;
@@ -274,7 +274,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                        .map!((f) {
                            import std.typecons : tuple;
                            auto name = f.name_;
-                           auto dt = n[name].bindType(f.type_, defMap);
+                           auto dt = n[name].bindType(f.type_, defMap, declared);
                            return tuple(name, dt.type, dt.value, f.inputBinding_);
                        })
                        .fold!(
@@ -301,7 +301,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
             enforce(n.type == NodeType.sequence, new TypeConflicts(type, n.guessedType));
 
             auto tvals = n.sequence
-                          .map!(e => e.bindType(s.items_, defMap))
+                          .map!(e => e.bindType(s.items_, defMap, declared))
                           .fold!(
                               (acc, e) { acc.add(e.value); return acc; },
                               (acc, e) @trusted {
@@ -318,10 +318,11 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
             {
                 import salad.type : tryMatch;
                 import shaft.type.common : ArrayType, RecordType;
+                import std.typecons : No;
 
                 return n.guessedType.tryMatch!(
                     (CWLType t) {
-                        if (t.value_ == "null")
+                        if (t.value_ == "null" && declared == Yes.declared)
                         {
                             throw new Exception("Any type must not be null");
                         }
@@ -331,7 +332,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                         assert(n.type == NodeType.sequence);
                         auto schema = new CommandInputArraySchema;
                         schema.items_ = "Any";
-                        return n.bindType(DeclaredType(schema), defMap);
+                        return n.bindType(DeclaredType(schema), defMap, No.declared);
                     },
                     (RecordType r) {
                         import std.algorithm : map;
@@ -345,7 +346,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                             fschema.type_ = "Any";
                             return fschema;
                         }).array;
-                        return n.bindType(DeclaredType(schema), defMap);
+                        return n.bindType(DeclaredType(schema), defMap, No.declared);
                     },
                 );
             }
