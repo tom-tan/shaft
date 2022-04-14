@@ -263,6 +263,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     auto outs = captureOutputs(cmd, fetched.parameters, runtime, evaluator);
 
     import shaft.staging : stageOut;
+    mkdirRecurse(outdir);
     auto staged = stageOut(outs, outdir, forceOverwrite);
 
     // 9. Validate the output object against the outputs schema for the process.

@@ -68,7 +68,7 @@ struct Evaluator
         import std.range : empty;
 
         auto matchFirst = isJS ? &matchJSExpressionFirst : &matchParameterReferenceFirst;
-        auto evaluate = (isJS ? &evalJSExpression : &evalParameterReference);
+        auto evaluate = isJS ? &evalJSExpression : &evalParameterReference;
 
         auto exp = expression;
 
@@ -139,11 +139,11 @@ auto matchParameterReferenceFirst(string exp) pure @safe
     import std.regex : ctRegex, matchFirst;
 
     enum symbol = `\w+`;
-    enum singleq = `\['([^']|\\')*'\]`;
-    enum doubleq = `\["([^"]|\\")*"\]`;
+    enum singleq = `\['(?:[^']|\\')*'\]`;
+    enum doubleq = `\["(?:[^"]|\\")*"\]`;
     enum index = `\[\d+\]`;
-    enum segment = format!`\.%s|%s|%s|%s`(symbol, singleq, doubleq, index);
-    enum parameterReference = ctRegex!(format!`\$\((%s%s*)\)`(symbol, segment));
+    enum segment = format!`(?:\.%s)|(?:%s)|(?:%s)|(?:%s)`(symbol, singleq, doubleq, index);
+    enum parameterReference = ctRegex!(format!`\$\((%s(?:%s)*)\)`(symbol, segment));
 
     if (auto c = exp.matchFirst(parameterReference))
     {
@@ -155,12 +155,47 @@ auto matchParameterReferenceFirst(string exp) pure @safe
     }
 }
 
+@safe pure unittest
+{
+    auto m = "foo$(inputs.inp1)bar".matchParameterReferenceFirst;
+    assert(m);
+    assert(m.pre == "foo");
+    assert(m.hit == "$(inputs.inp1)");
+    assert(m.post == "bar");
+}
+
+@safe pure unittest
+{
+    auto m = "$(self[0].contents)".matchParameterReferenceFirst;
+    assert(m);
+    assert(m.pre == "");
+    assert(m.hit == "$(self[0].contents)");
+    assert(m.post == "");
+}
+
+@safe pure unittest
+{
+    auto m = "$(self['foo'])".matchParameterReferenceFirst;
+    assert(m);
+    assert(m.pre == "");
+    assert(m.hit == "$(self['foo'])");
+    assert(m.post == "");
+}
+
+@safe pure unittest
+{
+    auto m = `$(self["foo"])`.matchParameterReferenceFirst;
+    assert(m);
+    assert(m.pre == "");
+    assert(m.hit == `$(self["foo"])`);
+    assert(m.post == "");
+}
+
 Node evalParameterReference(string exp, Node inputs, Runtime runtime, Node self, in string[] _) @safe
 in(exp.startsWith("$("))
 in(exp.endsWith(")"))
 {
     import std.regex : ctRegex, matchFirst, splitter;
-    import std.array;
     // v1.2: null and length
     enum delim = ctRegex!`(\.|\[|\]\.?)`;
 
