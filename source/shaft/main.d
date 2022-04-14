@@ -256,7 +256,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
     // 8. Capture results of process execution into the output object.
     import shaft.type.output : captureOutputs;
-    auto outs = captureOutputs(cmd, fetched.parameters, runtime, evaluator); // TODO: fetched or typedParams?
+    auto outs = captureOutputs(cmd, fetched.parameters, runtime, evaluator);
 
     // outs = stageOut(outs, outdir)
 
@@ -265,7 +265,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     // 10. Report the output object to the process caller.
     import shaft.type.common : dumpJSON;
     import std.stdio : stdout;
-    dumpJSON(outs, stdout.lockingTextWriter);
+    dumpJSON(outs.parameters, stdout.lockingTextWriter);
 
     return 0;
 }

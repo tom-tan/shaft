@@ -284,7 +284,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap)
                                acc[e[0]] = tuple(&e[1], e[3]);
                                return acc;
                            },
-                       )(Node.init, (Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
+                       )(Node((Node[string]).init), (Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
             return TypedValue(tv[0], RecordType(s.name_.orElse(""), tv[1]));
         },
         (CommandInputEnumSchema s) {
