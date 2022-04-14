@@ -5,6 +5,6 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
     echo \
         "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
         $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-    apt-get update && apt-get install -y --no-install-recommends python3-pip docker-ce-cli && \
+    apt-get update && apt-get install -y --no-install-recommends python-is-python3 python3-pip docker-ce-cli && \
     pip install cwltest cwltool && \
     apt-get clean -y && rm -rf /var/lib/apt/lists/* /tmp/library-scripts
