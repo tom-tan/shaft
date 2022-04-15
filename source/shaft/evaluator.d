@@ -195,19 +195,24 @@ Node evalParameterReference(string exp, Node inputs, Runtime runtime, Node self,
 in(exp.startsWith("$("))
 in(exp.endsWith(")"))
 {
-    import std.regex : ctRegex, matchFirst, splitter;
+    import std.algorithm : filter, map;
+    import std.regex : ctRegex, matchFirst, replaceAll, splitter;
     // v1.2: null and length
-    enum delim = ctRegex!`(\.|\[|\]\.?)`;
+    enum delim = ctRegex!`(\.|(?:\[['"]?)|(?:['"]?\])\.?)`;
 
     Node node;
     node.add("inputs", inputs);
     node.add("runtime", Node(runtime));
     node.add("self", self);
 
-    foreach(f; exp[2..$-1].splitter(delim))
+    foreach(f; exp[2..$-1]
+        .splitter(delim)
+        .filter!"a.length > 0"
+        .map!(f => f.replaceAll(ctRegex!`\\(['"])`, `$1`)))
     {
         import dyaml : NodeType;
         import std.exception : enforce;
+        import std.format : format;
 
         if (f.matchFirst(ctRegex!`^\d+$`))
         {
@@ -215,13 +220,13 @@ in(exp.endsWith(")"))
 
             auto idx = f.to!int;
             enforce(node.type == NodeType.sequence);
-            enforce(idx < node.length, "Out of index: "~f);
+            enforce(idx < node.length, format!"Out of index `%s` in `%s`"(f, exp));
             node = node[idx];
         }
         else
         {
             enforce(node.type == NodeType.mapping);
-            node = *enforce(f in node, "Missing field: "~f);
+            node = *enforce(f in node, format!"Missing field `%s` in `%s`"(f, exp));
         }
     }
     return node;
