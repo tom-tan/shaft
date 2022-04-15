@@ -195,13 +195,16 @@ if (isOutputRange!(Writer, char))
     import dyaml : dumper;
     import std.array : appender;
     import std.regex : ctRegex, replaceAll;
+    import std.string : chomp;
     import std.stdio : write;
 
     auto d = dumper();
     d.YAMLVersion = null;
+    d.explicitEnd = false;
+    d.explicitStart = false;
 
     auto app = appender!string;
     d.dump(app, outs);
-    auto str = app[].replaceAll(ctRegex!`\n\s+`, " ");
+    auto str = app[].replaceAll(ctRegex!`\n\s+`, " ").chomp;
     w.put(str);
 }

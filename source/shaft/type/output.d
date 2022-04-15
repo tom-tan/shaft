@@ -94,6 +94,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                     );
                 }
             })
+            .array
             .filter!(kv => kv[1].value != NodeType.null_)
             .fold!(
                 (acc, e) { acc.add(e[0].toJSONNode, e[1].value); return acc; },
@@ -159,6 +160,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                     )
                 );
             })
+            .array
             .filter!(kv => kv[1].value != NodeType.null_)
             .fold!(
                 (acc, e) { acc.add(e[0].toJSONNode, e[1].value); return acc; },

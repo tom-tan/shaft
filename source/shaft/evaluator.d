@@ -32,8 +32,10 @@ struct Evaluator
      *   req = is `null` when expressions in the doccument are parameter references
      *         and non-null when expressions are JavaScript expressions
      *   cwlVersion = is used to encapsulate the difference of interpretation of parameter references
+     *   enableExtProps = enables `null` value and `length` property for arrays in parameter references.
+     *                    It does nothing since v1.2.
      */
-    this(InlineJavascriptRequirement req, string cwlVersion) @nogc nothrow pure @safe
+    this(InlineJavascriptRequirement req, string cwlVersion, bool enableExtProps) @nogc nothrow pure @safe
     {
         if (req !is null)
         {
@@ -42,7 +44,8 @@ struct Evaluator
             isJS = true;
             expressionLibs = req.dig!("expressionLib", string[]);
         }
-        cwlVer = cwlVersion;
+        this.cwlVersion = cwlVersion;
+        this.enableExtProps = enableExtProps;
     }
 
     /**
@@ -80,7 +83,7 @@ struct Evaluator
                 evaled ~= Either!(string, Node)(c.pre);
             }
 
-            auto result = evaluate(c.hit, inputs, runtime, self, expressionLibs);
+            auto result = evaluate(c.hit, inputs, runtime, self, expressionLibs, enableExtProps);
             evaled ~= Either!(string, Node)(result);
 
             exp = c.post;
@@ -97,40 +100,61 @@ struct Evaluator
 
         if (evaled.length == 1)
         {
+            import shaft.type.common : toJSONNode;
+
             return evaled[0].match!(
-                (string s) => Node(s),
+                (string s) => Node(s).toJSONNode,
                 node => node,
             );
         }
         else
         {
+            import shaft.type.common : toJSONNode;
+
             auto str = evaled.map!(e =>
                 e.match!(
                     (string s) => s,
                     (Node n) {
-                        // TODO: fix duplication of dumpOutput
-                        import dyaml : dumper;
-                        import std.array : appender;
-                        import std.regex : ctRegex, replaceAll;
-                        import std.stdio : write;
-
-                        auto d = dumper();
-                        d.YAMLVersion = null;
-
-                        auto app = appender!string;
-                        d.dump(app, n);
-                        return app[].replaceAll(ctRegex!`\n\s+`, " ");
+                        import dyaml : NodeType;
+                        switch (n.type)
+                        {
+                        case NodeType.mapping, NodeType.sequence:
+                            import shaft.type.common : dumpJSON;
+                            import std.array : appender;
+                    
+                            auto app = appender!string;
+                            dumpJSON(n, app);
+                            return app[];
+                        default:
+                            return n.as!string;
+                        }
                     },
                 )
             ).join;
-            return Node(str);
+            return Node(str).toJSONNode;
         }
     }
 
 private:
     bool isJS;
     string[] expressionLibs;
-    string cwlVer;
+    string cwlVersion;
+    bool enableExtProps;
+}
+
+@safe unittest
+{
+    import dyaml : Loader;
+
+    enum inp = q"EOS
+        bar: {
+            'b"az': null,
+        }
+EOS";
+    auto inputs = Loader.fromString(inp).load;
+    auto evaluator = Evaluator(null, "v1.0", true);
+    auto n = evaluator.eval(`$(inputs.bar['b"az']) $(inputs.bar['b"az'])`, inputs, Runtime.init);
+    assert(n.as!string == "null null", n.as!string);
 }
 
 auto matchParameterReferenceFirst(string exp) pure @safe
@@ -191,19 +215,30 @@ auto matchParameterReferenceFirst(string exp) pure @safe
     assert(m.post == "");
 }
 
-Node evalParameterReference(string exp, Node inputs, Runtime runtime, Node self, in string[] _) @safe
+Node evalParameterReference(
+    string exp, Node inputs, Runtime runtime, Node self,
+    in string[] _, bool enableExtProps,
+) @safe
 in(exp.startsWith("$("))
 in(exp.endsWith(")"))
 {
+    import shaft.type.common : toJSONNode;
     import std.algorithm : filter, map;
     import std.regex : ctRegex, matchFirst, replaceAll, splitter;
-    // v1.2: null and length
     enum delim = ctRegex!`(\.|(?:\[['"]?)|(?:['"]?\])\.?)`;
 
     Node node;
     node.add("inputs", inputs);
     node.add("runtime", Node(runtime));
     node.add("self", self);
+
+    if (exp[2..$-1] == "null")
+    {
+        import std.exception : enforce;
+
+        enforce(enableExtProps, "`null` is not supported in parametr reference");
+        return Node(YAMLNull());
+    }
 
     foreach(f; exp[2..$-1]
         .splitter(delim)
@@ -225,11 +260,21 @@ in(exp.endsWith(")"))
         }
         else
         {
-            enforce(node.type == NodeType.mapping);
-            node = *enforce(f in node, format!"Missing field `%s` in `%s`"(f, exp));
+            if (node.type == NodeType.sequence && f == "length")
+            {
+                import std.exception : enforce;
+        
+                enforce(enableExtProps, "`length` property is not supported in parametr reference");
+                node = Node(node.length).toJSONNode;
+            }
+            else
+            {
+                enforce(node.type == NodeType.mapping);
+                node = *enforce(f in node, format!"Missing field `%s` in `%s`"(f, exp));
+            }
         }
     }
-    return node;
+    return node.toJSONNode;
 }
 
 auto matchJSExpressionFirst(string exp) @safe
@@ -238,7 +283,10 @@ auto matchJSExpressionFirst(string exp) @safe
     return ExpCapture.init;
 }
 
-Node evalJSExpression(string exp, Node inputs, Runtime runtime, Node self, in string[] libs) @trusted
+Node evalJSExpression(
+    string exp, Node inputs, Runtime runtime, Node self,
+    in string[] libs, bool enableExtProps_
+) @trusted
 {
     //
     return Node();

@@ -42,6 +42,7 @@ int shaftMain(string[] args)
 	bool verbose;
 	bool computeChecksum = true;
     Flag!"overwrite" forceOverwrite = No.overwrite;
+    string[] compatOptions;
 
     try
     {
@@ -61,9 +62,41 @@ int shaftMain(string[] args)
 	    	"no-compute-checksum", "do not compute checksum of contents", () { computeChecksum = false; },
             "force-overwrite", "overwrite existing files and directories with output object",
             () { forceOverwrite = Yes.overwrite; },
+            "enable-compat", "enable compatibility options (`--compat=help` for details)", &compatOptions,
     		"print-supported-versions", "print supported CWL specs", &showSupportedVersions,
 		    "version", "show version information", &showVersion,
     	);
+
+        if (!compatOptions.empty)
+        {
+            import std.algorithm : all, canFind, find;
+            import std.array : array;
+            import std.getopt : Option;
+
+            enum compats = [
+                Option("", "extended-props", "Enable `null` and `length` in parameter references (for v1.0 and v1.1)", false),
+                Option("", "help", "show this message", false),
+            ];
+
+            if (compatOptions.canFind("help"))
+            {
+                import std.getopt : defaultGetoptFormatter;
+                import std.stdio : stdout;
+
+                defaultGetoptFormatter(
+                    stdout.lockingTextWriter, "List of compatibility options:",
+                    compats, "    %-*s %-*s%*s%s\x0a",
+                );
+                return 0;
+            }
+            
+            auto rng = compatOptions.find!(o => compats.all!(co => co.optLong != o));
+            if (!rng.empty)
+            {
+                import std.format : format;
+                throw new Exception(format!"Unsupported compatibility options: %-(%s, %)"(rng.array));
+            }
+        }
 
         if (showVersion)
         {
@@ -200,10 +233,11 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
     import cwl.v1_0.schema : InlineJavascriptRequirement;
     import shaft.evaluator : Evaluator;
+    import std.algorithm : canFind;
 
     auto evaluator = Evaluator(
         cmd.dig!(["requirements", "InlineJavascriptRequirement"], InlineJavascriptRequirement),
-        cwlVersion
+        cwlVersion, compatOptions.canFind("extended-props"),
     );
 
     // 4. Validate the input object against the inputs schema for the process.
@@ -272,6 +306,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     import shaft.type.common : dumpJSON;
     import std.stdio : stdout;
     dumpJSON(staged.parameters, stdout.lockingTextWriter);
+    stdout.writeln;
 
     return 0;
 }

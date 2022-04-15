@@ -280,7 +280,7 @@ EOS";
 
     auto clt = Loader.fromString(cwlDoc).load.as!CommandLineTool;
 
-    auto evaluator = Evaluator(null, "v1.0");
+    auto evaluator = Evaluator(null, "v1.0", false);
 
     auto args = buildCommandLine(
         clt,
