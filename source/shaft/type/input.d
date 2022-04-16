@@ -181,7 +181,13 @@ in(params.type == NodeType.mapping)
         }
 
         auto type = p.type_.match!(
-            (None _) => DeclaredType("Any"), // v1.0 only: assumes Any, TODO: check corresponding conformance test
+            (None _) { // v1.0 only
+                // See_Also: https://www.commonwl.org/v1.1/CommandLineTool.html#Changelog
+                // > Fixed schema error where the `type` field inside the `inputs` and `outputs` field was incorrectly listed as optional.
+                import std.format : format;
+                enforce(false, format!"`type` field is missing in `%s` input parameter"(id));
+                return DeclaredType("Any");
+            },
             others => DeclaredType(others),
         );
 

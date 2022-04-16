@@ -117,9 +117,10 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                 bool streamable = o.streamable_.orElse(false);
 
                 auto type = o.type_.tryMatch!(
-                    (None _) {
-                        // TODO: should be handled?
-                        binding = o.outputBinding_.orElse(null);
+                    (None _) { // v1.0 only
+                        // See_Also: https://www.commonwl.org/v1.1/CommandLineTool.html#Changelog
+                        // > Fixed schema error where the `type` field inside the `inputs` and `outputs` field was incorrectly listed as optional.
+                        enforce(false, format!"`type` field is missing in `%s` output parameter"(o.id_));
                         return DeclaredType("Any");
                     },
                     (stdout _) {
@@ -127,7 +128,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         enforce(o.outputBinding_.orElse(null) is null,
                             "`outputBinding` must be null for `stdout` type");
                         binding = new CommandOutputBinding;
-                        // binding.glob_ = clt.stdout_.tryMatch!((string s) => s); // TODO
+                        binding.glob_ = clt.stdout_.tryMatch!((string s) => s); // TODO
                         streamable = true;
                         return DeclaredType(new CWLType("File"));
                     },
@@ -136,7 +137,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         enforce(o.outputBinding_.orElse(null) is null,
                             "`outputBinding` must be null for `stderr` type");
                         binding = new CommandOutputBinding;
-                        // binding.glob_ = clt.stderr_.tryMatch!((string s) => s); // TODO
+                        binding.glob_ = clt.stderr_.tryMatch!((string s) => s); // TODO
                         streamable = true;
                         return DeclaredType(new CWLType("File"));
                     },
