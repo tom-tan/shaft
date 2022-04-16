@@ -204,8 +204,21 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             final switch(t.value_)
             {
             case "null": {
-                enforce(node.type == NodeType.null_);
-                return TypedValue(node, t);
+                if (node.type == NodeType.null_)
+                {
+                    return TypedValue(node, t);
+                }
+                else if (node.type == NodeType.sequence)
+                {
+                    import dyaml : YAMLNull;
+                    // hidden spec in v1.0
+                    enforce(node.length == 0);
+                    return TypedValue(Node(YAMLNull()), t);
+                }
+                else
+                {
+                    throw new Exception("null types required");
+                }
             }
             case "boolean": {
                 enforce(node.type == NodeType.boolean);
