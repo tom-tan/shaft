@@ -95,6 +95,13 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
             env[def.envName_] = evaluator.eval!string(def.envValue_, params.parameters, runtime);
         }
     }
+    else if (auto e = clt.dig!(["hints", "EnvVarRequirement"], EnvVarRequirement))
+    {
+        foreach(def; e.envDef_)
+        {
+            env[def.envName_] = evaluator.eval!string(def.envValue_, params.parameters, runtime);
+        }
+    }
 
     Pid pid;
     // 7. Execute the process.
