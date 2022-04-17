@@ -41,22 +41,18 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
 
     auto stdout = clt.stdout_.match!(
         (string exp) {
-            import dyaml : NodeType;
-            auto path = evaluator.eval(exp, params.parameters, runtime);
-            enforce(path.type == NodeType.string);
+            auto path = evaluator.eval!string(exp, params.parameters, runtime);
             // TODO:  If ..., or the resulting path contains illegal characters (such as the path separator /) it is an error.
-            return File(buildPath(runtime.outdir, path.as!string), "w");
+            return File(buildPath(runtime.outdir, path), "w");
         },
         none => File(buildPath(runtime.logdir, "stdout.txt"), "w"),
     );
 
     auto stderr = clt.stderr_.match!(
         (string exp) {
-            import dyaml : NodeType;
-            auto path = evaluator.eval(exp, params.parameters, runtime);
-            enforce(path.type == NodeType.string);
+            auto path = evaluator.eval!string(exp, params.parameters, runtime);
             // TODO:  If ..., or the resulting path contains illegal characters (such as the path separator /) it is an error.
-            return File(buildPath(runtime.outdir, path.as!string), "w");
+            return File(buildPath(runtime.outdir, path), "w");
         },
         none => File(buildPath(runtime.logdir, "stderr.txt"), "w"),
     );
