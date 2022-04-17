@@ -293,14 +293,13 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     // runtime.exitCode = ret; // v1.1 and later
 
     // 8. Capture results of process execution into the output object.
+    // 9. Validate the output object against the outputs schema for the process.
     import shaft.type.output : captureOutputs;
     auto outs = captureOutputs(cmd, fetched.parameters, runtime, evaluator);
 
     import shaft.staging : stageOut;
     mkdirRecurse(outdir);
     auto staged = stageOut(outs, outdir, forceOverwrite);
-
-    // 9. Validate the output object against the outputs schema for the process.
 
     // 10. Report the output object to the process caller.
     import shaft.type.common : dumpJSON;
