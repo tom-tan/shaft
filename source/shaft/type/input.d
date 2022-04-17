@@ -10,6 +10,7 @@ import dyaml : Node, NodeType;
 import cwl.v1_0.schema;
 import salad.type : Either, Optional, This;
 import shaft.type.common : DeterminedType, TypedParameters, TypedValue, TypeException;
+import shaft.type.common : TC_ = TypeConflicts;
 
 import std.typecons : Flag, Tuple, Yes;
 
@@ -28,7 +29,6 @@ alias DeclaredType = Either!(
         string
     )[],
 );
-
 
 string toStr(DeclaredType dt) pure @safe
 {
@@ -62,6 +62,8 @@ string toStr(DeclaredType dt) pure @safe
     );
 }
 
+alias TypeConflicts = TC_!(DeclaredType, toStr);
+
 ///
 class ParameterMissing : TypeException
 {
@@ -75,27 +77,6 @@ class ParameterMissing : TypeException
     }
 
     string id_;
-}
-
-///
-class TypeConflicts : TypeException
-{
-    this(DeclaredType expected, DeterminedType actual, string id = "",
-         string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure @trusted
-    {
-        import std.format : format;
-        import salad.type : match;
-        import shaft.type.common : toStrD = toStr;
-
-        super(format!"Type conflicts for `%s` (expected: `%s`, actual: `%s`)"(id, expected.toStr, actual.toStrD));
-        id_ = id;
-        expected_ = expected;
-        actual_ = actual;
-    }
-
-    string id_;
-    DeclaredType expected_;
-    DeterminedType actual_;
 }
 
 class InvalidObject : TypeException
@@ -321,10 +302,8 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap, 
 
                 return n.guessedType.tryMatch!(
                     (CWLType t) {
-                        if (t.value_ == "null" && declared == Yes.declared)
-                        {
-                            throw new Exception("Any type must not be null");
-                        }
+                        enforce(t.value_ != "null" || declared == No.declared,
+                                new TypeConflicts(type, n.guessedType));
                         return n.bindType(DeclaredType(t), defMap);
                     },
                     (ArrayType _) {

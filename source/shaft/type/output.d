@@ -11,7 +11,8 @@ import cwl.v1_0.schema;
 import salad.type : Either, None, Optional, This;
 
 import shaft.evaluator : Evaluator;
-import shaft.type.common : DeterminedType, TypedParameters, TypedValue;
+import shaft.type.common : DeterminedType, guessedType, TypedParameters, TypeException, TypedValue;
+import shaft.type.common : TC_ = TypeConflicts;
 import shaft.runtime : Runtime;
 
 import std.stdio : serr = stderr;
@@ -33,6 +34,40 @@ alias DeclaredType = Either!(
         string
     )[],
 );
+
+string toStr(DeclaredType dt) pure @safe
+{
+    import salad.type : match, orElse;
+
+    import std.algorithm : map;
+    import std.array : array;
+    import std.format : format;
+    import std.meta : AliasSeq;
+
+    alias funs = AliasSeq!(
+        (CWLType t) => cast(string)t.value_,
+        (CommandOutputRecordSchema s) => 
+            s.name_.orElse(format!"Record(%-(%s, %))"(s.fields_
+                                                      .orElse([])
+                                                      .map!(f => f.name_~": "~toStr(f.type_)).array)),
+        (CommandOutputEnumSchema s) => "enum",
+        (CommandOutputArraySchema s) => "array",
+        (string s) => s,
+    );
+
+    return dt.match!(
+        funs,
+        (Either!(
+            CWLType,
+            CommandOutputRecordSchema,
+            CommandOutputEnumSchema,
+            CommandOutputArraySchema,
+            string
+        )[] un) => format!"(%-(%s|%))"(un.map!(e => e.match!funs).array),
+    );
+}
+
+alias TypeConflicts = TC_!(DeclaredType, toStr);
 
 /**
  * See_Also: https://www.commonwl.org/v1.0/CommandLineTool.html#Output_binding
@@ -153,13 +188,20 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                     none => (string[]).init,
                 );
 
-                return tuple(
-                    o.id_,
-                    collectOutputParameter(
-                        Either!(Node, CommandOutputBinding)(binding), type,
-                        inputs, runtime, evaluator, streamable, o.format_, secondaryFiles
-                    )
-                );
+                try
+                {
+                    return tuple(
+                        o.id_,
+                        collectOutputParameter(
+                            Either!(Node, CommandOutputBinding)(binding), type,
+                            inputs, runtime, evaluator, streamable, o.format_, secondaryFiles
+                        )
+                    );
+                }
+                catch(TypeConflicts e)
+                {
+                    throw new TypeConflicts(e.expected_, e.actual_, o.id_);
+                }
             })
             .array
             .filter!(kv => kv[1].value != NodeType.null_)
@@ -212,7 +254,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 {
                     import dyaml : YAMLNull;
                     // hidden spec in v1.0
-                    enforce(node.length == 0);
+                    enforce(node.length == 0, new TypeConflicts(type, node.guessedType));
                     return TypedValue(Node(YAMLNull()), t);
                 }
                 else
@@ -221,19 +263,19 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 }
             }
             case "boolean": {
-                enforce(node.type == NodeType.boolean);
+                enforce(node.type == NodeType.boolean, new TypeConflicts(type, node.guessedType));
                 return TypedValue(node, t);
             }
             case "int", "long": {
-                enforce(node.type == NodeType.integer);
+                enforce(node.type == NodeType.integer, new TypeConflicts(type, node.guessedType));
                 return TypedValue(node, t);
             }
             case "float", "double": {
-                enforce(node.type == NodeType.decimal);
+                enforce(node.type == NodeType.decimal, new TypeConflicts(type, node.guessedType));
                 return TypedValue(node, t);
             }
             case "string": {
-                enforce(node.type == NodeType.string);
+                enforce(node.type == NodeType.string, new TypeConflicts(type, node.guessedType));
                 return TypedValue(node, t);
             }
             case "File": {
@@ -247,14 +289,14 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 else if (node.type == NodeType.sequence)
                 {
                     import std.array : array;
-                    enforce(node.sequence.array.length == 1);
+                    enforce(node.sequence.array.length == 1,
+                            new TypeConflicts(type, node.guessedType));
                     node = node[0];
                     file = new File(node);
                 }
                 else
                 {
-                    enforce(false, "type mismatch");
-                    return TypedValue.init;
+                    throw new TypeConflicts(type, node.guessedType);
                 }
                 file.format_ = format.match!(
                     (string exp) => Optional!string(evaluator.eval!string(exp, inputs, runtime)),
@@ -298,8 +340,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 }
                 else
                 {
-                    enforce(false, "type mismatch");
-                    return TypedValue.init;
+                    throw new TypeConflicts(type, node.guessedType);
                 }
                 dir.enforceValid; // TODO: more strict validation
                 return TypedValue(dir.toJSONNode, t);
@@ -378,8 +419,8 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     import shaft.type.common : EnumType;
                     import std.algorithm : canFind;
 
-                    enforce(node.type == NodeType.string);
-                    enforce(s.symbols_.canFind(node.as!string));
+                    enforce(node.type == NodeType.string, new TypeConflicts(type, node.guessedType));
+                    enforce(s.symbols_.canFind(node.as!string), new TypeConflicts(type, node.guessedType));
                     return TypedValue(node, EnumType("", Optional!CommandLineBinding.init));
                 },
                 (CommandOutputBinding binding) {
@@ -401,7 +442,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     import shaft.type.common : ArrayType;
                     import std.algorithm : fold, map;
 
-                    enforce(node.type == NodeType.sequence);
+                    enforce(node.type == NodeType.sequence, new TypeConflicts(type, node.guessedType));
                     
                     auto tvals = node
                         .sequence
@@ -437,16 +478,16 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             import shaft.type.common : guessedType;
             import std.format : format;
 
-            enforce(s == "Any", format!"Unknown output type: `%s`"(s));
+            enforce(s == "Any", new TypeException(format!"Unknown output type: `%s`"(s)));
 
             auto node = nodeOrBinding.match!(
                 (Node n) => n,
                 (CommandOutputBinding binding) {
-                    enforce(binding !is null, "Any must not be null");
+                    enforce!TypeException(binding !is null, "Any must not be null");
                     return processBinding(binding, inputs, runtime, evaluator);
                 }
             );
-            enforce(node.type != NodeType.null_, "Any must not be null");
+            enforce(node.type != NodeType.null_, new TypeConflicts(type, node.guessedType));
             return TypedValue(node, node.guessedType);
         },
         (Either!(
@@ -465,12 +506,12 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                         inputs, runtime, evaluator
                     );
                 }
-                catch(Exception e)
+                catch(TypeException e)
                 {
                     continue;
                 }
             }
-            throw new Exception("No matched type");
+            throw new TypeException("No matched type");
         },
     );
 }
