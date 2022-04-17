@@ -559,13 +559,15 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
         )
         .map!((pat_) {
             //  If an array is provided, find files that match any pattern in the array.
-            import std.file : dirEntries, isDir, SpanMode;
+            import std.file : dirEntries, exists, isDir, SpanMode;
             import std.path : buildNormalizedPath;
 
             auto built = buildNormalizedPath(runtime.outdir, pat_);
 
-            auto dirBase = built.isDir ? built : runtime.outdir;
-            auto pat = built.isDir ? "*" : pat_;
+            auto isDirectory = built.exists && built.isDir;
+
+            auto dirBase = isDirectory ? built : runtime.outdir;
+            auto pat = isDirectory ? "*" : pat_;
 
             return dirEntries(dirBase, pat, SpanMode.shallow);
         })
