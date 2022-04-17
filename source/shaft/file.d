@@ -136,7 +136,7 @@ in(node.type == NodeType.null_ || node["class"] == "File")
     ret.path_ = path;
     ret.basename_ = path.baseName;
     ret.dirname_ = path.dirName;
-    ret.nameroot_ = path.stripExtension;
+    ret.nameroot_ = path.baseName.stripExtension;
     if (auto ext = path.extension)
     {
         ret.nameext_ = path.extension;
