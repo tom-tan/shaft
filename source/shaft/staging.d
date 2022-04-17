@@ -73,6 +73,24 @@ in(dest.isDir)
 
     return tv.type.match!(
         (CWLType t) {
+            auto mkdirIfNeeded(string dst)
+            {
+                if (keepStructure == Yes.keepStructure)
+                {
+                    return dst;
+                }
+                else
+                {
+                    import std.file : mkdirRecurse;
+                    import std.path : buildPath;
+                    import std.uuid : randomUUID;
+
+                    auto base = buildPath(dst, randomUUID.toString);
+                    mkdirRecurse(base);
+                    return base;
+                }
+            }
+
             switch(t.value_) {
             case "File": {
                 import shaft.file : toStagedFile;
@@ -81,26 +99,7 @@ in(dest.isDir)
 
                 auto node = tv.value;
 
-                auto mkdirIfNeeded(string dst)
-                {
-                    if (keepStructure == Yes.keepStructure)
-                    {
-                        return dst;
-                    }
-                    else
-                    {
-                        import std.file : mkdirRecurse;
-                        import std.path : buildPath;
-                        import std.uuid : randomUUID;
-
-                        auto base = buildPath(dst, randomUUID.toString);
-                        mkdirRecurse(base);
-                        return base;
-                    }
-                }
-
                 string stagedPath;
-
                 if (auto con = "contents" in node)
                 {
                     // file literal
@@ -150,7 +149,95 @@ in(dest.isDir)
                 return stagedPath.toStagedFile(node).toJSONNode;
             }
             case "Directory": {
-                return tv.value; // TODO
+                import shaft.file : toStagedDirectory;
+                import shaft.type.common : toJSONNode;
+                import std.path : buildPath;
+
+                auto node = tv.value;
+
+                string stagedPath;
+                Node listing;
+                if (auto location = "location" in node)
+                {
+                    import salad.resolver : path;
+                    import std.path : baseName;
+
+                    auto bname = node["basename"].as!string;
+                    auto loc = location.as!string.path;
+                    if (loc.baseName != bname || forceStaging == Yes.forceStaging)
+                    {
+                        import std.exception : enforce;
+                        import std.file : exists, mkdir;
+                        import std.format : format;
+
+                        auto dir = mkdirIfNeeded(dest);
+                        stagedPath = buildPath(dir, bname);
+                        enforce(overwrite == Yes.overwrite || !stagedPath.exists,
+                            format!"Dirctory already exists: %s"(stagedPath));
+                        mkdir(stagedPath);
+                        if (auto listing_ = "listing" in node)
+                        {
+                            import shaft.type.common : DeterminedType;
+                            import std.algorithm : map;
+                            import std.array : array;
+
+                            assert(listing_.type == NodeType.sequence);
+                            auto lst = listing_
+                                .sequence
+                                .map!(l => stagingParam(TypedValue(l, DeterminedType(new CWLType(l["class"]))),
+                                                        stagedPath, Yes.keepStructure, Yes.forceStaging))
+                                .array;
+                            listing = Node(lst);
+                        }
+                    }
+                    else
+                    {
+                        stagedPath = loc;
+                        if (auto lst = "listing" in node)
+                        {
+                            listing = *lst;
+                        }
+                        else
+                        {
+                            import dyaml : YAMLNull;
+                            listing = Node(YAMLNull());
+                        }
+                    }
+                }
+                else
+                {
+                    import std.file : mkdir;
+
+                    // directory literal
+                    string bname;
+                    if (auto bn_ = "basename" in node)
+                    {
+                        bname = bn_.as!string;
+                    }
+                    else
+                    {
+                        import std.uuid : randomUUID;
+                        bname = randomUUID.toString;
+                    }
+                    auto dir = mkdirIfNeeded(dest);
+                    stagedPath = buildPath(dir, bname);
+                    mkdir(stagedPath);
+                    if (auto listing_ = "listing" in node)
+                    {
+                        import shaft.type.common : DeterminedType;
+                        import std.algorithm : map;
+                        import std.array : array;
+
+                        assert(listing_.type == NodeType.sequence);
+                        auto lst = listing_
+                            .sequence
+                            .map!(l => stagingParam(TypedValue(l, DeterminedType(new CWLType(l["class"]))),
+                                                    stagedPath, Yes.keepStructure, Yes.forceStaging))
+                            .array;
+                        listing = Node(lst);
+                    }
+                }
+                return stagedPath.toStagedDirectory(node, listing).toJSONNode;
             }
             default:
                 return tv.value;

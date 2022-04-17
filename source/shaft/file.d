@@ -12,14 +12,14 @@ import dyaml : Node, NodeType, YAMLNull;
 import salad.type : Either, None;
 
 import std.digest : isDigest;
-import std.file : exists;
+import std.file : isFile, isDir;
 
 /**
  * A subset of File that represents canonicalized internal File representation.
  * It can be:
  * - a file literal, or
  * - a File object that has only `location` with an absolute URI, `basename`,
- *   `secondaryFiles` (optional) and `format`.
+ *   `secondaryFiles` (optional) and `format` (optional).
  *
  * Note: It is introduced for documentation rather than type-based validation.
  */
@@ -34,7 +34,25 @@ alias URIFile = File;
  */
 alias StagedFile = File;
 
+/**
+ * A subset of Directory that represents canonicalized internal Directory representation.
+ * It can be:
+ * - a directory literal, or
+ * - a Directory object that has only `location` with an absolute URI, `basename`, and
+ *   `listing` (optional).
+ *
+ * Note: It is introduced for documentation rather than type-based validation.
+ */
+alias URIDirectory = Directory;
 
+/**
+ * A subset of Directory that represents already staged local directory.
+ * It is a Directory object that provides all the fields (except optional fields) and
+ * `path` and `location` have the same local path.
+ *
+ * Note: It is introduced for documentation rather than type-based validation.
+ */
+alias StagedDirectory = Directory;
 
 /**
  * Params:
@@ -94,12 +112,6 @@ URIFile toURIFile(File file, string baseURI)
     return ret;
 }
 
-/// TODO
-Directory toURIDirectory(Directory dir, string baseURI)
-{
-    return dir;
-}
-
 /**
  * Params:
  *   path = is a path to the staged file to complete `path`, `location`, `basename`,
@@ -107,8 +119,8 @@ Directory toURIDirectory(Directory dir, string baseURI)
  *   node = represnts URIFile to complete `format` (TODO: complete extension fields)
  *   seccondaryFils = Files and Directories for stageed `secondaryFiles`
  */
-StagedFile toStagedFile(string path, Node node = YAMLNull(), Either!(StagedFile, Directory)[] secondaryFiles = [])
-in(path.exists)
+StagedFile toStagedFile(string path, Node node = YAMLNull(), Node secondaryFiles = YAMLNull())
+in(path.isFile)
 in(node.type == NodeType.mapping || node.type == NodeType.null_)
 in(node.type == NodeType.null_ || node["class"] == "File")
 {
@@ -138,8 +150,8 @@ in(node.type == NodeType.null_ || node["class"] == "File")
     ret.checksum_ = path.digestFile!SHA1;
     ret.size_ = path.getSize.to!long;
 
-    alias SFType = typeof(ret.secondaryFiles_);
-    ret.secondaryFiles_ = secondaryFiles.empty ? SFType.init : SFType(secondaryFiles);
+    // alias SFType = typeof(ret.secondaryFiles_);
+    // ret.secondaryFiles_ = secondaryFiles.empty ? SFType.init : SFType(secondaryFiles);
 
     if (node.type == NodeType.mapping)
     {
@@ -160,6 +172,69 @@ if (isDigest!Hash)
 
     auto file = StdFile(filename);
     return format!"sha1$%s"(digest!Hash(file.byChunk(4096 * 1024)).toHexString!(LetterCase.lower));
+}
+
+/// TODO: LoadListingRequirement (v1.1 and later)
+URIDirectory toURIDirectory(Directory dir, string baseURI)
+{
+    import salad.resolver : absoluteURI;
+    import salad.type : match, Optional;
+    import std.algorithm : map;
+    import std.array : array;
+    import std.path : baseName;
+
+    alias OStr = Optional!string;
+
+    auto ret = new Directory;
+    ret.location_ = match!(
+        (None _1, None _2) => OStr.init,
+        (None _, string loc) => OStr(loc.absoluteURI(baseURI)),
+        (string path, None _) => OStr(path.absoluteURI(baseURI)), // TODO
+        (string path, string loc) => OStr(loc.absoluteURI(baseURI)),
+    )(dir.path_, dir.location_);
+
+    ret.basename_ = dir.basename_.match!(
+        (string name) => OStr(name),
+        _ => ret.location_.match!((string s) => OStr(s.baseName), none => OStr.init),
+    );
+
+    ret.listing_ = dir.listing_.match!(
+        (Either!(File, Directory)[] ff) => typeof(ret.listing_)(ff.map!(f => f.match!(
+            (File f) => Either!(File, Directory)(f.toURIFile(baseURI)),
+            (Directory d) => Either!(File, Directory)(d.toURIDirectory(baseURI)),
+        )).array),
+        _ => typeof(ret.listing_).init,
+    );
+    return ret;
+}
+
+///
+StagedDirectory toStagedDirectory(string path, Node node = YAMLNull(), Node listing = YAMLNull())
+in(path.isDir)
+in(node.type == NodeType.mapping || node.type == NodeType.null_)
+in(node.type == NodeType.null_ || node["class"] == "Directory")
+{
+    import std.path : baseName;
+    import std.range : empty;
+
+    auto ret = new Directory;
+    ret.location_ = path;
+    ret.path_ = path;
+    ret.basename_ = path.baseName;
+
+    alias ListingType = typeof(ret.listing_);
+    if (listing.type == NodeType.null_)
+    {
+        ret.listing_ = ListingType.init;
+    }
+    else
+    {
+        import salad.context : LoadingContext;
+        import salad.meta.impl : as_;
+        ret.listing_ = listing.as_!(typeof(ret.listing_))(LoadingContext.init);
+    }
+
+    return ret;
 }
 
 /**
@@ -218,4 +293,33 @@ void enforceValid(File file) pure @safe
  */
 void enforceValid(Directory dir) pure @safe
 {
+    import salad.type : match;
+    import std.algorithm : canFind, each, endsWith;
+    import std.exception : enforce;
+
+    match!(
+        (None _1, None _2) => dir.listing_.match!(
+            (Either!(File, Directory)[] ls) => true,
+            none => enforce(false),
+        ),
+        (None _, string loc) => true,
+        (string path, None _) => true,
+        (string path, string loc) => enforce(loc.endsWith(path),
+                                             "`path` and `location` have inconsistent values"), // TODO
+    )(dir.path_, dir.location_);
+
+    dir.basename_.match!(
+        (string s) => enforce(!s.canFind("/"), "basename must not include `/`"),
+        _ => true,
+    );
+
+    dir.listing_.match!(
+        (Either!(File, Directory)[] listing) => listing.each!(
+            ff => ff.match!(
+                (File f) => f.enforceValid, // TODO: validate location
+                (Directory d) => d.enforceValid, // TODO: validate location
+            )
+        ),
+        _ => true
+    );
 }

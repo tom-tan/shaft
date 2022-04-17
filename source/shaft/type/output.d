@@ -266,12 +266,43 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             }
             case "Directory": {
                 import shaft.file : enforceValid;
-                enforce(node.type == NodeType.mapping);
-                enforce(false, "Directory output type is not supported yet");
 
-                auto dir = new Directory(node);
+                Directory dir;
+                if (node.type == NodeType.mapping)
+                {
+                    dir = new Directory(node);
+                }
+                else if (node.type == NodeType.sequence)
+                {
+                    import salad.meta.impl : as_;
+                    import salad.context : LoadingContext;
+
+                    auto listingSchema = new CommandOutputArraySchema;
+                    alias ItemType = Either!(
+                        CWLType,
+                        CommandOutputRecordSchema,
+                        CommandOutputEnumSchema,
+                        CommandOutputArraySchema,
+                        string,
+                    );
+                    listingSchema.items_ = [ItemType(new CWLType("File")), ItemType(new CWLType("Directory"))];
+
+                    auto listing = collectOutputParameter(
+                        Either!(Node, CommandOutputBinding)(node), DeclaredType(listingSchema),
+                        inputs, runtime, evaluator
+                    );
+                    dir = new Directory;
+                    dir.listing_ = listing.value.as_!(Optional!(
+                        Either!(File, Directory)[]
+                    ))(LoadingContext.init);
+                }
+                else
+                {
+                    enforce(false, "type mismatch");
+                    return TypedValue.init;
+                }
                 dir.enforceValid; // TODO: more strict validation
-                return TypedValue(node, t);
+                return TypedValue(dir.toJSONNode, t);
             }
             }
         },
@@ -386,6 +417,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                                   return acc ~ dt;
                             },
                         )(Node((Node[]).init), (DeterminedType*[]).init);
+                    // TODO: secondaryFiles when File[]
                     return TypedValue(tvals[0].toJSONNode, ArrayType(tvals[1], Optional!CommandLineBinding.init));
                 },
                 (CommandOutputBinding binding) {
@@ -484,24 +516,42 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
             (string[] gs) => gs,
             none => (string[]).init,
         )
-        .map!((pat) {
+        .map!((pat_) {
             //  If an array is provided, find files that match any pattern in the array.
-            import std.file : dirEntries, SpanMode;
+            import std.file : dirEntries, isDir, SpanMode;
+            import std.path : buildNormalizedPath;
 
-            return dirEntries(runtime.outdir, pat, SpanMode.shallow);
+            auto built = buildNormalizedPath(runtime.outdir, pat_);
+
+            auto dirBase = built.isDir ? built : runtime.outdir;
+            auto pat = built.isDir ? "*" : pat_;
+
+            return dirEntries(dirBase, pat, SpanMode.shallow);
         })
         .joiner
         .map!((path) {
             import salad.type : orElse;
             import shaft.file : toStagedFile;
-            import std.file : read;
+            import std.file : read, isFile;
 
-            auto file = path.toStagedFile;
-            if (binding.loadContents_.orElse(false))
+            if (path.isFile)
             {
-                file.contents_ = cast(string)path.read(64*2^^10);
+                auto file = path.toStagedFile;
+                if (binding.loadContents_.orElse(false))
+                {
+                    file.contents_ = cast(string)path.read(64*2^^10);
+                }
+                return file.toJSONNode;
             }
-            return file.toJSONNode;
+            else
+            {
+                import dyaml : YAMLNull;
+                import std.exception : enforce;
+                import std.file : isDir;
+                assert(path.isDir);
+                enforce(false, "Not yet supported");
+                return Node(YAMLNull());
+            }
         })
         .array
         .toJSONNode;
