@@ -527,7 +527,7 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
     import dyaml : YAMLNull;
     import salad.type : match;
     import shaft.type.common : toJSONNode;
-    import std.algorithm : joiner, map;
+    import std.algorithm : joiner, map, sort;
     import std.array : array;
 
     if (binding is null)
@@ -535,7 +535,7 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
         return Node(YAMLNull());
     }
 
-    auto files = binding
+    auto paths = binding
         .glob_
         .match!(
             (string g) {
@@ -572,6 +572,13 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
             return dirEntries(dirBase, pat, SpanMode.shallow);
         })
         .joiner
+        .array;
+
+    // Paths must be sorted as specified by POSIX glob (3)
+    // See_Also: outputbinding_glob_sorted in conformance tests
+    paths.sort;
+
+    auto files = paths
         .map!((path) {
             import salad.type : orElse;
             import shaft.file : toStagedFile;
