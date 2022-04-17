@@ -163,7 +163,13 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         enforce(o.outputBinding_.orElse(null) is null,
                             "`outputBinding` must be null for `stdout` type");
                         binding = new CommandOutputBinding;
-                        binding.glob_ = clt.stdout_.tryMatch!((string s) => s); // TODO
+                        binding.glob_ = clt.stdout_.match!(
+                            (string s) => s,
+                            (_) {
+                                enforce(false, "stdout type without `stdout` field is not supported yet");
+                                return "";
+                            },
+                        );
                         streamable = true;
                         return DeclaredType(new CWLType("File"));
                     },
@@ -172,7 +178,13 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         enforce(o.outputBinding_.orElse(null) is null,
                             "`outputBinding` must be null for `stderr` type");
                         binding = new CommandOutputBinding;
-                        binding.glob_ = clt.stderr_.tryMatch!((string s) => s); // TODO
+                        binding.glob_ = clt.stderr_.match!(
+                            (string s) => s,
+                            (_) {
+                                enforce(false, "stderr type without `stderr` field is not supported yet");
+                                return "";
+                            },
+                        );
                         streamable = true;
                         return DeclaredType(new CWLType("File"));
                     },
