@@ -279,10 +279,12 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     import cwl.v1_0.schema : ResourceRequirement;
     import shaft.runtime : Runtime;
 
-    auto runtime = Runtime(fetched.parameters, routdir, rtmpdir, rlogdir,
+    auto runtime = Runtime(fetched.parameters, routdir, rtmpdir,
                            cmd.dig!(["requirements", "ResourceRequirement"], ResourceRequirement),
                            cmd.dig!(["hints", "ResourceRequirement"], ResourceRequirement),
                            evaluator);
+
+    runtime.setupInternalInfo(cmd, fetched.parameters, rlogdir, evaluator);
 
     // 6. Perform any further setup required by the specific process type.
     // 7. Execute the process.

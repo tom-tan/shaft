@@ -5,7 +5,7 @@
  */
 module shaft.runtime;
 
-import cwl.v1_0.schema : ResourceRequirement;
+import cwl.v1_0.schema : CommandLineTool, ResourceRequirement;
 import dyaml : Node;
 import salad.type : Optional;
 import shaft.evaluator : Evaluator;
@@ -20,22 +20,93 @@ struct Runtime
     long outdirSize;
     long tmpdirSize;
     Optional!int exitCode; // v1.1 and later
-    string logdir; /// internal use only
+
+    InternalInfo internal;
 
     ///
-    this(Node inputs, string outdir, string tmpdir, string logdir,
+    this(Node inputs, string outdir, string tmpdir,
          ResourceRequirement req, ResourceRequirement hint,
          Evaluator evaluator) @safe
     {
         this.outdir = outdir;
         this.tmpdir = tmpdir;
-        this.logdir = logdir;
 
         cores = reserved!"cores"(availableCores, inputs, req, hint, evaluator);
         ram = reserved!"ram"(availableRam, inputs, req, hint, evaluator);
 
         outdirSize = reserved!"outdir"(availableOutdir, inputs, req, hint, evaluator);
         tmpdirSize = reserved!"tmpdir"(availableTmpdir, inputs, req, hint, evaluator);
+    }
+
+    ///
+    void setupInternalInfo(CommandLineTool cmd, Node inputs, string logdir, Evaluator evaluator)
+    {
+        import salad.type : match;
+
+        internal.logdir = logdir;
+
+        internal.stdin = cmd.stdin_.match!(
+            (string exp) => Optional!string(evaluator.eval!string(exp, inputs, this)),
+            _ => Optional!string.init,
+        );
+
+        internal.stdout = cmd.stdout_.match!(
+            (string exp) {
+                import std.algorithm : canFind;
+                import std.exception : enforce;
+
+                auto ret = evaluator.eval!string(exp, inputs, this);
+                //  If ... the resulting path contains illegal characters (such as the path separator `/`) it is an error.
+                enforce(!ret.canFind("/"));
+                return Optional!string(ret);
+            },
+            (_) {
+                import cwl.v1_0.schema : stdout;
+                import std.algorithm : any;
+
+                auto needStdout = cmd
+                    .outputs_
+                    .any!(cop => cop.type_.match!((stdout _) => true, others => false));
+                if (needStdout)
+                {
+                    import std.uuid : randomUUID;
+                    return Optional!string(randomUUID().toString());
+                }
+                else
+                {
+                    return Optional!string.init;
+                }
+            },
+        );
+
+        internal.stderr = cmd.stderr_.match!(
+            (string exp) {
+                import std.algorithm : canFind;
+                import std.exception : enforce;
+
+                auto ret = evaluator.eval!string(exp, inputs, this);
+                //  If ... the resulting path contains illegal characters (such as the path separator `/`) it is an error.
+                enforce(!ret.canFind("/"));
+                return Optional!string(ret);
+            },
+            (_) {
+                import cwl.v1_0.schema : stderr;
+                import std.algorithm : any;
+
+                auto needStderr = cmd
+                    .outputs_
+                    .any!(cop => cop.type_.match!((stderr _) => true, others => false));
+                if (needStderr)
+                {
+                    import std.uuid : randomUUID;
+                    return Optional!string(randomUUID().toString());
+                }
+                else
+                {
+                    return Optional!string.init;
+                }
+            },
+        );
     }
 
     ///
@@ -62,6 +133,15 @@ struct Runtime
 
         return ret;
     }
+}
+
+/// Extra runtime information for internal use
+struct InternalInfo
+{
+    string logdir;
+    Optional!string stdin;
+    Optional!string stdout;
+    Optional!string stderr;
 }
 
 ///

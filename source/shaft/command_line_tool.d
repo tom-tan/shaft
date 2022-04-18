@@ -31,30 +31,19 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     import std.stdio : File;
     // 6. Perform any further setup required by the specific process type.
 
-    // TODO: consider the following cases:
-    // - params.parameters refer `stdin` with `type: stdin`
-    // - `stdin` field refers inut parameter
-    auto stdin = clt.stdin_.match!(
-        (string exp) => File(evaluator.eval!string(exp, params.parameters, runtime)),
-        none => File("/dev/null"),
+    auto stdin = runtime.internal.stdin.match!(
+        (string file) => File(file),
+        _ => File("/dev/null"),
     );
 
-    auto stdout = clt.stdout_.match!(
-        (string exp) {
-            auto path = evaluator.eval!string(exp, params.parameters, runtime);
-            // TODO:  If ..., or the resulting path contains illegal characters (such as the path separator /) it is an error.
-            return File(buildPath(runtime.outdir, path), "w");
-        },
-        none => File(buildPath(runtime.logdir, "stdout.txt"), "w"),
+    auto stdout = runtime.internal.stdout.match!(
+        (string basename) => File(buildPath(runtime.outdir, basename), "w"),
+        _ => File(buildPath(runtime.internal.logdir, "stdout.txt"), "w"),
     );
 
-    auto stderr = clt.stderr_.match!(
-        (string exp) {
-            auto path = evaluator.eval!string(exp, params.parameters, runtime);
-            // TODO:  If ..., or the resulting path contains illegal characters (such as the path separator /) it is an error.
-            return File(buildPath(runtime.outdir, path), "w");
-        },
-        none => File(buildPath(runtime.logdir, "stderr.txt"), "w"),
+    auto stderr = runtime.internal.stderr.match!(
+        (string basename) => File(buildPath(runtime.outdir, basename), "w"),
+        _ => File(buildPath(runtime.internal.logdir, "stderr.txt"), "w"),
     );
 
     version(none) // TODO
@@ -288,7 +277,7 @@ EOS";
     auto args = buildCommandLine(
         clt,
         params,
-        Runtime(params.parameters, "outDir", "tmpDir", "logDir", null, null, evaluator),
+        Runtime(params.parameters, "outDir", "tmpDir", null, null, evaluator),
         evaluator
     );
 
