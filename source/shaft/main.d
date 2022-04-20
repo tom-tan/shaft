@@ -246,7 +246,8 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     // TODO: pass evaluator (CommandInputRecordField may have an Expression)
     auto typedParams = annotateInputParameters(inp, cmd.inputs_,
                                                cmd.dig!(["requirements", "SchemaDefRequirement"],
-                                                        SchemaDefRequirement));
+                                                        SchemaDefRequirement),
+                                               cmd.context);
 
     import shaft.staging : fetch;
     auto fetched = typedParams.fetch(rstagedir);

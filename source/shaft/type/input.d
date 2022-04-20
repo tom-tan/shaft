@@ -8,6 +8,7 @@ module shaft.type.input;
 import dyaml : Node, NodeType;
 
 import cwl.v1_0.schema;
+import salad.context : LoadingContext;
 import salad.type : Either, Optional, This;
 import shaft.type.common : DeterminedType, TypedParameters, TypedValue, TypeException;
 import shaft.type.common : TC_ = TypeConflicts;
@@ -109,7 +110,7 @@ class InvalidObject : TypeException
  */
 TypedParameters annotateInputParameters(
     ref Node params, CommandInputParameter[] paramDefs,
-    SchemaDefRequirement defs)
+    SchemaDefRequirement defs, LoadingContext context)
 in(params.type == NodeType.mapping)
 {
     import shaft.type.common : toJSONNode;
@@ -121,15 +122,20 @@ in(params.type == NodeType.mapping)
     DeclaredType[string] defMap;
     if (defs !is null)
     {
-        import salad.type : match;
+        import salad.type : tryMatch;
         import salad.util : edig;
         import std.algorithm : map;
         import std.range : assocArray;
 
         defMap = () @trusted {
             return defs.types_
-                       .map!(d => d.match!(t => tuple(t.edig!("name", string),
-                                                      DeclaredType(t.toCommandSchema))))
+                       .map!(d => d.tryMatch!(
+                           (InputArraySchema s) {
+                               enforce(false, "InputArraySchema in ScheemaDefRequirement is not supported");
+                               return tuple("", DeclaredType.init);
+                           },
+                           t => tuple(t.identifier, DeclaredType(t.toCommandSchema)))
+                       )
                        .assocArray;
         }();
     }
@@ -175,7 +181,7 @@ in(params.type == NodeType.mapping)
         TypedValue v;
         try
         {
-            v = n.bindType(type, defMap);
+            v = n.bindType(type, defMap, context);
         }
         catch(TypeConflicts e)
         {
@@ -197,7 +203,10 @@ in(params.type == NodeType.mapping)
 }
 
 ///
-TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap, Flag!"declared" declared = Yes.declared)
+TypedValue bindType(
+    ref Node n, DeclaredType type, DeclaredType[string] defMap,
+    LoadingContext context, Flag!"declared" declared = Yes.declared
+)
 {
     import salad.type : match;
     import shaft.type.common : guessedType, toJSONNode;
@@ -252,16 +261,24 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap, 
             auto tv = s.fields_
                        .orElse([])
                        .map!((f) {
+                           import dyaml : YAMLNull;
                            import std.typecons : tuple;
+
                            auto name = f.name_;
-                           auto dt = n[name].bindType(f.type_, defMap, declared);
+                           auto fval = name in n ? n[name] : Node(YAMLNull());
+
+                           auto dt = fval.bindType(f.type_, defMap, context, declared);
                            return tuple(name, dt.type, dt.value, f.inputBinding_);
                        })
                        .fold!(
                            (acc, e) { acc.add(e[0].toJSONNode, e[2]); return acc; },
                            (acc, e) {
                                import std.typecons : tuple;
-                               acc[e[0]] = tuple(&e[1], e[3]);
+                               import std.algorithm : moveEmplace;
+
+                               auto dt = new DeterminedType;
+                               moveEmplace(e[1], *dt);
+                               acc[e[0]] = tuple(dt, e[3]);
                                return acc;
                            },
                        )(Node((Node[string]).init), (Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
@@ -281,7 +298,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap, 
             enforce(n.type == NodeType.sequence, new TypeConflicts(type, n.guessedType));
 
             auto tvals = n.sequence
-                          .map!(e => e.bindType(s.items_, defMap, declared))
+                          .map!(e => e.bindType(s.items_, defMap, context, declared))
                           .fold!(
                               (acc, e) { acc.add(e.value); return acc; },
                               (acc, e) @trusted {
@@ -304,13 +321,13 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap, 
                     (CWLType t) {
                         enforce(t.value_ != "null" || declared == No.declared,
                                 new TypeConflicts(type, n.guessedType));
-                        return n.bindType(DeclaredType(t), defMap);
+                        return n.bindType(DeclaredType(t), defMap, context);
                     },
                     (ArrayType _) {
                         assert(n.type == NodeType.sequence);
                         auto schema = new CommandInputArraySchema;
                         schema.items_ = "Any";
-                        return n.bindType(DeclaredType(schema), defMap, No.declared);
+                        return n.bindType(DeclaredType(schema), defMap, context, No.declared);
                     },
                     (RecordType r) {
                         import std.algorithm : map;
@@ -324,14 +341,20 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap, 
                             fschema.type_ = "Any";
                             return fschema;
                         }).array;
-                        return n.bindType(DeclaredType(schema), defMap, No.declared);
+                        return n.bindType(DeclaredType(schema), defMap, context, No.declared);
                     },
                 );
             }
             else
             {
-                auto def = *enforce(s in defMap, new TypeConflicts(type, n.guessedType));
-                return n.bindType(def, defMap);
+                import salad.resolver : resolveIdentifier;
+
+                auto id = s.resolveIdentifier(context);
+                import std.stdio : err = stderr;
+                err.writefln!"Lookup: `%s` -> `%s`"(s, id);
+
+                auto def = *enforce(id in defMap, new TypeConflicts(type, n.guessedType));
+                return n.bindType(def, defMap, context);
             }
         },
         (Either!(
@@ -347,7 +370,7 @@ TypedValue bindType(ref Node n, DeclaredType type, DeclaredType[string] defMap, 
                 import salad.type : Optional;
                 try
                 {
-                    return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap));
+                    return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap, context));
                 }
                 catch (TypeException e)
                 {
@@ -367,7 +390,7 @@ unittest
 
     auto type = new CWLType("int");
     auto val = Node(10);
-    auto bound = val.bindType(DeclaredType(type), (DeclaredType[string]).init);
+    auto bound = val.bindType(DeclaredType(type), (DeclaredType[string]).init, LoadingContext.init);
     assert(bound.type.tryMatch!((CWLType t) => t.value_ == "int"));
 }
 
@@ -385,6 +408,7 @@ CommandInputRecordSchema toCommandSchema(InputRecordSchema schema)
     );
     ret.label_ = schema.label_;
     ret.name_ = schema.name_;
+    ret.identifier = schema.identifier;
     return ret;
 }
 
@@ -435,6 +459,7 @@ CommandInputEnumSchema toCommandSchema(InputEnumSchema schema) nothrow pure
     ret.symbols_ = schema.symbols_;
     ret.label_ = schema.label_;
     ret.name_ = schema.name_;
+    ret.identifier = schema.identifier;
     ret.inputBinding_ = schema.inputBinding_;
     return ret;
 }
