@@ -367,7 +367,7 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
             return toCmdElems(cmdElems, binding);
         },
         (EnumType etype) {
-            return toCmdElems(toCmdElems([self.as!string], etype.inputBinding.orElse(null)),
+            return toCmdElems(toCmdElems([self.as!string], etype.inputBinding.orElse(new CommandLineBinding)),
                               binding);
         },
         (ArrayType atype) {
