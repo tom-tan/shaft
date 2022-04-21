@@ -5,6 +5,7 @@
  */
 module shaft.evaluator;
 
+import shaft.exception : ExpressionFailed, FeatureUnsupported;
 import shaft.runtime : Runtime;
 
 import std.algorithm : endsWith, startsWith;
@@ -236,7 +237,10 @@ in(exp.endsWith(")"))
     {
         import std.exception : enforce;
 
-        enforce(enableExtProps, "`null` is not supported in parametr reference");
+        enforce!FeatureUnsupported(
+            enableExtProps,
+            "`null` is not supported in parametr reference. Use --enable-compat=extended-props",
+        );
         return Node(YAMLNull());
     }
 
@@ -254,8 +258,11 @@ in(exp.endsWith(")"))
             import std.conv : to;
 
             auto idx = f.to!int;
-            enforce(node.type == NodeType.sequence);
-            enforce(idx < node.length, format!"Out of index `%s` in `%s`"(f, exp));
+            enforce!ExpressionFailed(
+                node.type == NodeType.sequence,
+                format!"Invalid index access `%s` in `%s`"(idx, exp),
+            );
+            enforce!ExpressionFailed(idx < node.length, format!"Out of index `%s` in `%s`"(f, exp));
             node = node[idx];
         }
         else
@@ -264,13 +271,19 @@ in(exp.endsWith(")"))
             {
                 import std.exception : enforce;
         
-                enforce(enableExtProps, "`length` property is not supported in parametr reference");
+                enforce!FeatureUnsupported(
+                    enableExtProps,
+                    "`length` property is not supported in parametr reference. Use --enable-compat=extended-props"
+                );
                 node = Node(node.length).toJSONNode;
             }
             else
             {
-                enforce(node.type == NodeType.mapping);
-                node = *enforce(f in node, format!"Missing field `%s` in `%s`"(f, exp));
+                enforce!ExpressionFailed(
+                    node.type == NodeType.mapping,
+                    format!"Invalid index access `%s` in `%s`"(f, exp),
+                );
+                node = *enforce!ExpressionFailed(f in node, format!"Missing field `%s` in `%s`"(f, exp));
             }
         }
     }
