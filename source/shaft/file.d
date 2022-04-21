@@ -12,7 +12,9 @@ import dyaml : Node, NodeType, YAMLNull;
 import salad.type : Either, None;
 
 import std.digest : isDigest;
+import std.exception : assertNotThrown;
 import std.file : isFile, isDir;
+import std.path : isAbsolute;
 
 /**
  * A subset of File that represents canonicalized internal File representation.
@@ -59,7 +61,12 @@ alias StagedDirectory = Directory;
  *   file = is a File object. It can be any valid File object
  *   baseURI = is a URI to resolve a relative URI to an absolute URI
  */
-URIFile toURIFile(File file, string baseURI)
+URIFile toURIFile(File file)
+in
+{
+    file.enforceValid.assertNotThrown;
+}
+do
 {
     import salad.resolver : absoluteURI;
     import salad.type : match, None, Optional, tryMatch;
@@ -72,9 +79,9 @@ URIFile toURIFile(File file, string baseURI)
     auto ret = new File;
     ret.location_ = match!(
         (None _1, None _2) => OStr.init,
-        (None _, string loc) => OStr(loc.absoluteURI(baseURI)),
-        (string path, None _) => OStr(path.absoluteURI(baseURI)), // TODO
-        (string path, string loc) => OStr(loc.absoluteURI(baseURI)),
+        (None _, string loc) => OStr(loc),
+        (string path, None _) => OStr(path.absoluteURI),
+        (string _, string loc) => OStr(loc),
     )(file.path_, file.location_);
 
     ret.basename_ = file.basename_.match!(
@@ -100,8 +107,8 @@ URIFile toURIFile(File file, string baseURI)
 
     ret.secondaryFiles_ = file.secondaryFiles_.match!(
         (Either!(File, Directory)[] ff) => typeof(ret.secondaryFiles_)(ff.map!(f => f.match!(
-            (File f) => Either!(File, Directory)(f.toURIFile(baseURI)),
-            (Directory dir) => Either!(File, Directory)(dir.toURIDirectory(baseURI)),
+            (File f) => Either!(File, Directory)(f.toURIFile),
+            (Directory dir) => Either!(File, Directory)(dir.toURIDirectory),
         )).array),
         _ => typeof(ret.secondaryFiles_).init,
     );
@@ -121,9 +128,11 @@ URIFile toURIFile(File file, string baseURI)
  */
 StagedFile toStagedFile(string path, Node node = YAMLNull(), Node secondaryFiles = YAMLNull())
 in(path.isFile)
+in(path.isAbsolute)
 in(node.type == NodeType.mapping || node.type == NodeType.null_)
 in(node.type == NodeType.null_ || node["class"] == "File")
 {
+    import salad.resolver : absoluteURI;
     import std.conv : to;
     import std.digest.sha : SHA1;
     import std.file : getSize;
@@ -132,7 +141,7 @@ in(node.type == NodeType.null_ || node["class"] == "File")
 
     auto ret = new File;
 
-    ret.location_ = path;
+    ret.location_ = path.absoluteURI;
     ret.path_ = path;
     ret.basename_ = path.baseName;
     ret.dirname_ = path.dirName;
@@ -175,7 +184,12 @@ if (isDigest!Hash)
 }
 
 /// TODO: LoadListingRequirement (v1.1 and later)
-URIDirectory toURIDirectory(Directory dir, string baseURI)
+URIDirectory toURIDirectory(Directory dir)
+in
+{
+    dir.enforceValid.assertNotThrown;
+}
+do
 {
     import salad.resolver : absoluteURI;
     import salad.type : match, Optional;
@@ -188,9 +202,9 @@ URIDirectory toURIDirectory(Directory dir, string baseURI)
     auto ret = new Directory;
     ret.location_ = match!(
         (None _1, None _2) => OStr.init,
-        (None _, string loc) => OStr(loc.absoluteURI(baseURI)),
-        (string path, None _) => OStr(path.absoluteURI(baseURI)), // TODO
-        (string path, string loc) => OStr(loc.absoluteURI(baseURI)),
+        (None _, string loc) => OStr(loc),
+        (string path, None _) => OStr(path.absoluteURI),
+        (string _, string loc) => OStr(loc),
     )(dir.path_, dir.location_);
 
     ret.basename_ = dir.basename_.match!(
@@ -200,8 +214,8 @@ URIDirectory toURIDirectory(Directory dir, string baseURI)
 
     ret.listing_ = dir.listing_.match!(
         (Either!(File, Directory)[] ff) => typeof(ret.listing_)(ff.map!(f => f.match!(
-            (File f) => Either!(File, Directory)(f.toURIFile(baseURI)),
-            (Directory d) => Either!(File, Directory)(d.toURIDirectory(baseURI)),
+            (File f) => Either!(File, Directory)(f.toURIFile),
+            (Directory d) => Either!(File, Directory)(d.toURIDirectory),
         )).array),
         _ => typeof(ret.listing_).init,
     );
@@ -211,14 +225,16 @@ URIDirectory toURIDirectory(Directory dir, string baseURI)
 ///
 StagedDirectory toStagedDirectory(string path, Node node = YAMLNull(), Node listing = YAMLNull())
 in(path.isDir)
+in(path.isAbsolute)
 in(node.type == NodeType.mapping || node.type == NodeType.null_)
 in(node.type == NodeType.null_ || node["class"] == "Directory")
 {
+    import salad.resolver : absoluteURI;
     import std.path : baseName;
     import std.range : empty;
 
     auto ret = new Directory;
-    ret.location_ = path;
+    ret.location_ = path.absoluteURI;
     ret.path_ = path;
     ret.basename_ = path.baseName;
 
@@ -252,12 +268,33 @@ void enforceValid(File file) pure @safe
             (string s) => enforce(s.length <= 64*2^^10, "too large `contents` field"),
             none => enforce(false),
         ),
-        (None _, string loc) => enforce(file.contents_.tryMatch!((None _) => true),
-                                        "`location` and `contents` fields are exclusive"),
-        (string path, None _) => enforce(file.contents_.tryMatch!((None _) => true),
-                                         "`path` and `contents` fields are exclusive"),
-        (string path, string loc) => enforce(loc.endsWith(path),
-                                             "`path` and `location` have inconsistent values"), // TODO
+        (None _, string loc) {
+            import std.format : format;
+            import salad.resolver : isAbsoluteURI;
+
+            assert(loc.isAbsoluteURI, format!"`location` (%s) must be an absolute URI"(loc));
+            enforce(file.contents_.tryMatch!((None _) => true), "`location` and `contents` fields are exclusive");
+            return true;
+        },
+        (string path, None _) {
+            import salad.resolver : isAbsoluteURI;
+            import std.format : format;
+            import std.path : isAbsolute;
+
+            assert(path.isAbsolute || path.isAbsoluteURI, format!"`path` (%s) must be absolute"(path));
+            enforce(file.contents_.tryMatch!((None _) => true), "`path` and `contents` fields are exclusive");
+            return true;
+        },
+        (string path, string loc) {
+            import salad.resolver : isAbsoluteURI;
+            import std.format : format;
+            import std.path : isAbsolute;
+
+            assert(path.isAbsolute || path.isAbsoluteURI, format!"`path` (%s) must be absolute"(path));
+            assert(loc.isAbsoluteURI, format!"`location` (%s) must be an absolute URI"(loc));
+            enforce(loc.endsWith(path), "`path` and `location` have inconsistent values");
+            return true;
+        },
     )(file.path_, file.location_);
 
     file.basename_.match!(
@@ -302,10 +339,31 @@ void enforceValid(Directory dir) pure @safe
             (Either!(File, Directory)[] ls) => true,
             none => enforce(false),
         ),
-        (None _, string loc) => true,
-        (string path, None _) => true,
-        (string path, string loc) => enforce(loc.endsWith(path),
-                                             "`path` and `location` have inconsistent values"), // TODO
+        (None _, string loc) {
+            import salad.resolver : isAbsoluteURI;
+            import std.format : format;
+
+            assert(loc.isAbsoluteURI, format!"`location` (%s) must be an absolute URI"(loc));
+            return true;
+        },
+        (string path, None _) {
+            import salad.resolver : isAbsoluteURI;
+            import std.format : format;
+            import std.path : isAbsolute;
+
+            assert(path.isAbsolute || path.isAbsoluteURI, format!"`path` (%s) must be absolute"(path));
+            return true;
+        },
+        (string path, string loc) {
+            import salad.resolver : isAbsoluteURI;
+            import std.format : format;
+            import std.path : isAbsolute;
+
+            assert(path.isAbsolute || path.isAbsoluteURI, format!"`path` (%s) must be absolute"(path));
+            assert(loc.isAbsoluteURI, format!"`location` (%s) must be an absolute URI"(loc));
+            enforce(loc.endsWith(path), "`path` and `location` have inconsistent values");
+            return true;
+        },
     )(dir.path_, dir.location_);
 
     dir.basename_.match!(

@@ -233,22 +233,24 @@ TypedValue bindType(
                 enforce(n.type == NodeType.string, new TypeConflicts(type, n.guessedType));
                 return TypedValue(n, t);
             case "File":
+                import salad.meta.impl : as_;
                 import shaft.file : enforceValid, toURIFile;
                 import std.path : dirName;
                 enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
-                auto file = new File(n);
+                auto file = n.as_!File(context);
                 file.enforceValid;
-                file = file.toURIFile(n.startMark.name.dirName);
+                file = file.toURIFile;
                 return TypedValue(file.toJSONNode, t);
             case "Directory":
+                import salad.meta.impl : as_;
                 import shaft.file : enforceValid, toURIDirectory;
                 import std.path : dirName;
                 enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
 
-                auto dir = new Directory(n);
+                auto dir = n.as_!Directory(context);
                 dir.enforceValid;
-                dir = dir.toURIDirectory(n.startMark.name.dirName);
+                dir = dir.toURIDirectory;
                 return TypedValue(dir.toJSONNode, t);
             }
         },
@@ -350,9 +352,6 @@ TypedValue bindType(
                 import salad.resolver : resolveIdentifier;
 
                 auto id = s.resolveIdentifier(context);
-                import std.stdio : err = stderr;
-                err.writefln!"Lookup: `%s` -> `%s`"(s, id);
-
                 auto def = *enforce(id in defMap, new TypeConflicts(type, n.guessedType));
                 return n.bindType(def, defMap, context);
             }

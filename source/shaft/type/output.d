@@ -8,6 +8,7 @@ module shaft.type.output;
 import dyaml : Node;
 
 import cwl.v1_0.schema;
+import salad.context : LoadingContext;
 import salad.type : Either, None, Optional, This;
 
 import shaft.evaluator : Evaluator;
@@ -112,7 +113,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         collectOutputParameter(
                             Either!(Node, CommandOutputBinding)(*n),
                             o.type_.tryMatch!(t => DeclaredType(t)),
-                            inputs, runtime, evaluator
+                            inputs, runtime, clt.context, evaluator
                         )
                     );
                 }
@@ -124,7 +125,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         collectOutputParameter(
                             Either!(Node, CommandOutputBinding)(Node(YAMLNull())),
                             o.type_.tryMatch!(t => DeclaredType(t)),
-                            inputs, runtime, evaluator
+                            inputs, runtime, clt.context, evaluator
                         )
                     );
                 }
@@ -194,7 +195,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         o.id_,
                         collectOutputParameter(
                             Either!(Node, CommandOutputBinding)(binding), type,
-                            inputs, runtime, evaluator, streamable, o.format_, secondaryFiles
+                            inputs, runtime, clt.context, evaluator, streamable, o.format_, secondaryFiles
                         )
                     );
                 }
@@ -219,7 +220,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
  * Note: It assumes that the parent `outputBinding` takes precedence over children's `outputBinding`s
  */
 TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBinding, DeclaredType type,
-                            Node inputs, Runtime runtime, Evaluator evaluator,
+                            Node inputs, Runtime runtime, LoadingContext context, Evaluator evaluator,
                             bool streamable = false, Optional!string format = None(), string[] secondaryFiles = [])
 {
     import dyaml : NodeType;
@@ -279,12 +280,13 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 return TypedValue(node, t);
             }
             case "File": {
+                import salad.meta.impl : as_;
                 import shaft.file : enforceValid, toURIFile;
 
                 File file;
                 if (node.type == NodeType.mapping)
                 {
-                    file = new File(node);
+                    file = node.as_!File(context);
                 }
                 else if (node.type == NodeType.sequence)
                 {
@@ -292,7 +294,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     enforce(node.sequence.array.length == 1,
                             new TypeConflicts(type, node.guessedType));
                     node = node[0];
-                    file = new File(node);
+                    file = node.as_!File(context);
                 }
                 else
                 {
@@ -304,21 +306,19 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 );
                 // TODO: secondaryFiles
                 file.enforceValid;
-                return TypedValue(file.toURIFile("/it-must-not-be-used/").toJSONNode, t);
+                return TypedValue(file.toURIFile.toJSONNode, t);
             }
             case "Directory": {
-                import shaft.file : enforceValid;
+                import salad.meta.impl : as_;
+                import shaft.file : enforceValid, toURIDirectory;
 
                 Directory dir;
                 if (node.type == NodeType.mapping)
                 {
-                    dir = new Directory(node);
+                    dir = node.as_!Directory(context);
                 }
                 else if (node.type == NodeType.sequence)
                 {
-                    import salad.meta.impl : as_;
-                    import salad.context : LoadingContext;
-
                     auto listingSchema = new CommandOutputArraySchema;
                     alias ItemType = Either!(
                         CWLType,
@@ -331,19 +331,19 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
 
                     auto listing = collectOutputParameter(
                         Either!(Node, CommandOutputBinding)(node), DeclaredType(listingSchema),
-                        inputs, runtime, evaluator
+                        inputs, runtime, context, evaluator
                     );
                     dir = new Directory;
                     dir.listing_ = listing.value.as_!(Optional!(
                         Either!(File, Directory)[]
-                    ))(LoadingContext.init);
+                    ))(context);
                 }
                 else
                 {
                     throw new TypeConflicts(type, node.guessedType);
                 }
                 dir.enforceValid; // TODO: more strict validation
-                return TypedValue(dir.toJSONNode, t);
+                return TypedValue(dir.toURIDirectory.toJSONNode, t);
             }
             }
         },
@@ -367,7 +367,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                             auto fnode = *enforce(f.name_ in node);
                             auto collected = collectOutputParameter(
                                 Either!(Node, CommandOutputBinding)(fnode), f.type_,
-                                inputs, runtime, evaluator
+                                inputs, runtime, context, evaluator
                             );
                             return tuple(f.name_, collected.type, collected.value);
                         })
@@ -390,7 +390,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                                 // collect and validate for each fields with f.outputBinding_
                                 auto collected = collectOutputParameter(
                                     Either!(Node, CommandOutputBinding)(f.outputBinding_.orElse(null)), f.type_,
-                                    inputs, runtime, evaluator
+                                    inputs, runtime, context, evaluator
                                 );
                                 return tuple(f.name_, collected.type, collected.value);
                             })
@@ -407,7 +407,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     {
                         return collectOutputParameter(
                             Either!(Node, CommandOutputBinding)(processBinding(binding, inputs, runtime, evaluator)),
-                            type, inputs, runtime, evaluator
+                            type, inputs, runtime, context, evaluator
                         );
                     }
                 },
@@ -431,7 +431,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     }
                     return collectOutputParameter(
                         Either!(Node, CommandOutputBinding)(processBinding(binding, inputs, runtime, evaluator)),
-                        type, inputs, runtime, evaluator
+                        type, inputs, runtime, context, evaluator
                     );
                 },
             );
@@ -447,7 +447,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     auto tvals = node
                         .sequence
                         .map!(e => collectOutputParameter(
-                            Either!(Node, CommandOutputBinding)(e), s.items_, inputs, runtime, evaluator)
+                            Either!(Node, CommandOutputBinding)(e), s.items_, inputs, runtime, context, evaluator)
                         )
                         .fold!(
                             (acc, e) { acc.add(e.value); return acc; },
@@ -469,7 +469,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     }
                     return collectOutputParameter(
                         Either!(Node, CommandOutputBinding)(processBinding(binding, inputs, runtime, evaluator)),
-                        type, inputs, runtime, evaluator
+                        type, inputs, runtime, context, evaluator
                     );
                 },
             );
@@ -503,7 +503,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 {
                     return collectOutputParameter(
                         nodeOrBinding, t.match!(tt => DeclaredType(tt)),
-                        inputs, runtime, evaluator
+                        inputs, runtime, context, evaluator
                     );
                 }
                 catch(TypeException e)
@@ -527,8 +527,9 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
     import dyaml : YAMLNull;
     import salad.type : match;
     import shaft.type.common : toJSONNode;
-    import std.algorithm : joiner, map, sort;
+    import std.algorithm : all, joiner, map, sort;
     import std.array : array;
+    import std.path : isAbsolute;
 
     if (binding is null)
     {
@@ -577,6 +578,7 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
     // Paths must be sorted as specified by POSIX glob (3)
     // See_Also: outputbinding_glob_sorted in conformance tests
     paths.sort;
+    assert(paths.all!isAbsolute);
 
     auto files = paths
         .map!((path) {
