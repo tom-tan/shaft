@@ -76,13 +76,23 @@ jobs:
         with:
           path: ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-dub-ldc-latest-${{ hashFiles(format('{0}/dub.json', env.GITHUB_WORKSPACE)) }}
-      - name: Build alpine dev container
+      - uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx
+      - name: Build container to build single binary
         id: dev_container
         uses: docker/build-push-action@v2
         with:
           file: Dockerfile.build
           load: true
           tags: shaft-dev
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
       - run: |
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
             sh -c "dub --cache=local build -b release-static && strip bin/shaft"
