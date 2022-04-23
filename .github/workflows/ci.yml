@@ -86,7 +86,7 @@ jobs:
           runner: ${{ github.workspace }}/bin/shaft
           timeout: 30
           tags: command_line_tool,expression_tool
-          extra: --remove-tmpdir --enable-compat=extended-props --veryverbose
+          extra: '--remove-tmpdir --veryverbose --enable-compat=extended-props'
       - name: Save badges
         if: success() && github.event_name == 'push'
         uses: common-workflow-lab/upload-conformance-badges@v1
