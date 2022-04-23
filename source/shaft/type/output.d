@@ -12,6 +12,7 @@ import salad.context : LoadingContext;
 import salad.type : Either, None, Optional, This;
 
 import shaft.evaluator : Evaluator;
+import shaft.exception : CaptureFailed, NotYetImplemented;
 import shaft.type.common : DeterminedType, guessedType, TypedParameters, TypeException, TypedValue;
 import shaft.type.common : TC_ = TypeConflicts;
 import shaft.runtime : Runtime;
@@ -93,7 +94,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
         import std.container.rbtree : redBlackTree;
 
         auto loaded = Loader.fromFile(outJSON).load;
-        enforce(loaded.type == NodeType.mapping);
+        enforce!CaptureFailed(loaded.type == NodeType.mapping);
 
         auto rest = redBlackTree(loaded.mappingKeys.map!(a => a.as!string));
 
@@ -136,7 +137,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                 (acc, e) { acc.add(e[0].toJSONNode, e[1].value); return acc; },
                 (acc, e) { acc[e[0]] = e[1].type; return acc; },
             )(Node((Node[string]).init), (DeterminedType[string]).init);
-        enforce(rest.empty,
+        enforce!CaptureFailed(rest.empty,
             format!"cwl.output.json contains undeclared output parameters: %-(%s, %)"(rest.array));
     }
     else
@@ -156,12 +157,12 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                     (None _) { // v1.0 only
                         // See_Also: https://www.commonwl.org/v1.1/CommandLineTool.html#Changelog
                         // > Fixed schema error where the `type` field inside the `inputs` and `outputs` field was incorrectly listed as optional.
-                        enforce(false, format!"`type` field is missing in `%s` output parameter"(o.id_));
+                        enforce!CaptureFailed(false, format!"`type` field is missing in `%s` output parameter"(o.id_));
                         return DeclaredType("Any");
                     },
                     (stdout _) {
                         // Only valid as a `type` for a `CommandLineTool` output with no `outputBinding` set.
-                        enforce(o.outputBinding_.orElse(null) is null,
+                        enforce!CaptureFailed(o.outputBinding_.orElse(null) is null,
                             "`outputBinding` must be null for `stdout` type");
                         binding = new CommandOutputBinding;
                         binding.glob_ = runtime.internal.stdout.tryMatch!((string path) => path);
@@ -170,7 +171,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                     },
                     (stderr _) {
                         // Only valid as a `type` for a `CommandLineTool` output with no `outputBinding` set.
-                        enforce(o.outputBinding_.orElse(null) is null,
+                        enforce!CaptureFailed(o.outputBinding_.orElse(null) is null,
                             "`outputBinding` must be null for `stderr` type");
                         binding = new CommandOutputBinding;
                         binding.glob_ = runtime.internal.stderr.tryMatch!((string path) => path);
@@ -260,7 +261,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 }
                 else
                 {
-                    throw new Exception("null types required");
+                    throw new TypeConflicts(type, node.guessedType);
                 }
             }
             case "boolean": {
@@ -357,7 +358,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
 
             return nodeOrBinding.match!(
                 (Node node) {
-                    enforce(node.type == NodeType.mapping);
+                    enforce(node.type == NodeType.mapping, new TypeConflicts(type, node.guessedType));
 
                     auto tv = s
                         .fields_
@@ -551,7 +552,7 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
                 }
                 else
                 {
-                    enforce(ret.type == NodeType.sequence);
+                    enforce!CaptureFailed(ret.type == NodeType.sequence);
                     return ret.sequence.map!(a => a.as!string).array;
                 }
             },
@@ -601,7 +602,7 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
                 import std.exception : enforce;
                 import std.file : isDir;
                 assert(path.isDir);
-                enforce(false, "Not yet supported");
+                enforce!NotYetImplemented(false, "Glob for Directory types is not yet supported");
                 return Node(YAMLNull());
             }
         })

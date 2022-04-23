@@ -47,7 +47,7 @@ class OutputFileNotFound : Exception
 }
 
 /// Fail to parse workflow
-class DocumentCannotBeLoaded : Exception
+class InvalidDocument : Exception
 {
     this(string msg, Mark mark, Throwable nextInChain = null) nothrow pure @trusted
     {

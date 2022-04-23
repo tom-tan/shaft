@@ -113,6 +113,8 @@ TypedParameters annotateInputParameters(
     SchemaDefRequirement defs, LoadingContext context)
 in(params.type == NodeType.mapping)
 {
+    import dyaml : Mark;
+    import shaft.exception : InvalidDocument;
     import shaft.type.common : toJSONNode;
     import std.algorithm : map;
     import std.container.rbtree : redBlackTree;
@@ -131,7 +133,13 @@ in(params.type == NodeType.mapping)
             return defs.types_
                        .map!(d => d.tryMatch!(
                            (InputArraySchema s) {
-                               enforce(false, "InputArraySchema in ScheemaDefRequirement is not supported");
+                               enforce(
+                                   false,
+                                   new InvalidDocument(
+                                       "InputArraySchema is not supported in SchemaDefRequirement",
+                                       Mark()
+                                   )
+                               );
                                return tuple("", DeclaredType.init);
                            },
                            t => tuple(t.identifier, DeclaredType(t.toCommandSchema)))
@@ -172,7 +180,13 @@ in(params.type == NodeType.mapping)
                 // See_Also: https://www.commonwl.org/v1.1/CommandLineTool.html#Changelog
                 // > Fixed schema error where the `type` field inside the `inputs` and `outputs` field was incorrectly listed as optional.
                 import std.format : format;
-                enforce(false, format!"`type` field is missing in `%s` input parameter"(id));
+                enforce(
+                    false,
+                    new InvalidDocument(
+                        format!"`type` field is missing in `%s` input parameter"(id),
+                        Mark(),
+                    )
+                );
                 return DeclaredType("Any");
             },
             others => DeclaredType(others),

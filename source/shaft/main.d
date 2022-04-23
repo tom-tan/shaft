@@ -195,7 +195,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             ),
         )
         .ifThrown!DocumentException((e) {
-            enforce(false, new DocumentCannotBeLoaded(e.msg, e.node.startMark));
+            enforce(false, new InvalidDocument(e.msg, e.node.startMark));
             return null;
         })
         .ifThrown!Exception((e) {
@@ -314,7 +314,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         stderr.writeln(e.msg);
         return 250;
     }
-    catch(DocumentCannotBeLoaded e)
+    catch(InvalidDocument e)
     {
         stderr.writeln(e.msg);
         return 251;
