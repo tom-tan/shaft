@@ -31,13 +31,13 @@ int shaftMain(string[] args)
     import shaft.exception;
 
     import std;
+    import std.experimental.logger : LogLevel, sharedLog;
 
     try
     {
     	string baseTmpdir;
     	string outdir = getcwd;
 	    LeaveTmpdir ltopt = LeaveTmpdir.onErrors;
-    	bool verbose;
 	    bool computeChecksum = true;
         Flag!"overwrite" forceOverwrite = No.overwrite;
         string[] compatOptions;
@@ -51,9 +51,9 @@ int shaftMain(string[] args)
     		"leave-tmpdir", "always leave temporary directory", () { ltopt = LeaveTmpdir.always; },
 	    	"leave-tmpdir-on-errors", "leave temporary directory on errors (default)", () { ltopt = LeaveTmpdir.onErrors; },
     		"remove-tmpdir", "always remove temporary directory", () { ltopt = LeaveTmpdir.never; },
-	    	"quiet", "only print warnings and errors", &verbose,
-    		"verbose", "verbose output", &verbose,
-	    	"veryverbose", "more verbose output", &verbose,
+	    	"quiet", "only print warnings and errors", () { sharedLog.logLevel = LogLevel.warning; },
+    		"verbose", "verbose output", () { sharedLog.logLevel = LogLevel.info; },
+	    	"veryverbose", "more verbose output", () { sharedLog.logLevel = LogLevel.trace; },
     		"compute-checksum", "compute checksum of contents (default)", () { computeChecksum = true; },
 	    	"no-compute-checksum", "do not compute checksum of contents", () { computeChecksum = false; },
             "force-overwrite", "overwrite existing files and directories with output object",
@@ -110,9 +110,12 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             return 0;
         }
 
+        sharedLog.trace("Setup fetcher");
+
         Fetcher.instance.removeSchemeFetcher("http");
         Fetcher.instance.removeSchemeFetcher("https");
 
+        sharedLog.trace("Setup temporary directories");
         if (baseTmpdir.empty)
         {
             baseTmpdir = buildPath(tempDir, "shaft-"~randomUUID().toString()).absolutePath;
@@ -136,19 +139,30 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         {
             if (ltopt != LeaveTmpdir.always)
             {
+                sharedLog.trace("On success: Remove temporary directories");
                 rmdirRecurse(baseTmpdir);    
+            }
+            else
+            {
+                sharedLog.trace("On success: Leave temporary directories as is");
             }
         }
         scope(failure)
         {
             if (ltopt == LeaveTmpdir.never)
             {
+                sharedLog.trace("On failure: Remove temporary directories");
                 rmdirRecurse(baseTmpdir);
+            }
+            else
+            {
+                sharedLog.trace("On failure: Leave temporary directories as is");
             }
         }
 
         // See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Generic_execution_process
         // 1. Load input object.
+        sharedLog.trace("Load input object");
         auto loader = args.length == 3 ? Loader.fromFile(args[2].absolutePath)
                                                .ifThrown((e) {
                                                    enforce!SystemException(
@@ -169,6 +183,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             });
         enforce(inp.type == NodeType.mapping,
                 new InputCannotBeLoaded("Input should be a mapping but it is not", Mark()));
+        sharedLog.info("Success loading input object");
 
         // TODO: handle `cwl:tool` (input object must start with shebang and marked as executable)
         // - load as YAMl
@@ -179,6 +194,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         // TODO: handle `cwl:requirements`
 
         // 2. Load, process and validate a CWL document, yielding one or more process objects. The $namespaces present in the CWL document are also used when validating and processing the input object.
+        sharedLog.info("Load CWL document");
         auto path = args[1];
         auto cwlfile = discoverDocumentURI(path);
         CommandLineTool cmd = importFromURI(cwlfile, "main").tryMatch!(
@@ -203,6 +219,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             enforce(false, new InputCannotBeLoaded(e.msg.chomp, Mark()));
             return null;
         });
+        sharedLog.info("Success loading CWL document");
 
         // 3. If there are multiple process objects (due to $graph) and which process object to start with is not specified in the input object (via a cwl:tool entry)
         // or by any other means (like a URL fragment) then choose the process with the id of "#main" or "main".
@@ -216,22 +233,28 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         import cwl.v1_0.schema : InlineJavascriptRequirement;
         import shaft.evaluator : Evaluator;
 
+        sharedLog.trace("Set up evaluator");
         auto evaluator = Evaluator(
             cmd.dig!(["requirements", "InlineJavascriptRequirement"], InlineJavascriptRequirement),
             cwlVersion, compatOptions.canFind("extended-props"),
         );
+        sharedLog.trace("Success setting up evaluator");
 
         // 4. Validate the input object against the inputs schema for the process.
         import shaft.type.input : annotateInputParameters;
 
         // TODO: pass evaluator (CommandInputRecordField may have an Expression)
+        sharedLog.trace("Annotate input object");
         auto typedParams = annotateInputParameters(inp, cmd.inputs_,
                                                    cmd.dig!(["requirements", "SchemaDefRequirement"],
                                                             SchemaDefRequirement),
                                                    cmd.context);
+        sharedLog.trace("Success annotating input object");
 
         import shaft.staging : fetch;
+        sharedLog.trace("Set up remote files and file literals");
         auto fetched = typedParams.fetch(rstagedir);
+        sharedLog.trace("Success setting up remote files and file literals");
 
         // 5. Validate process requirements are met.
         // DockerRequirement, SoftwareRequirement, ResourceRequirement can be hints
@@ -258,27 +281,35 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         import cwl.v1_0.schema : ResourceRequirement;
         import shaft.runtime : Runtime;
 
+        sharedLog.trace("Set up runtime information");
         auto runtime = Runtime(fetched.parameters, routdir, rtmpdir,
                                cmd.dig!(["requirements", "ResourceRequirement"], ResourceRequirement),
                                cmd.dig!(["hints", "ResourceRequirement"], ResourceRequirement),
                                evaluator);
 
+        sharedLog.trace("Set up extra runtime information");
         runtime.setupInternalInfo(cmd, fetched.parameters, rlogdir, evaluator);
+        sharedLog.trace("Succuss setting up runtime information");
 
         // 6. Perform any further setup required by the specific process type.
         // 7. Execute the process.
         import shaft.command_line_tool : execute;
 
+        sharedLog.info("Execute CommandLineTool");
         auto ret = execute(cmd, fetched, runtime, evaluator);
+        sharedLog.info("Execute CommandLineTool");
 
         // runtime.exitCode = ret; // v1.1 and later
 
         // 8. Capture results of process execution into the output object.
         // 9. Validate the output object against the outputs schema for the process.
         import shaft.type.output : captureOutputs;
+        sharedLog.trace("Capture output object");
         auto outs = captureOutputs(cmd, fetched.parameters, runtime, evaluator);
+        sharedLog.trace("Success capturing output objct");
 
         import shaft.staging : stageOut;
+        sharedLog.trace("Stage out output object");
         mkdirRecurse(outdir);
         auto staged = stageOut(outs, outdir, forceOverwrite);
 
