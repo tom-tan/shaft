@@ -85,7 +85,7 @@ jobs:
           tags: shaft-dev
       - run: docker image ls
       - run: |
-          docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF "shaft-dev" dub --cache=local build -b release-static
+          docker run --rm -i -u $UID -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF "shaft-dev" dub --cache=local build -b release-static
           strip bin/shaft
       # - run: |
       #     docker run --rm -i -v $GITHUB_WORKSPACE:$GITHUB_WORKSPACE -w $GITHUB_WORKSPACE -e GITHUB_REF=$GITHUB_REF alpine:edge ./alpine-build.sh
