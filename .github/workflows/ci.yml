@@ -88,6 +88,7 @@ jobs:
           timeout: 30
           tags: command_line_tool,expression_tool
           extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
+          n: 1-10
       - name: Save badges
         if: success() && github.event_name == 'push'
         uses: common-workflow-lab/upload-conformance-badges@v1
