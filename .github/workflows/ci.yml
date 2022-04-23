@@ -81,8 +81,9 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           file: Dockerfile.build
+          outputs: type=image,name=shaft-dev
       - run: |
-          docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF ${{ steps.dev_container.outputs.imageid }} dub --cache=local build -b release-static
+          docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF "shaft-dev" dub --cache=local build -b release-static
           strip bin/shaft
       # - run: |
       #     docker run --rm -i -v $GITHUB_WORKSPACE:$GITHUB_WORKSPACE -w $GITHUB_WORKSPACE -e GITHUB_REF=$GITHUB_REF alpine:edge ./alpine-build.sh
