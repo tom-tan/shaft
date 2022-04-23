@@ -1,0 +1,6 @@
+FROM alpine:edge
+
+RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static && \
+    git config --global --add safe.directory /workdir
+
+WORKDIR /workdir
