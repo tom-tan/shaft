@@ -81,7 +81,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           file: Dockerfile.build
-          outputs: type=image,name=shaft-dev
+          load: true
           tags: shaft-dev
       - run: docker image ls
       - run: |
