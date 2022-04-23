@@ -101,17 +101,13 @@ struct Evaluator
 
         if (evaled.length == 1)
         {
-            import shaft.type.common : toJSONNode;
-
             return evaled[0].match!(
-                (string s) => Node(s).toJSONNode,
+                (string s) => Node(s),
                 node => node,
             );
         }
         else
         {
-            import shaft.type.common : toJSONNode;
-
             auto str = evaled.map!(e =>
                 e.match!(
                     (string s) => s,
@@ -120,19 +116,16 @@ struct Evaluator
                         switch (n.type)
                         {
                         case NodeType.mapping, NodeType.sequence:
-                            import shaft.type.common : dumpJSON;
-                            import std.array : appender;
+                            import shaft.type.common : toJSON;
                     
-                            auto app = appender!string;
-                            dumpJSON(n, app);
-                            return app[];
+                            return n.toJSON.toString;
                         default:
                             return n.as!string;
                         }
                     },
                 )
             ).join;
-            return Node(str).toJSONNode;
+            return Node(str);
         }
     }
 
@@ -223,7 +216,6 @@ Node evalParameterReference(
 in(exp.startsWith("$("))
 in(exp.endsWith(")"))
 {
-    import shaft.type.common : toJSONNode;
     import std.algorithm : filter, map;
     import std.regex : ctRegex, matchFirst, replaceAll, splitter;
     enum delim = ctRegex!`(\.|(?:\[['"]?)|(?:['"]?\])\.?)`;
@@ -275,7 +267,7 @@ in(exp.endsWith(")"))
                     enableExtProps,
                     "`length` property is not supported in parametr reference. Use --enable-compat=extended-props"
                 );
-                node = Node(node.length).toJSONNode;
+                node = Node(node.length);
             }
             else
             {
@@ -287,7 +279,7 @@ in(exp.endsWith(")"))
             }
         }
     }
-    return node.toJSONNode;
+    return node;
 }
 
 auto matchJSExpressionFirst(string exp) @safe

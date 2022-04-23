@@ -40,8 +40,6 @@ auto staging(
 in(params.parameters.type == NodeType.mapping)
 in(destURI.scheme.empty || destURI.isDir)
 {
-    import shaft.type.common : toJSONNode;
-
     auto ret = Node((Node[string]).init);
     foreach(string k, Node v; params.parameters)
     {
@@ -50,9 +48,9 @@ in(destURI.scheme.empty || destURI.isDir)
             TypedValue(v, params.types[k]), destURI, keepStructure,
             forceStaging, overwrite,
         );
-        ret.add(k.toJSONNode, p);
+        ret.add(k, p);
     }
-    return TypedParameters(ret.toJSONNode, params.types);
+    return TypedParameters(ret, params.types);
 }
 
 /**
@@ -94,7 +92,6 @@ in(dest.isDir)
             switch(t.value_) {
             case "File": {
                 import shaft.file : toStagedFile;
-                import shaft.type.common : toJSONNode;
                 import std.path : buildPath;
 
                 auto node = tv.value;
@@ -146,11 +143,10 @@ in(dest.isDir)
                 // TODO: secondaryFiles
                 // TODO: validate format?
                 // TODO: contents (need `loadContents`)
-                return stagedPath.toStagedFile(node).toJSONNode;
+                return Node(stagedPath.toStagedFile(node));
             }
             case "Directory": {
                 import shaft.file : toStagedDirectory;
-                import shaft.type.common : toJSONNode;
                 import std.path : buildPath;
 
                 auto node = tv.value;
@@ -237,7 +233,7 @@ in(dest.isDir)
                         listing = Node(lst);
                     }
                 }
-                return stagedPath.toStagedDirectory(node, listing).toJSONNode;
+                return Node(stagedPath.toStagedDirectory(node, listing));
             }
             default:
                 return tv.value;
@@ -246,7 +242,6 @@ in(dest.isDir)
         (EnumType _) => tv.value,
         (ArrayType at) {
             import dyaml : NodeType;
-            import shaft.type.common : toJSONNode;
             import std.algorithm : map;
             import std.range : array, StoppingPolicy, zip;
 
@@ -256,7 +251,7 @@ in(dest.isDir)
             auto staged = zip(StoppingPolicy.requireSameLength, at.types, node.sequence).map!((tpl) {
                 return stagingParam(TypedValue(tpl[1], *tpl[0]), dest, keepStructure);
             }).array;
-            return staged.toJSONNode;
+            return Node(staged);
         },
         (RecordType rt) => tv.value, // TODO
     );

@@ -283,9 +283,8 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         auto staged = stageOut(outs, outdir, forceOverwrite);
 
         // 10. Report the output object to the process caller.
-        import shaft.type.common : dumpJSON;
-        dumpJSON(staged.parameters, stdout.lockingTextWriter);
-        stdout.writeln;
+        import shaft.type.common : toJSON;
+        stdout.writeln(staged.parameters.toJSON);
 
         return 0;
     }

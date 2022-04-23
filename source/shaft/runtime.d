@@ -112,22 +112,19 @@ struct Runtime
     ///
     Node opCast(T: Node)() const @safe
     {
-        import dyaml : CollectionStyle, ScalarStyle;
         import salad.type : match;
-        import shaft.type.common : toJSONNode;
 
         Node ret;
-        ret.setStyle(CollectionStyle.flow);
 
-        ret.add("outdir".toJSONNode, outdir.toJSONNode);
-        ret.add("tmpdir".toJSONNode, tmpdir.toJSONNode);
-        ret.add("cores".toJSONNode, cores.toJSONNode);
-        ret.add("ram".toJSONNode, ram.toJSONNode);
-        ret.add("outdirSize".toJSONNode, outdirSize.toJSONNode);
-        ret.add("tmpdirSize".toJSONNode, tmpdirSize.toJSONNode);
+        ret.add("outdir", outdir);
+        ret.add("tmpdir", tmpdir);
+        ret.add("cores", cores);
+        ret.add("ram", ram);
+        ret.add("outdirSize", outdirSize);
+        ret.add("tmpdirSize", tmpdirSize);
 
         exitCode.match!(
-            (int c) => ret.add("exitCode".toJSONNode, c.toJSONNode),
+            (int c) => ret.add("exitCode", c),
             (none) {},
         );
 

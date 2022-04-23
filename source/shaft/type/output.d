@@ -18,8 +18,6 @@ import shaft.type.common : TC_ = TypeConflicts;
 import shaft.runtime : Runtime;
 
 import std.stdio : serr = stderr;
-import shaft.type.common : dumpJSON;
-
 
 ///
 alias DeclaredType = Either!(
@@ -78,7 +76,6 @@ alias TypeConflicts = TC_!(DeclaredType, toStr);
 TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime, Evaluator evaluator)
 {
     import dyaml : Loader, NodeType;
-    import shaft.type.common : toJSONNode;
     import std.algorithm : filter, fold, map;
     import std.array : array;
     import std.exception : enforce;
@@ -134,7 +131,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
             .array
             .filter!(kv => kv[1].value != NodeType.null_)
             .fold!(
-                (acc, e) { acc.add(e[0].toJSONNode, e[1].value); return acc; },
+                (acc, e) { acc.add(e[0], e[1].value); return acc; },
                 (acc, e) { acc[e[0]] = e[1].type; return acc; },
             )(Node((Node[string]).init), (DeterminedType[string]).init);
         enforce!CaptureFailed(rest.empty,
@@ -208,11 +205,11 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
             .array
             .filter!(kv => kv[1].value != NodeType.null_)
             .fold!(
-                (acc, e) { acc.add(e[0].toJSONNode, e[1].value); return acc; },
+                (acc, e) { acc.add(e[0], e[1].value); return acc; },
                 (acc, e) { acc[e[0]] = e[1].type; return acc; },
             )(Node((Node[string]).init), (DeterminedType[string]).init);
     }
-    return typeof(return)(ret[0].toJSONNode, ret[1]);
+    return typeof(return)(ret[0], ret[1]);
 }
 
 /**
@@ -226,7 +223,6 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
 {
     import dyaml : NodeType;
     import salad.type : match;
-    import shaft.type.common : toJSONNode;
     import std.exception : enforce;
 
     return type.match!(
@@ -307,7 +303,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 );
                 // TODO: secondaryFiles
                 file.enforceValid;
-                return TypedValue(file.toURIFile.toJSONNode, t);
+                return TypedValue(Node(file.toURIFile), t);
             }
             case "Directory": {
                 import salad.meta.impl : as_;
@@ -344,7 +340,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     throw new TypeConflicts(type, node.guessedType);
                 }
                 dir.enforceValid; // TODO: more strict validation
-                return TypedValue(dir.toURIDirectory.toJSONNode, t);
+                return TypedValue(Node(dir.toURIDirectory), t);
             }
             }
         },
@@ -373,7 +369,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                             return tuple(f.name_, collected.type, collected.value);
                         })
                         .fold!(
-                            (acc, e) { acc.add(e[0].toJSONNode, e[2]); return acc; },
+                            (acc, e) { acc.add(e[0], e[2]); return acc; },
                             (acc, e) {
                                acc[e[0]] = tuple(&e[1], Optional!CommandLineBinding.init);
                                return acc;
@@ -396,7 +392,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                                 return tuple(f.name_, collected.type, collected.value);
                             })
                             .fold!(
-                                (acc, e) { acc.add(e[0].toJSONNode, e[2]); return acc; },
+                                (acc, e) { acc.add(e[0], e[2]); return acc; },
                                 (acc, e) {
                                     acc[e[0]] = tuple(&e[1], Optional!CommandLineBinding.init);
                                     return acc;
@@ -460,7 +456,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                             },
                         )(Node((Node[]).init), (DeterminedType*[]).init);
                     // TODO: secondaryFiles when File[]
-                    return TypedValue(tvals[0].toJSONNode, ArrayType(tvals[1], Optional!CommandLineBinding.init));
+                    return TypedValue(tvals[0], ArrayType(tvals[1], Optional!CommandLineBinding.init));
                 },
                 (CommandOutputBinding binding) {
                     if (binding is null)
@@ -527,7 +523,6 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
 {
     import dyaml : YAMLNull;
     import salad.type : match;
-    import shaft.type.common : toJSONNode;
     import std.algorithm : all, joiner, map, sort;
     import std.array : array;
     import std.path : isAbsolute;
@@ -594,7 +589,7 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
                 {
                     file.contents_ = cast(string)path.read(64*2^^10);
                 }
-                return file.toJSONNode;
+                return Node(file);
             }
             else
             {
@@ -606,11 +601,10 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
                 return Node(YAMLNull());
             }
         })
-        .array
-        .toJSONNode;
+        .array;
 
     return binding.outputEval_.match!(
-        (None _) => binding.glob_.match!((None _) => Node(YAMLNull()), others => files),
-        (string exp) => evaluator.eval(exp, inputs, runtime, files),
+        (None _) => binding.glob_.match!((None _) => Node(YAMLNull()), others => Node(files)),
+        (string exp) => evaluator.eval(exp, inputs, runtime, Node(files)),
     );
 }

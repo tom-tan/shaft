@@ -10,6 +10,7 @@ import cwl.v1_0.schema;
 import dyaml : Node;
 
 import salad.type : Either, Optional, This;
+import std.json : JSONValue;
 import std.range : isOutputRange;
 import std.typecons : Tuple;
 
@@ -61,7 +62,7 @@ struct TypedValue
     ///
     this(Node v, DeterminedType t) @safe
     {
-        value = v.toJSONNode;
+        value = v;
         type = t;
     }
 
@@ -169,62 +170,26 @@ auto guessedType(Node val) @safe
     }
 }
 
-/*
- * Returns: a shallow copied node with JSON-compatible style
- * See_Also: https://github.com/dlang-community/D-YAML/issues/284
- */
-Node toJSONNode(Node v) @safe
+JSONValue toJSON(Node node) @safe
 {
-    import dyaml : CollectionStyle, NodeType, ScalarStyle;
+    import dyaml : NodeType;
+    import std.algorithm : fold, map;
+    import std.array : array;
 
-    auto ret = Node(v);
-    switch (v.type)
+    switch(node.type)
     {
-    case NodeType.null_, NodeType.boolean, NodeType.integer, NodeType.decimal:
-        ret.setStyle(ScalarStyle.plain);
-        break;
-    case NodeType.string:
-        ret.setStyle(ScalarStyle.doubleQuoted);
-        break;
-    case NodeType.mapping, NodeType.sequence: // may be redundant
-        ret.setStyle(CollectionStyle.flow);
-        break;
-    default:
-        assert(false);
+    case NodeType.null_: return JSONValue(null);
+    case NodeType.boolean: return JSONValue(node.as!bool);
+    case NodeType.integer: return JSONValue(node.as!long);
+    case NodeType.decimal: return JSONValue(node.as!real);
+    case NodeType.string: return JSONValue(node.as!string);
+    case NodeType.mapping:
+        return node.mapping.fold!((acc, e) {
+            acc[e.key.as!string] = e.value.toJSON;
+            return acc;
+        })(JSONValue((JSONValue[string]).init));
+    case NodeType.sequence:
+        return JSONValue(node.sequence.map!(e => e.toJSON).array);
+    default: assert(false);
     }
-    return ret;
-}
-
-/// ditto
-Node toJSONNode(T)(T val) @safe
-{
-    return Node(val).toJSONNode;
-}
-
-///
-void dumpJSON(Node outs)
-{
-    import std.stdio : serr = stderr;
-    dumpJSON(outs, serr.lockingTextWriter);
-}
-
-///
-void dumpJSON(Writer)(Node outs, Writer w)
-if (isOutputRange!(Writer, char))
-{
-    import dyaml : dumper;
-    import std.array : appender;
-    import std.regex : ctRegex, replaceAll;
-    import std.string : chomp;
-    import std.stdio : write;
-
-    auto d = dumper();
-    d.YAMLVersion = null;
-    d.explicitEnd = false;
-    d.explicitStart = false;
-
-    auto app = appender!string;
-    d.dump(app, outs);
-    auto str = app[].replaceAll(ctRegex!`\n\s+`, " ").chomp;
-    w.put(str);
 }

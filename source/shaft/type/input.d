@@ -115,7 +115,6 @@ in(params.type == NodeType.mapping)
 {
     import dyaml : Mark;
     import shaft.exception : InvalidDocument;
-    import shaft.type.common : toJSONNode;
     import std.algorithm : map;
     import std.container.rbtree : redBlackTree;
     import std.exception : enforce;
@@ -202,7 +201,7 @@ in(params.type == NodeType.mapping)
             throw new TypeConflicts(e.expected_, e.actual_, id);
         }
         types[id] = v.type;
-        retNode.add(id.toJSONNode, v.value);
+        retNode.add(id, v.value);
         rest.removeKey(id);
     }
 
@@ -213,7 +212,7 @@ in(params.type == NodeType.mapping)
         // See_Also: conformance test #2
         // warning: Input parameters contain undeclared parameters: rest.array
     }
-    return typeof(return)(retNode.toJSONNode, types);
+    return typeof(return)(retNode, types);
 }
 
 ///
@@ -223,7 +222,7 @@ TypedValue bindType(
 )
 {
     import salad.type : match;
-    import shaft.type.common : guessedType, toJSONNode;
+    import shaft.type.common : guessedType;
     import std.exception : enforce;
 
     return type.match!(
@@ -255,7 +254,7 @@ TypedValue bindType(
                 auto file = n.as_!File(context);
                 file.enforceValid;
                 file = file.toURIFile;
-                return TypedValue(file.toJSONNode, t);
+                return TypedValue(Node(file), t);
             case "Directory":
                 import salad.meta.impl : as_;
                 import shaft.file : enforceValid, toURIDirectory;
@@ -265,7 +264,7 @@ TypedValue bindType(
                 auto dir = n.as_!Directory(context);
                 dir.enforceValid;
                 dir = dir.toURIDirectory;
-                return TypedValue(dir.toJSONNode, t);
+                return TypedValue(Node(dir), t);
             }
         },
         (CommandInputRecordSchema s) {
@@ -287,7 +286,7 @@ TypedValue bindType(
                            return tuple(name, dt.type, dt.value, f.inputBinding_);
                        })
                        .fold!(
-                           (acc, e) { acc.add(e[0].toJSONNode, e[2]); return acc; },
+                           (acc, e) { acc.add(e[0], e[2]); return acc; },
                            (acc, e) {
                                import std.typecons : tuple;
                                import std.algorithm : moveEmplace;
@@ -324,7 +323,7 @@ TypedValue bindType(
                                   return acc ~ dt;
                               },
                           )(Node((Node[]).init), (DeterminedType*[]).init);
-            return TypedValue(tvals[0].toJSONNode, ArrayType(tvals[1], s.inputBinding_));
+            return TypedValue(tvals[0], ArrayType(tvals[1], s.inputBinding_));
         },
         (string s) {
             if (s == "Any")
