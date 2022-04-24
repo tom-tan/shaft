@@ -56,9 +56,9 @@ jobs:
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
-      - name: Run tests
-        run: |
-          dub --cache=local test
+      # - name: Run tests
+      #   run: |
+      #     dub --cache=local test
 
   build:
     needs: [info]
@@ -73,13 +73,9 @@ jobs:
         uses: docker/setup-buildx-action@v1
       - uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}/.dub
-          key: ${{ runner.os }}-${{ runner.arch }}-musl-dub-ldc-latest-${{ hashFiles('dub.selections.json') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-musl-dub-ldc-latest-
-      - uses: actions/cache@v2
-        with:
-          path: /tmp/.buildx-cache
+          path: |
+            /tmp/.buildx-cache
+            ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-buildx
       - name: Build container to build single binary
         id: dev_container
@@ -110,7 +106,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: shaft-master
-      - run: chmod +x shaft && pwd
+      - run: chmod +x shaft
       - name: Run conformance tests
         id: run-conformance
         uses: common-workflow-lab/run-conformance-tests@v1
@@ -120,6 +116,7 @@ jobs:
           timeout: 30
           tags: command_line_tool,expression_tool
           extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
+          n: 1-5
       - name: Save badges
         if: success() && github.event_name == 'push'
         uses: common-workflow-lab/upload-conformance-badges@v1
