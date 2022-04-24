@@ -87,7 +87,6 @@ class TypeConflicts(DeclType, alias toStrFun) : TypeException
          string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure @trusted
     {
         import std.format : format;
-        import salad.type : match;
 
         super(format!"Type conflicts for `%s` (expected: `%s`, actual: `%s`)"(id, toStrFun(expected), actual.toStr));
         id_ = id;

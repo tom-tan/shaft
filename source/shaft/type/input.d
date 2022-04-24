@@ -234,6 +234,7 @@ TypedValue bindType(
             final switch(t.value_)
             {
             case "null":
+                sharedLog.tracef("type: null!!!!!!!");
                 enforce(n.type == NodeType.null_, new TypeConflicts(type, n.guessedType));
                 return TypedValue(n, t);
             case "boolean":
