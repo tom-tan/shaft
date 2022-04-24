@@ -17,7 +17,7 @@ import shaft.type.common : DeterminedType, guessedType, TypedParameters, TypeExc
 import shaft.type.common : TC_ = TypeConflicts;
 import shaft.runtime : Runtime;
 
-import std.stdio : serr = stderr;
+import std.experimental.logger : sharedLog;
 
 ///
 alias DeclaredType = Either!(
@@ -78,11 +78,14 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
     import dyaml : Loader, NodeType;
     import std.algorithm : filter, fold, map;
     import std.array : array;
+    import std.range : tee;
     import std.exception : enforce;
     import std.file : exists;
     import std.format : format;
     import std.path : buildPath;
     import std.typecons : Tuple;
+
+    import shaft.type.common : toJSON;
 
     auto outJSON = runtime.outdir.buildPath("cwl.output.json");
     Tuple!(Node, DeterminedType[string]) ret;
@@ -103,6 +106,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
 
                 auto id = o.id_;
                 rest.removeKey(id);
+                sharedLog.trace("Capture: "~id);
 
                 if (auto n = id in loaded)
                 {
@@ -128,6 +132,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                     );
                 }
             })
+            .tee!(kv => sharedLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
             .array
             .filter!(kv => kv[1].value != NodeType.null_)
             .fold!(
@@ -189,6 +194,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
 
                 try
                 {
+                    sharedLog.trace("Capture: "~o.id_);
                     return tuple(
                         o.id_,
                         collectOutputParameter(
@@ -202,6 +208,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                     throw new TypeConflicts(e.expected_, e.actual_, o.id_);
                 }
             })
+            .tee!(kv => sharedLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
             .array
             .filter!(kv => kv[1].value != NodeType.null_)
             .fold!(
@@ -241,6 +248,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     }
                 }
             );
+            sharedLog.trace("type: ", t.value_);
             final switch(t.value_)
             {
             case "null": {
@@ -352,6 +360,8 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
 
             alias FieldTypes = typeof(RecordType.init[1]);
 
+            sharedLog.trace("type: record");
+
             return nodeOrBinding.match!(
                 (Node node) {
                     enforce(node.type == NodeType.mapping, new TypeConflicts(type, node.guessedType));
@@ -411,6 +421,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             );
         },
         (CommandOutputEnumSchema s) {
+            sharedLog.trace("type: enum");
             return nodeOrBinding.match!(
                 (Node node) {
                     import shaft.type.common : EnumType;
@@ -434,6 +445,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             );
         },
         (CommandOutputArraySchema s) {
+            sharedLog.trace("type: array");
             return nodeOrBinding.match!(
                 (Node node) {
                     import shaft.type.common : ArrayType;
@@ -476,6 +488,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             import std.format : format;
 
             enforce(s == "Any", new TypeException(format!"Unknown output type: `%s`"(s)));
+            sharedLog.trace("type: Any");
 
             auto node = nodeOrBinding.match!(
                 (Node n) => n,
@@ -494,6 +507,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             CommandOutputArraySchema,
             string
          )[] union_) {
+            sharedLog.trace("type: union");
             foreach(t; union_)
             {
                 try
@@ -526,6 +540,8 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
     import std.algorithm : all, joiner, map, sort;
     import std.array : array;
     import std.path : isAbsolute;
+
+    sharedLog.trace("process binding");
 
     if (binding is null)
     {
@@ -575,6 +591,7 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
     // See_Also: outputbinding_glob_sorted in conformance tests
     paths.sort;
     assert(paths.all!isAbsolute);
+    sharedLog.tracef("paths: %s", paths);
 
     auto files = paths
         .map!((path) {

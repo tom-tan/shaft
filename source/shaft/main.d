@@ -321,52 +321,52 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     }
     catch(FeatureUnsupported e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 33;
     }
     catch(NotYetImplemented e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 33;
     }
     catch(Interrupted e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 130;
     }
     catch(InputFileNotFound e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 250;
     }
     catch(OutputFileNotFound e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 250;
     }
     catch(InvalidDocument e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 251;
     }
     catch(InputCannotBeLoaded e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 252;
     }
     catch(ExpressionFailed e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 253;
     }
     catch(CaptureFailed e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 254;
     }
     catch(SystemException e)
     {
-        stderr.writeln(e.msg);
+        sharedLog.error(e.msg);
         return 255;
     }
 }

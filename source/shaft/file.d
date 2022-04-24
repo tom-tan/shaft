@@ -16,6 +16,8 @@ import std.exception : assertNotThrown;
 import std.file : isFile, isDir;
 import std.path : isAbsolute;
 
+import std.experimental.logger : sharedLog;
+
 /**
  * A subset of File that represents canonicalized internal File representation.
  * It can be:
@@ -256,12 +258,14 @@ in(node.type == NodeType.null_ || node["class"] == "Directory")
 /**
  * Throws: Exception if some fields are not valid
  */
-void enforceValid(File file) pure @safe
+void enforceValid(File file) @safe
 {
     import salad.type : match, None, tryMatch;
     import std.ascii : isHexDigit;
     import std.algorithm : all, canFind, each, endsWith, startsWith;
     import std.exception : enforce;
+
+    string location;
 
     match!(
         (None _1, None _2) => file.contents_.match!(
@@ -274,6 +278,7 @@ void enforceValid(File file) pure @safe
 
             assert(loc.isAbsoluteURI, format!"`location` (%s) must be an absolute URI"(loc));
             enforce(file.contents_.tryMatch!((None _) => true), "`location` and `contents` fields are exclusive");
+            location = loc;
             return true;
         },
         (string path, None _) {
@@ -283,6 +288,7 @@ void enforceValid(File file) pure @safe
 
             assert(path.isAbsolute || path.isAbsoluteURI, format!"`path` (%s) must be absolute"(path));
             enforce(file.contents_.tryMatch!((None _) => true), "`path` and `contents` fields are exclusive");
+            location = path;
             return true;
         },
         (string path, string loc) {
@@ -293,6 +299,7 @@ void enforceValid(File file) pure @safe
             assert(path.isAbsolute || path.isAbsoluteURI, format!"`path` (%s) must be absolute"(path));
             assert(loc.isAbsoluteURI, format!"`location` (%s) must be an absolute URI"(loc));
             enforce(loc.endsWith(path), "`path` and `location` have inconsistent values");
+            location = loc;
             return true;
         },
     )(file.path_, file.location_);
@@ -302,16 +309,22 @@ void enforceValid(File file) pure @safe
         _ => true,
     );
 
-    // file.checksum_.match!(
-    //     (string checksum) => enforce(checksum.startsWith("sha1$") && checksum[5..$].all!isHexDigit,
-    //                                  "Invalid checksum: "~checksum),
-    //     _ => true,
-    // );
+    file.checksum_.match!(
+        (string checksum) {
+            sharedLog.warningf(!checksum.startsWith("sha1$") || !checksum[5..$].all!isHexDigit,
+                              "Invalid checksum for `%s`: `%s`", location, checksum);
+            return true;
+        },
+        _ => true,
+    );
 
-    // file.size_.match!(
-    //     (long s) => enforce(s >= 0, "file size must be zero or positive"),
-    //     _ => true,
-    // );
+    file.size_.match!(
+        (long s) {
+            sharedLog.warningf(s < 0, "file size for `%s` must be zero or positive: `%s`", location, s);
+            return true;
+        },
+        _ => true,
+    );
 
     file.secondaryFiles_.match!(
         (Either!(File, Directory)[] files) => files.each!(
@@ -328,7 +341,7 @@ void enforceValid(File file) pure @safe
 /**
  * Throws: Exception if some fields are not valid
  */
-void enforceValid(Directory dir) pure @safe
+void enforceValid(Directory dir) @safe
 {
     import salad.type : match;
     import std.algorithm : canFind, each, endsWith;
@@ -374,8 +387,8 @@ void enforceValid(Directory dir) pure @safe
     dir.listing_.match!(
         (Either!(File, Directory)[] listing) => listing.each!(
             ff => ff.match!(
-                (File f) => f.enforceValid, // TODO: validate location
-                (Directory d) => d.enforceValid, // TODO: validate location
+                (File f) => f.enforceValid,
+                (Directory d) => d.enforceValid,
             )
         ),
         _ => true
