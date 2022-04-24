@@ -297,7 +297,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
         sharedLog.info("Execute CommandLineTool");
         auto ret = execute(cmd, fetched, runtime, evaluator);
-        sharedLog.info("Execute CommandLineTool");
+        sharedLog.info("Success executing CommandLineTool");
 
         // runtime.exitCode = ret; // v1.1 and later
 
