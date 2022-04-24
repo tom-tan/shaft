@@ -10,6 +10,7 @@ import cwl.v1_0.schema;
 import dyaml : Node;
 
 import salad.type : Either, Optional, This;
+import shaft.exception : TypeException;
 import std.json : JSONValue;
 import std.range : isOutputRange;
 import std.typecons : Tuple;
@@ -78,13 +79,6 @@ struct TypedValue
 
 ///
 alias TypedParameters = Tuple!(Node, "parameters", DeterminedType[string], "types");
-
-///
-class TypeException : Exception
-{
-    import std.exception : basicExceptionCtors;
-    mixin basicExceptionCtors;
-}
 
 /// 
 class TypeConflicts(DeclType, alias toStrFun) : TypeException

@@ -12,8 +12,8 @@ import salad.context : LoadingContext;
 import salad.type : Either, None, Optional, This;
 
 import shaft.evaluator : Evaluator;
-import shaft.exception : CaptureFailed, NotYetImplemented;
-import shaft.type.common : DeterminedType, guessedType, TypedParameters, TypeException, TypedValue;
+import shaft.exception : CaptureFailed, NotYetImplemented, TypeException;
+import shaft.type.common : DeterminedType, guessedType, TypedParameters, TypedValue;
 import shaft.type.common : TC_ = TypeConflicts;
 import shaft.runtime : Runtime;
 

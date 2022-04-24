@@ -10,7 +10,8 @@ import dyaml : Node, NodeType;
 import cwl.v1_0.schema;
 import salad.context : LoadingContext;
 import salad.type : Either, Optional, This;
-import shaft.type.common : DeterminedType, TypedParameters, TypedValue, TypeException;
+import shaft.exception : TypeException;
+import shaft.type.common : DeterminedType, TypedParameters, TypedValue;
 import shaft.type.common : TC_ = TypeConflicts;
 
 import std.typecons : Flag, Tuple, Yes;
