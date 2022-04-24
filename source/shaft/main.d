@@ -369,6 +369,11 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         sharedLog.error(e.msg);
         return 255;
     }
+    catch(TypeException e)
+    {
+        sharedLog.error("Uncaught TypeException: "~e.msg);
+        return 1;
+    }
 }
 
 
