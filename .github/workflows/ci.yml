@@ -75,6 +75,8 @@ jobs:
         with:
           path: ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-${{ runner.arch }}-musl-dub-ldc-latest-${{ hashFiles('dub.selections.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-musl-dub-ldc-latest-
       - uses: actions/cache@v2
         with:
           path: /tmp/.buildx-cache
@@ -95,8 +97,6 @@ jobs:
       - run: |
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
             sh -c "dub --cache=local build -b release-static && strip bin/shaft"
-      - run: |
-          ls -ald ${{ github.workspace }}/.dub
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-master
