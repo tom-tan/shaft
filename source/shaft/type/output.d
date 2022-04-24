@@ -248,7 +248,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     }
                 }
             );
-            sharedLog.trace("type: ", t.value_);
+            sharedLog.trace("type: ", cast(string)t.value_);
             final switch(t.value_)
             {
             case "null": {
