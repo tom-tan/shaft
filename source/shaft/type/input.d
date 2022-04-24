@@ -14,6 +14,7 @@ import shaft.type.common : DeterminedType, TypedParameters, TypedValue, TypeExce
 import shaft.type.common : TC_ = TypeConflicts;
 
 import std.typecons : Flag, Tuple, Yes;
+import std.experimental.logger : sharedLog;
 
 ///
 alias DeclaredType = Either!(
@@ -210,7 +211,7 @@ in(params.type == NodeType.mapping)
         import std.array : array;
         // must not be permanent failure
         // See_Also: conformance test #2
-        // warning: Input parameters contain undeclared parameters: rest.array
+        sharedLog.warningf("Input object contains undeclared parameters: %s", rest.array);
     }
     return typeof(return)(retNode, types);
 }
@@ -228,6 +229,7 @@ TypedValue bindType(
     return type.match!(
         (CWLType t) {
             import salad.type : None;
+            sharedLog.tracef("type: %s", cast(string)t.value_);
             final switch(t.value_)
             {
             case "null":
@@ -272,6 +274,7 @@ TypedValue bindType(
             import shaft.type.common : RecordType;
             import std.algorithm : fold, map;
             enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
+            sharedLog.trace("type: record");
 
             auto tv = s.fields_
                        .orElse([])
@@ -300,6 +303,7 @@ TypedValue bindType(
             return TypedValue(tv[0], RecordType(s.name_.orElse(""), tv[1]));
         },
         (CommandInputEnumSchema s) {
+            sharedLog.trace("type: enum");
             import salad.type : orElse;
             import shaft.type.common : EnumType;
             import std.algorithm : canFind;
@@ -308,6 +312,7 @@ TypedValue bindType(
             return TypedValue(n, EnumType(s.name_.orElse(""), s.inputBinding_));
         },
         (CommandInputArraySchema s) {
+            sharedLog.trace("type: array");
             import shaft.type.common : ArrayType;
             import std.algorithm : fold, map;
             enforce(n.type == NodeType.sequence, new TypeConflicts(type, n.guessedType));
@@ -332,6 +337,7 @@ TypedValue bindType(
                 import shaft.type.common : ArrayType, RecordType;
                 import std.typecons : No;
 
+                sharedLog.trace("type: Any");
                 return n.guessedType.tryMatch!(
                     (CWLType t) {
                         enforce(t.value_ != "null" || declared == No.declared,
@@ -365,6 +371,7 @@ TypedValue bindType(
                 import salad.resolver : resolveIdentifier;
 
                 auto id = s.resolveIdentifier(context);
+                sharedLog.tracef("type: %s", id);
                 auto def = *enforce(id in defMap, new TypeConflicts(type, n.guessedType));
                 return n.bindType(def, defMap, context);
             }
@@ -378,6 +385,7 @@ TypedValue bindType(
         )[] union_) {
             import salad.type : None, tryMatch;
             import std.algorithm : find, map;
+            sharedLog.tracef("type: union");
             auto rng = union_.map!((t) {
                 import salad.type : Optional;
                 try
