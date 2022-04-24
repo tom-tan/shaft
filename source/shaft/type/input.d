@@ -390,6 +390,7 @@ TypedValue bindType(
                 import salad.type : Optional;
                 try
                 {
+                    sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
                     return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap, context));
                 }
                 catch (TypeException e)
@@ -398,6 +399,8 @@ TypedValue bindType(
                 }
             }).find!(t => t.match!((TypedValue _) => true, none => false));
             enforce(!rng.empty, new TypeConflicts(type, n.guessedType));
+            import shaft.type.common : toS = toStr;
+            sharedLog.tracef("type: union -> determined: %s", rng.front.tryMatch!((TypedValue v) => v.type.toS));
             return rng.front.tryMatch!((TypedValue v) => v);
         },
     );
