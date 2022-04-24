@@ -386,27 +386,21 @@ TypedValue bindType(
         )[] union_) {
             import salad.type : None, tryMatch;
             import std.algorithm : find, map;
-            import std.exception : ifThrown;
             sharedLog.tracef("type: union");
             auto rng = union_.map!((t) {
                 import salad.type : Optional;
-                try
-                {
-                    sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
-                    return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap, context))
-                    .ifThrown((e) {
+                import std.exception : ifThrown;
+
+                sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
+                scope(success) sharedLog.tracef("type: union -> try: %s -> success", t.match!(a => DeclaredType(a)).toStr);
+                scope(failure) sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
+                return Optional!TypedValue(
+                    n.bindType(t.match!(a => DeclaredType(a)), defMap, context))
+                     .ifThrown!TypeException((e) {
                         sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
                         return Optional!TypedValue.init;
-                    });
-                }
-                catch (TypeConflicts e)
-                {
-                    return Optional!TypedValue.init;
-                }
-                catch (TypeException e)
-                {
-                    return Optional!TypedValue.init;
-                }
+                     }
+                );
             }).find!(t => t.match!((TypedValue _) => true, none => false));
             enforce(!rng.empty, new TypeConflicts(type, n.guessedType));
             import shaft.type.common : toS = toStr;
