@@ -52,7 +52,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ${{ github.workspace }}/.dub
-          key: ${{ runner.os }}-dub-${{ matrix.dc }}-${{ hashFiles(format('{0}/dub.json', env.GITHUB_WORKSPACE)) }}
+          key: ${{ runner.os }}-${{ runner.arch }}-glibc-dub-${{ matrix.dc }}-${{ hashFiles(format('{0}/dub.json', env.GITHUB_WORKSPACE)) }}
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
@@ -74,7 +74,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ${{ github.workspace }}/.dub
-          key: ${{ runner.os }}-dub-ldc-latest-${{ hashFiles(format('{0}/dub.json', env.GITHUB_WORKSPACE)) }}
+          key: ${{ runner.os }}-${{ runner.arch }}-musl-dub-ldc-latest-${{ hashFiles(format('{0}/dub.json', env.GITHUB_WORKSPACE)) }}
       - uses: actions/cache@v2
         with:
           path: /tmp/.buildx-cache
