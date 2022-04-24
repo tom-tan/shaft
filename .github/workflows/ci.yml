@@ -79,6 +79,7 @@ jobs:
             ${{ runner.os }}-${{ runner.arch }}-musl-dub-ldc-latest-
       - uses: actions/cache@v2
         with:
+          path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx
       - name: Build container to build single binary
         id: dev_container
