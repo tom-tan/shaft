@@ -56,9 +56,9 @@ jobs:
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
-      # - name: Run tests
-      #   run: |
-      #     dub --cache=local test
+      - name: Run tests
+        run: |
+          dub --cache=local test
   
   conformance:
     needs: test
@@ -96,8 +96,6 @@ jobs:
       - run: |
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
             sh -c "dub --cache=local build -b release-static && strip bin/shaft"
-      # - run: |
-      #     docker run --rm -i -v $GITHUB_WORKSPACE:$GITHUB_WORKSPACE -w $GITHUB_WORKSPACE -e GITHUB_REF=$GITHUB_REF alpine:edge ./alpine-build.sh
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-master
@@ -111,7 +109,6 @@ jobs:
           timeout: 30
           tags: command_line_tool,expression_tool
           extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
-          n: 1-10
       - name: Save badges
         if: success() && github.event_name == 'push'
         uses: common-workflow-lab/upload-conformance-badges@v1
