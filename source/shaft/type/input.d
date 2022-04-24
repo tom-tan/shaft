@@ -394,6 +394,10 @@ TypedValue bindType(
                     sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
                     return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap, context));
                 }
+                catch (TypeConflicts e)
+                {
+                    return Optional!TypedValue.init;
+                }
                 catch (TypeException e)
                 {
                     return Optional!TypedValue.init;
