@@ -134,7 +134,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
             })
             .tee!(kv => sharedLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
             .array
-            .filter!(kv => kv[1].value != NodeType.null_)
+            .filter!(kv => kv[1].value.type != NodeType.null_)
             .fold!(
                 (acc, e) { acc.add(e[0], e[1].value); return acc; },
                 (acc, e) { acc[e[0]] = e[1].type; return acc; },
@@ -210,7 +210,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
             })
             .tee!(kv => sharedLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
             .array
-            .filter!(kv => kv[1].value != NodeType.null_)
+            .filter!(kv => kv[1].value.type != NodeType.null_)
             .fold!(
                 (acc, e) {
                     sharedLog.tracef("acc value: %s = %s", e[0], e[1].value.toJSON);
