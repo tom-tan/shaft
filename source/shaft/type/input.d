@@ -386,13 +386,18 @@ TypedValue bindType(
         )[] union_) {
             import salad.type : None, tryMatch;
             import std.algorithm : find, map;
+            import std.exception : ifThrown;
             sharedLog.tracef("type: union");
             auto rng = union_.map!((t) {
                 import salad.type : Optional;
                 try
                 {
                     sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
-                    return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap, context));
+                    return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap, context))
+                    .ifThrown((e) {
+                        sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
+                        return Optional!TypedValue.init;
+                    });
                 }
                 catch (TypeConflicts e)
                 {
