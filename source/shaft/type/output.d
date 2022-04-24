@@ -212,10 +212,22 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
             .array
             .filter!(kv => kv[1].value != NodeType.null_)
             .fold!(
-                (acc, e) { acc.add(e[0], e[1].value); return acc; },
-                (acc, e) { acc[e[0]] = e[1].type; return acc; },
+                (acc, e) {
+                    sharedLog.tracef("acc value: %s = %s", e[0], e[1].value.toJSON);
+                    scope(success) sharedLog.tracef("acc value: %s = %s -> done", e[0], e[1].value.toJSON);
+                    scope(failure) sharedLog.tracef("acc value: %s = %s -> fail", e[0], e[1].value.toJSON);
+                    acc.add(e[0], e[1].value); return acc;
+                                    },
+                (acc, e) {
+                    import shaft.type.common : toS = toStr;
+                    sharedLog.tracef("acc type: %s = %s", e[0], e[1].type.toS);
+                    scope(success) sharedLog.tracef("acc value: %s = %s -> done", e[0], e[1].type.toS);
+                    scope(failure) sharedLog.tracef("acc value: %s = %s -> fail", e[0], e[1].type.toS);
+                    acc[e[0]] = e[1].type; return acc;
+                },
             )(Node((Node[string]).init), (DeterminedType[string]).init);
     }
+    sharedLog.trace("done!");
     return typeof(return)(ret[0], ret[1]);
 }
 
