@@ -59,11 +59,10 @@ jobs:
       - name: Run tests
         run: |
           dub --cache=local test
-  
-  conformance:
-    needs: test
-    runs-on: ubuntu-latest
 
+  build:
+    needs: [info]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
@@ -100,12 +99,21 @@ jobs:
         with:
           name: shaft-master
           path: ${{ github.workspace }}/bin/shaft
+  
+  conformance:
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: shaft-master
+      - run: chmod +x shaft && pwd
       - name: Run conformance tests
         id: run-conformance
         uses: common-workflow-lab/run-conformance-tests@v1
         with:
           cwlVersion: v1.0
-          runner: ${{ github.workspace }}/bin/shaft
+          runner: ${{ github.workspace }}/shaft
           timeout: 30
           tags: command_line_tool,expression_tool
           extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
