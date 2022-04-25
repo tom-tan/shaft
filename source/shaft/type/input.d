@@ -385,7 +385,7 @@ TypedValue bindType(
             CommandInputArraySchema,
             string,
         )[] union_) {
-            import salad.type : None, tryMatch;
+            import salad.type : tryMatch;
             import std.algorithm : find, map;
             sharedLog.tracef("type: union");
             auto rng = union_.map!((t) {
@@ -395,13 +395,11 @@ TypedValue bindType(
                 sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
                 scope(success) sharedLog.tracef("type: union -> try: %s -> success", t.match!(a => DeclaredType(a)).toStr);
                 scope(failure) sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
-                return Optional!TypedValue(
-                    n.bindType(t.match!(a => DeclaredType(a)), defMap, context))
-                     .ifThrown!TypeException((e) {
+                return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap, context))
+                    .ifThrown!TypeException((e) {
                         sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
                         return Optional!TypedValue.init;
-                     }
-                );
+                    });
             }).find!(t => t.match!((TypedValue _) => true, none => false));
             enforce(!rng.empty, new TypeConflicts(type, n.guessedType));
             import shaft.type.common : toS = toStr;

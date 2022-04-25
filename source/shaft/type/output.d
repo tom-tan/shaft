@@ -519,6 +519,10 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             CommandOutputArraySchema,
             string
          )[] union_) {
+            import salad.type : tryMatch;
+            import std.algorithm : find, map;
+            sharedLog.tracef("type: union");
+
             auto node = nodeOrBinding.match!(
                 (Node n) => n,
                 (CommandOutputBinding binding) {
@@ -534,21 +538,25 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 }
             );
 
-            foreach(t; union_)
-            {
-                try
-                {
-                    return collectOutputParameter(
+            auto rng = union_.map!((t) {
+                import salad.type : Optional;
+                import std.exception : ifThrown;
+                sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
+                scope(success) sharedLog.tracef("type: union -> try: %s -> success", t.match!(a => DeclaredType(a)).toStr);
+                scope(failure) sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
+                return Optional!TypedValue(collectOutputParameter(
                         Either!(Node, CommandOutputBinding)(node), t.match!(tt => DeclaredType(tt)),
-                        inputs, runtime, context, evaluator
-                    );
-                }
-                catch(TypeException e)
-                {
-                    continue;
-                }
-            }
-            throw new TypeException("No matched type");
+                        inputs, runtime, context, evaluator)
+                    )
+                    .ifThrown!TypeException((e) {
+                        sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
+                        return Optional!TypedValue.init;
+                    });
+            }).find!(t => t.match!((TypedValue _) => true, none => false));
+            enforce(!rng.empty, new TypeConflicts(type, node.guessedType));
+            import shaft.type.common : toS = toStr;
+            sharedLog.tracef("type: union -> determined: %s", rng.front.tryMatch!((TypedValue v) => v.type.toS));
+            return rng.front.tryMatch!((TypedValue v) => v);
         },
     );
 }
