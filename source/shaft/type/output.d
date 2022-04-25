@@ -519,13 +519,27 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             CommandOutputArraySchema,
             string
          )[] union_) {
-            sharedLog.trace("type: union");
+            auto node = nodeOrBinding.match!(
+                (Node n) => n,
+                (CommandOutputBinding binding) {
+                    if (binding is null)
+                    {
+                        import dyaml : YAMLNull;
+                        return Node(YAMLNull());
+                    }
+                    else
+                    {
+                        return processBinding(binding, inputs, runtime, evaluator);
+                    }
+                }
+            );
+
             foreach(t; union_)
             {
                 try
                 {
                     return collectOutputParameter(
-                        nodeOrBinding, t.match!(tt => DeclaredType(tt)),
+                        Either!(Node, CommandOutputBinding)(node), t.match!(tt => DeclaredType(tt)),
                         inputs, runtime, context, evaluator
                     );
                 }
