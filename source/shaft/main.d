@@ -58,7 +58,7 @@ int shaftMain(string[] args)
 	    	"no-compute-checksum", "do not compute checksum of contents", () { computeChecksum = false; },
             "force-overwrite", "overwrite existing files and directories with output object",
             () { forceOverwrite = Yes.overwrite; },
-            "enable-compat", "enable compatibility options (`--compat=help` for details)", &compatOptions,
+            "enable-compat", "enable compatibility options (`--enable-compat=help` for details)", &compatOptions,
     		"print-supported-versions", "print supported CWL specs", &showSupportedVersions,
 		    "version", "show version information", &showVersion,
     	).ifThrown((e) {
