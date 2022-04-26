@@ -217,7 +217,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                     scope(success) sharedLog.tracef("acc value: %s = %s -> done", e[0], e[1].value.toJSON);
                     scope(failure) sharedLog.tracef("acc value: %s = %s -> fail", e[0], e[1].value.toJSON);
                     acc.add(e[0], e[1].value); return acc;
-                                    },
+                },
                 (acc, e) {
                     import shaft.type.common : toS = toStr;
                     sharedLog.tracef("acc type: %s = %s", e[0], e[1].type.toS);
@@ -559,6 +559,28 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             return rng.front.tryMatch!((TypedValue v) => v);
         },
     );
+}
+
+unittest
+{
+    import salad.type : tryMatch;
+
+    alias Type = Either!(
+        CWLType,
+        CommandOutputRecordSchema,
+        CommandOutputEnumSchema,
+        CommandOutputArraySchema,
+        string
+    );
+
+    Either!(Node, CommandOutputBinding) node = Node(true);
+    DeclaredType dt = [
+        Type(new CWLType("null")),
+        Type(new CWLType("boolean")),
+    ];
+
+    auto tv = collectOutputParameter(node, dt, Node(), Runtime.init, LoadingContext.init, Evaluator.init);
+    assert(tv.type.tryMatch!((CWLType type) => cast(string)type.value_) == "boolean");
 }
 
 /**

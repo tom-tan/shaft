@@ -5,6 +5,16 @@
  */
 module shaft.main;
 
+import std.experimental.logger : LogLevel, sharedLog;
+
+version(unittest)
+{
+    static this()
+    {
+        sharedLog.logLevel = LogLevel.off;
+    }
+}
+
 ///
 static immutable suppertedVersions = ["v1.0"];
 
@@ -31,7 +41,6 @@ int shaftMain(string[] args)
     import shaft.exception;
 
     import std;
-    import std.experimental.logger : LogLevel, sharedLog;
 
     try
     {
