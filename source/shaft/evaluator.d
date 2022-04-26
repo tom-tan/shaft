@@ -358,7 +358,7 @@ auto matchJSExpressionFirst(string str) pure @safe
         }
         }
     }
-    assert(false);
+    throw new ExpressionFailed(format!"Missing `%s` in `%s`"(stack[$-1] == "(" ? ")" : "}", str));
 }
 
 @safe pure unittest
