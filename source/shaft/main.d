@@ -29,7 +29,7 @@ enum LeaveTmpdir
 /// Entry point of shaft
 int shaftMain(string[] args)
 {
-    import dyaml : Loader, Mark, Node, NodeException, NodeType; // MarkedYAMLException
+    import dyaml : Loader, Mark, Node, NodeType, MarkedYAMLException, YAMLException;
 
     import cwl : CWLVersion, CommandLineTool, DocumentRootType, ExpressionTool,
                  importFromURI, SchemaDefRequirement;
@@ -70,7 +70,7 @@ int shaftMain(string[] args)
             "enable-compat", "enable compatibility options (`--enable-compat=help` for details)", &compatOptions,
     		"print-supported-versions", "print supported CWL specs", &showSupportedVersions,
 		    "version", "show version information", &showVersion,
-    	).ifThrown((e) {
+    	).ifThrown!GetOptException((e) {
             enforce!SystemException(false, e.msg);
             return GetoptResult.init;
         });
@@ -173,7 +173,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         // 1. Load input object.
         sharedLog.trace("Load input object");
         auto loader = args.length == 3 ? Loader.fromFile(args[2].absolutePath)
-                                               .ifThrown((e) {
+                                               .ifThrown!YAMLException((e) {
                                                    enforce!SystemException(
                                                        false,
                                                        "Input parameter file not found: "~args[2].absolutePath,
@@ -182,16 +182,12 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                                                })
                                        : Loader.fromString("{}");
         auto inp = loader.load
-            .ifThrown!NodeException((e) {
+            .ifThrown!MarkedYAMLException((e) {
                 enforce(false, new InputCannotBeLoaded(e.msg.chomp, e.mark));
-                return Node.init;
-            })
-            .ifThrown!Exception((e) {
-                enforce(false, new InputCannotBeLoaded(e.msg.chomp, Mark()));
                 return Node.init;
             });
         enforce(inp.type == NodeType.mapping,
-                new InputCannotBeLoaded("Input should be a mapping but it is not", Mark()));
+                new InputCannotBeLoaded("Input should be a mapping but it is not", inp.startMark));
         sharedLog.info("Success loading input object");
 
         // TODO: handle `cwl:tool` (input object must start with shebang and marked as executable)
@@ -223,9 +219,9 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             enforce(false, new InvalidDocument(e.msg, e.node.startMark));
             return null;
         })
-        .ifThrown!Exception((e) {
+        .ifThrown!MarkedYAMLException((e) {
             import std.string : chomp;
-            enforce(false, new InputCannotBeLoaded(e.msg.chomp, Mark()));
+            enforce(false, new InputCannotBeLoaded(e.msg.chomp, e.mark));
             return null;
         });
         sharedLog.info("Success loading CWL document");
@@ -389,14 +385,13 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 /// See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Discovering_CWL_documents_on_a_local_filesystem
 auto discoverDocumentURI(string path) @safe
 {
+    import salad.resolver : isAbsoluteURI;
     import shaft.exception : SystemException;
 
-    import std.algorithm : canFind, startsWith;
     import std.exception : enforce;
     import std.file : exists, getcwd, isFile;
 
-    // absolute URI
-    if (path.canFind("://"))
+    if (path.isAbsoluteURI)
     {
         return path;
     }
