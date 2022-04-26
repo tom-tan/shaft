@@ -325,7 +325,7 @@ auto matchJSExpressionFirst(string str) pure @safe
         {
         case `"`: {
             auto mmm = enforce!ExpressionFailed(
-                (v~rst).matchFirst(ctRegex!`"("|([^"]|\\")*?[^\\]?")`),
+                (v~rst).matchFirst(ctRegex!`"("|([^"]|\\")*[^\\]")`),
                 format!"Unmatched `%s` in `%s`"(v, str)
             );
             rest = mmm.post;
@@ -334,7 +334,7 @@ auto matchJSExpressionFirst(string str) pure @safe
         }
         case `'`: {
             auto mmm = enforce!ExpressionFailed(
-                (v~rst).matchFirst(ctRegex!`'('|([^']|\\')*?[^\\]?')`),
+                (v~rst).matchFirst(ctRegex!`'('|([^']|\\')*[^\\]')`),
                 format!"Unmatched `%s` in `%s`"(v, str)
             );
             rest = mmm.post;
