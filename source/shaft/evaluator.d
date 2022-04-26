@@ -282,10 +282,120 @@ in(exp.endsWith(")"))
     return node;
 }
 
-auto matchJSExpressionFirst(string exp) @safe
+auto matchJSExpressionFirst(string str) pure @safe
 {
-    // [pre, exp, post]
-    return ExpCapture.init;
+    import std.exception : enforce;
+    import std.format : format;
+    import std.range : empty;
+    import std.regex : ctRegex, matchFirst;
+
+    auto m = str.matchFirst(ctRegex!`\$([({])`);
+    if (!m)
+    {
+        return ExpCapture(str, "", "");
+    }
+    auto pre = m.pre;
+
+    auto stack = [m[1]];
+    auto rest = m.post;
+    string exp;
+
+    while (auto mm = rest.matchFirst(ctRegex!`["'(){}]`))
+    {
+        auto v = mm.hit;
+        auto rst = mm.post;
+        exp ~= mm.pre;
+
+        final switch(v)
+        {
+        case `"`: {
+            auto mmm = enforce!ExpressionFailed(
+                (v~rst).matchFirst(ctRegex!`"("|([^"]|\\")*?[^\\]?")`),
+                format!"Unmatched `%s` in `%s`"(v, str)
+            );
+            rest = mmm.post;
+            exp ~= mmm[0];
+            break;
+        }
+        case `'`: {
+            auto mmm = enforce!ExpressionFailed(
+                (v~rst).matchFirst(ctRegex!`'('|([^']|\\')*?[^\\]?')`),
+                format!"Unmatched `%s` in `%s`"(v, str)
+            );
+            rest = mmm.post;
+            exp ~= mmm[0];
+            break;
+        }
+        case `(`, `{`: {
+            stack ~= v;
+            rest = rst;
+            exp ~= v;
+            break;
+        }
+        case `)`: {
+            enforce!ExpressionFailed(!stack.empty, format!"Missing `%s` in `%s`"(v, str));
+            assert(stack[$-1] == "(", format!"`(` is expected but `%s` is occured"(stack[$-1]));
+            stack = stack[0..$-1];
+            rest = rst;
+            if (stack.empty)
+            {
+                return ExpCapture(pre, "$("~exp~")", rest);
+            }
+            exp ~= v;
+            break;
+        }
+        case `}`: {
+            enforce!ExpressionFailed(!stack.empty, format!"Missing `%s` in `%s`"(v, str));
+            assert(stack[$-1] == "{", format!"`{` is expected but `%s` is occured"(stack[$-1]));
+            stack = stack[0..$-1];
+            rest = rst;
+            if (stack.empty)
+            {
+                return ExpCapture(pre, "${"~exp~"}", rest);
+            }
+            exp ~= v;
+            break;
+        }
+        }
+    }
+    assert(false);
+}
+
+@safe pure unittest
+{
+    import std.format : format;
+    auto m = "foo$(inputs.inp1)bar".matchJSExpressionFirst;
+    assert(m);
+    assert(m.pre == "foo");
+    assert(m.hit == "$(inputs.inp1)", format!"`$(inputs.inp1)` is expected but actual: `%s`"(m.hit));
+    assert(m.post == "bar");
+}
+
+@safe pure unittest
+{
+    auto m = "$(self[0].contents)".matchJSExpressionFirst;
+    assert(m);
+    assert(m.pre == "");
+    assert(m.hit == "$(self[0].contents)");
+    assert(m.post == "");
+}
+
+@safe pure unittest
+{
+    auto m = "$(self['foo'])".matchJSExpressionFirst;
+    assert(m);
+    assert(m.pre == "");
+    assert(m.hit == "$(self['foo'])");
+    assert(m.post == "");
+}
+
+@safe pure unittest
+{
+    auto m = `$(self["foo"])`.matchJSExpressionFirst;
+    assert(m);
+    assert(m.pre == "");
+    assert(m.hit == `$(self["foo"])`);
+    assert(m.post == "");
 }
 
 Node evalJSExpression(
