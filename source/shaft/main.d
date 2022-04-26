@@ -268,7 +268,6 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                                  ShellCommandRequirement, ResourceRequirement;
 
         alias UnsupportedRequirements = AliasSeq!(
-            InlineJavascriptRequirement,
             DockerRequirement,
             SoftwareRequirement,
             InitialWorkDirRequirement,

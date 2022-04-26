@@ -107,6 +107,9 @@ jobs:
         with:
           name: shaft-master
       - run: chmod +x shaft
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
       - name: Run conformance tests
         id: run-conformance
         uses: common-workflow-lab/run-conformance-tests@v1
