@@ -10,7 +10,7 @@ import dyaml : Node, NodeType;
 import cwl.v1_0.schema;
 import salad.context : LoadingContext;
 import salad.type : Either, Optional, This;
-import shaft.exception : TypeException;
+import shaft.exception : TypeException, InputCannotBeLoaded;
 import shaft.type.common : DeterminedType, TypedParameters, TypedValue;
 import shaft.type.common : TC_ = TypeConflicts;
 
@@ -67,48 +67,13 @@ string toStr(DeclaredType dt) pure @safe
 
 alias TypeConflicts = TC_!(DeclaredType, toStr);
 
-///
-class ParameterMissing : TypeException
-{
-    ///
-    this(string id, string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) pure @safe
-    {
-        import std.format : format;
-
-        super(format!"Missing input parameter: `%s`"(id), file, line, nextInChain);
-        id_ = id;
-    }
-
-    string id_;
-}
-
-class InvalidObject : TypeException
-{
-    this(string id, string field, DeterminedType actual,
-         string file = __FILE__, size_t line = __LINE__, Throwable nextInChain = null) @trusted
-    {
-        import std.format : format;
-
-        super(format!"Invalid field `%s` in type `%s` `%s`"(field_, type_, id_));
-        id_ = id;
-        field_ = field;
-        type_ = actual;
-    }
-
-    string id_;
-    string field_;
-    DeterminedType type_;
-}
-
 /**
  *
  * Returns: a tuple that consists of:
  *    - `params`: a node as an input parameters (`default` is considered)
  *    - `types`: a mapping from an input parameter ID to its determined type
  * Throws:
- *    - MissingParameter if there are missing input parameters
  *    - TypeConflict if some input parameters conflict with their type declaration
- *    - InvalidObject if type matched but there are missing fields for File, Directory or Record objects
  */
 TypedParameters annotateInputParameters(
     ref Node params, CommandInputParameter[] paramDefs,
@@ -200,7 +165,8 @@ in(params.type == NodeType.mapping)
         }
         catch(TypeConflicts e)
         {
-            throw new TypeConflicts(e.expected_, e.actual_, id);
+            auto msg = new TypeConflicts(e.expected_, e.actual_, id).msg;
+            throw new InputCannotBeLoaded(msg, Mark());
         }
         types[id] = v.type;
         retNode.add(id, v.value);

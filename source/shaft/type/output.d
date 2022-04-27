@@ -205,7 +205,8 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                 }
                 catch(TypeConflicts e)
                 {
-                    throw new TypeConflicts(e.expected_, e.actual_, o.id_);
+                    auto msg = new TypeConflicts(e.expected_, e.actual_, o.id_).msg;
+                    throw new CaptureFailed(msg);
                 }
             })
             .tee!(kv => sharedLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
@@ -227,7 +228,6 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                 },
             )(Node((Node[string]).init), (DeterminedType[string]).init);
     }
-    sharedLog.trace("done!");
     return typeof(return)(ret[0], ret[1]);
 }
 
