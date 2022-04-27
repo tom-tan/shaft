@@ -1,6 +1,7 @@
 # Shaft: A workflow engine for CommandLineTool in local machine
-[![CI](https://github.com/tom-tan/shaft/actions/workflows/ci.yml/badge.svg)](https://github.com/tom-tan/shaft/actions/workflows/ci.yml)
+[![release](https://badgen.net/github/release/tom-tan/shaft)](https://github.com/tom-tan/shaft/releases/latest)
 [![license](https://badgen.net/github/license/tom-tan/shaft)](https://github.com/tom-tan/shaft/blob/main/LICENSE)
+[![CI](https://github.com/tom-tan/shaft/actions/workflows/ci.yml/badge.svg)](https://github.com/tom-tan/shaft/actions/workflows/ci.yml)
 
 Shaft is a workflow engine to be used as a "shaft" of other workflow engines for the [Common Workflow Language](https://www.commonwl.org/) (CWL).
 
