@@ -54,6 +54,8 @@ int shaftMain(string[] args)
     	bool showVersion;
         bool showSupportedVersions;
 
+        sharedLog.logLevel = LogLevel.info;
+
 	    auto opts = args.getopt(
     		"base-tmpdir", "directory for temporary files", &baseTmpdir,
 	    	"outdir", "directory for output objects", &outdir,
@@ -61,7 +63,7 @@ int shaftMain(string[] args)
 	    	"leave-tmpdir-on-errors", "leave temporary directory on errors (default)", () { ltopt = LeaveTmpdir.onErrors; },
     		"remove-tmpdir", "always remove temporary directory", () { ltopt = LeaveTmpdir.never; },
 	    	"quiet", "only print warnings and errors", () { sharedLog.logLevel = LogLevel.warning; },
-    		"verbose", "verbose output", () { sharedLog.logLevel = LogLevel.info; },
+    		"verbose", "verbose output (default)", () { sharedLog.logLevel = LogLevel.info; },
 	    	"veryverbose", "more verbose output", () { sharedLog.logLevel = LogLevel.trace; },
     		"compute-checksum", "compute checksum of contents (default)", () { computeChecksum = true; },
 	    	"no-compute-checksum", "do not compute checksum of contents", () { computeChecksum = false; },
