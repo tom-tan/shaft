@@ -78,7 +78,8 @@ int shaftMain(string[] args)
         if (!compatOptions.empty)
         {
             enum compats = [ // @suppress(dscanner.performance.enum_array_literal)
-                Option("", "extended-props", "Enable `null` and `length` in parameter references (for v1.0 and v1.1)", false),
+                Option("", "extended-props", "Enable `null` and `length` in parameter references (for v1.0 and v1.1)",
+                    false),
                 Option("", "help", "show this message", false),
             ];
 
