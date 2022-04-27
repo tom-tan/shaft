@@ -85,11 +85,12 @@ struct Evaluator
         import std.algorithm : map;
         import std.array : join;
         import std.range : empty;
+        import std.string : chomp;
 
         auto matchFirst = isJS ? &matchJSExpressionFirst : &matchParameterReferenceFirst;
         auto evaluate = isJS ? &evalJSExpression : &evalParameterReference;
 
-        auto exp = expression;
+        auto exp = expression.chomp;
 
         Either!(string, Node)[] evaled;
         while (auto c = matchFirst(exp))
