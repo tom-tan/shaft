@@ -266,7 +266,8 @@ TypedValue bindType(
                                acc[e[0]] = tuple(dt, e[3]);
                                return acc;
                            },
-                       )(Node((Node[string]).init), (Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
+                       )(Node((Node[string]).init),
+                         (Tuple!(DeterminedType*, Optional!CommandLineBinding)[string]).init);
             return TypedValue(tv[0], RecordType(s.name_.orElse(""), tv[1]));
         },
         (CommandInputEnumSchema s) {
@@ -358,8 +359,10 @@ TypedValue bindType(
                 import std.exception : ifThrown;
 
                 sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
-                scope(success) sharedLog.tracef("type: union -> try: %s -> success", t.match!(a => DeclaredType(a)).toStr);
-                scope(failure) sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
+                scope(success) sharedLog.tracef("type: union -> try: %s -> success",
+                                                t.match!(a => DeclaredType(a)).toStr);
+                scope(failure) sharedLog.tracef("type: union -> try: %s -> fail",
+                                                t.match!(a => DeclaredType(a)).toStr);
                 return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap, context))
                     .ifThrown!TypeException((e) {
                         sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);

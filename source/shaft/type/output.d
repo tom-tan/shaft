@@ -542,8 +542,10 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 import salad.type : Optional;
                 import std.exception : ifThrown;
                 sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
-                scope(success) sharedLog.tracef("type: union -> try: %s -> success", t.match!(a => DeclaredType(a)).toStr);
-                scope(failure) sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
+                scope(success) sharedLog.tracef("type: union -> try: %s -> success",
+                                                t.match!(a => DeclaredType(a)).toStr);
+                scope(failure) sharedLog.tracef("type: union -> try: %s -> fail",
+                                                t.match!(a => DeclaredType(a)).toStr);
                 return Optional!TypedValue(collectOutputParameter(
                         Either!(Node, CommandOutputBinding)(node), t.match!(tt => DeclaredType(tt)),
                         inputs, runtime, context, evaluator)
