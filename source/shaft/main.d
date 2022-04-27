@@ -57,8 +57,8 @@ int shaftMain(string[] args)
         sharedLog.logLevel = LogLevel.info;
 
 	    auto opts = args.getopt(
-    		"base-tmpdir", "directory for temporary files", &baseTmpdir,
-	    	"outdir", "directory for output objects", &outdir,
+    		"base-tmpdir", "directory for temporary files", (string _, string dir) { baseTmpdir = dir.absolutePath; },
+	    	"outdir", "directory for output objects", (string _, string dir) { outdir = dir.absolutePath; },
     		"leave-tmpdir", "always leave temporary directory", () { ltopt = LeaveTmpdir.always; },
 	    	"leave-tmpdir-on-errors", "leave temporary directory on errors (default)", () { ltopt = LeaveTmpdir.onErrors; },
     		"remove-tmpdir", "always remove temporary directory", () { ltopt = LeaveTmpdir.never; },
@@ -134,7 +134,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         }
         else
         {
-            baseTmpdir = baseTmpdir.absolutePath;
+            baseTmpdir = baseTmpdir;
         }
 
         enforce!SystemException(!baseTmpdir.exists, format!"%s already exists"(baseTmpdir));

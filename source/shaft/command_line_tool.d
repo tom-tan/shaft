@@ -396,7 +396,9 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
                                 })
                                 .join;
 
-                return binding.itemSeparator_.match!(
+                auto clb = binding ? binding : new CommandLineBinding;
+
+                return clb.itemSeparator_.match!(
                     // If `itemSeparator` is specified, add `prefix` and the join the array into a single string with `itemSeparator` separating the items.
                     (string isep) => toCmdElems([strs.join(isep)], binding),
                     // Otherwise first add `prefix`, then recursively process individual elements.
