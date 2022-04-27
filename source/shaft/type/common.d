@@ -168,6 +168,7 @@ JSONValue toJSON(Node node) @safe
     import dyaml : NodeType;
     import std.algorithm : fold, map;
     import std.array : array;
+    import std.format : format;
 
     switch(node.type)
     {
@@ -183,6 +184,6 @@ JSONValue toJSON(Node node) @safe
         })(JSONValue((JSONValue[string]).init));
     case NodeType.sequence:
         return JSONValue(node.sequence.map!(e => e.toJSON).array);
-    default: assert(false);
+    default: assert(false, format!"Invalid node type: %s"(node.type));
     }
 }
