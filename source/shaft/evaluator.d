@@ -422,13 +422,16 @@ Node evalJSExpression(
     import dyaml : Loader, NodeType;
     import std.exception : enforce;
     import std.format : format;
-    import std.process : execute;
+    import std.process : Config, execute;
 
     auto cmd = exp.toJSCode(inputs, runtime, self, libs);
-    auto ret = execute([node, "--eval", cmd]);
+    auto ret = execute(
+        [node, "--eval", cmd],
+        null, Config.newEnv,
+    );
     
     enforce!ExpressionFailed(ret.status == 0, format!"Evaluation failed: `%s`"(exp));
-    auto retNode = Loader.fromString(ret.output).load; // TODO: ifThrown
+    auto retNode = Loader.fromString(ret.output).load;
     
     if (retNode.type == NodeType.mapping)
     {
