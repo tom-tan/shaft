@@ -10,6 +10,13 @@ import dyaml : Mark;
 
 import std.exception : basicExceptionCtors;
 
+abstract class ShaftException : Exception
+{
+    mixin basicExceptionCtors;
+
+    int code() const @nogc nothrow pure @safe;
+}
+
 ///
 class TypeException : Exception
 {
@@ -17,37 +24,62 @@ class TypeException : Exception
 }
 
 /// There is an unsupported feature in the workflow
-class FeatureUnsupported : Exception
+class FeatureUnsupported : ShaftException
 {
     mixin basicExceptionCtors;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 33;
+    }
 }
 
 /// 
-class NotYetImplemented : Exception
+class NotYetImplemented : ShaftException
 {
     mixin basicExceptionCtors;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 33;
+    }
 }
 
 /// User used Ctrl + C to interupt the workflow
-class Interrupted : Exception
+class Interrupted : ShaftException
 {
     mixin basicExceptionCtors;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 130;
+    }
 }
 
 /// The workflow input/output cannot be found
-class InputFileNotFound : Exception
+class InputFileNotFound : ShaftException
 {
     mixin basicExceptionCtors;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 250;
+    }
 }
 
 /// The workflow input/output cannot be found
-class OutputFileNotFound : Exception
+class OutputFileNotFound : ShaftException
 {
     mixin basicExceptionCtors;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 250;
+    }
 }
 
 /// Fail to parse workflow
-class InvalidDocument : Exception
+class InvalidDocument : ShaftException
 {
     this(string msg, Mark mark, Throwable nextInChain = null) nothrow pure @trusted
     {
@@ -58,10 +90,15 @@ class InvalidDocument : Exception
 
     size_t column;
     Mark mark;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 251;
+    }
 }
 
 /// Fail to load workflow inputs
-class InputCannotBeLoaded : Exception
+class InputCannotBeLoaded : ShaftException
 {
     this(string msg, Mark mark, Throwable nextInChain = null) nothrow pure @trusted
     {
@@ -72,22 +109,42 @@ class InputCannotBeLoaded : Exception
 
     size_t column;
     Mark mark;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 252;
+    }
 }
 
 /// Fail to evaluate the expression in workflow
-class ExpressionFailed : Exception
+class ExpressionFailed : ShaftException
 {
     mixin basicExceptionCtors;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 253;
+    }
 }
 
 /// Fail to capture the workflow/step output after the workflow/step is done
-class CaptureFailed : Exception
+class CaptureFailed : ShaftException
 {
     mixin basicExceptionCtors;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 254;
+    }
 }
 
 /// System exception. For example, command arguments are wrong; the CWL workflow description file cannot be found; bsub/bwait command cannot be found
-class SystemException : Exception
+class SystemException : ShaftException
 {
     mixin basicExceptionCtors;
+
+    override int code() const @nogc nothrow pure @safe
+    {
+        return 255;
+    }
 }

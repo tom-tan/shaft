@@ -326,60 +326,15 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
         return 0;
     }
-    catch(FeatureUnsupported e)
-    {
-        sharedLog.error(e.msg);
-        return 33;
-    }
-    catch(NotYetImplemented e)
-    {
-        sharedLog.error(e.msg);
-        return 33;
-    }
-    catch(Interrupted e)
-    {
-        sharedLog.error(e.msg);
-        return 130;
-    }
-    catch(InputFileNotFound e)
-    {
-        sharedLog.error(e.msg);
-        return 250;
-    }
-    catch(OutputFileNotFound e)
-    {
-        sharedLog.error(e.msg);
-        return 250;
-    }
-    catch(InvalidDocument e)
-    {
-        sharedLog.error(e.msg);
-        return 251;
-    }
-    catch(InputCannotBeLoaded e)
-    {
-        sharedLog.error(e.msg);
-        return 252;
-    }
-    catch(ExpressionFailed e)
-    {
-        sharedLog.error(e.msg);
-        return 253;
-    }
-    catch(CaptureFailed e)
-    {
-        sharedLog.error(e.msg);
-        return 254;
-    }
-    catch(SystemException e)
-    {
-        sharedLog.error(e.msg);
-        return 255;
-    }
     catch(TypeException e)
     {
         sharedLog.error("Uncaught TypeException: "~e.msg);
         return 1;
+    }
+    catch(ShaftException e)
+    {
+        sharedLog.error(e.msg);
+        return e.code;
     }
 }
 
