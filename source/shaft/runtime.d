@@ -10,6 +10,7 @@ import dyaml : Node;
 import salad.type : Optional;
 import shaft.evaluator : Evaluator;
 import std.file : isDir;
+import std.functional : memoize;
 
 /// See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Runtime_environment
 struct Runtime
@@ -145,7 +146,9 @@ struct InternalInfo
 }
 
 ///
-auto availableCores() @safe
+alias availableCores = memoize!availableCoresImpl;
+
+auto availableCoresImpl() @safe
 {
     import std.parallelism : totalCPUs;
 
@@ -155,7 +158,9 @@ auto availableCores() @safe
 }
 
 /// See_Also: getrlimi(2), sysctl(8)
-auto availableRam() @trusted
+alias availableRam = memoize!availableRamImpl;
+
+auto availableRamImpl() @trusted
 {
     import core.sys.posix.sys.resource : getrlimit, rlimit, RLIMIT_AS, RLIM_INFINITY;
     import shaft.exception : SystemException;
@@ -207,7 +212,9 @@ auto availableRam() @trusted
 }
 
 ///
-auto availableOutdir(string outdir) @safe
+alias availableOutdir = memoize!availableOutdirImpl;
+
+auto availableOutdirImpl(string outdir) @safe
 in(outdir.isDir)
 {
     import std.file : getAvailableDiskSpace;
@@ -215,7 +222,9 @@ in(outdir.isDir)
 }
 
 ///
-auto availableTmpdir(string tmpdir) @safe
+alias availableTmpdir = memoize!availableTmpdirImpl;
+
+auto availableTmpdirImpl(string tmpdir) @safe
 in(tmpdir.isDir)
 {
     import std.file : getAvailableDiskSpace;
