@@ -56,12 +56,14 @@ struct Runtime
 
         internal.stdout = cmd.stdout_.match!(
             (string exp) {
+                import dyaml : Mark;
+                import shaft.exception : InvalidDocument;
                 import std.algorithm : canFind;
                 import std.exception : enforce;
 
                 auto ret = evaluator.eval!string(exp, inputs, this);
                 //  If ... the resulting path contains illegal characters (such as the path separator `/`) it is an error.
-                enforce(!ret.canFind("/"));
+                enforce(!ret.canFind("/"), new InvalidDocument("`stdout` must not contain `/`", Mark()));
                 return Optional!string(ret);
             },
             (_) {
@@ -85,12 +87,14 @@ struct Runtime
 
         internal.stderr = cmd.stderr_.match!(
             (string exp) {
+                import dyaml : Mark;
+                import shaft.exception : InvalidDocument;
                 import std.algorithm : canFind;
                 import std.exception : enforce;
 
                 auto ret = evaluator.eval!string(exp, inputs, this);
                 //  If ... the resulting path contains illegal characters (such as the path separator `/`) it is an error.
-                enforce(!ret.canFind("/"));
+                enforce(!ret.canFind("/"), new InvalidDocument("`stdout` must not contain `/`", Mark()));
                 return Optional!string(ret);
             },
             (_) {
@@ -170,7 +174,7 @@ auto availableRamImpl() @trusted
     errnoEnforce(
         getrlimit(RLIMIT_AS, &lim) == 0
     ).ifThrown!ErrnoException((e) {
-        enforce(false, new SystemException(e.msg));
+        enforce!SystemException(false, e.msg);
         return false;
     });
 
@@ -237,9 +241,12 @@ auto reserved(string prop)(
     ResourceRequirement req, ResourceRequirement hint,
     Evaluator evaluator) @safe // must be pure
 {
+    import dyaml : Mark;
     import salad.type : match, None;
+    import shaft.exception : InvalidDocument, SystemException;
     import std.algorithm : min;
     import std.exception : enforce;
+    import std.format : format;
 
     auto rr = req is null ? hint : req;
 
@@ -253,14 +260,20 @@ auto reserved(string prop)(
         (long l) => l,
         (string exp) => evaluator.eval!long(exp, inputs, Runtime.init),
     );
-    enforce(rmin <= avail);
+    enforce!SystemException(rmin <= avail);
 
     auto rmax = __traits(getMember, rr, prop~"Max_").match!(
         (None _) => rmin,
         (long l) => l,
         (string exp) => evaluator.eval!long(exp, inputs, Runtime.init),
     );
-    enforce(rmin <= rmax);
+    enforce(
+        rmin <= rmax,
+        new InvalidDocument(
+            format!"Conflict requirements for `%s`: minimum (%s) and maximum (%s)"(prop, rmin, rmax),
+            Mark()
+        )
+    );
 
     return min(rmax, avail);
 }
