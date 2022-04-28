@@ -9,6 +9,7 @@ import cwl.v1_0.schema : CommandLineTool, ResourceRequirement;
 import dyaml : Node;
 import salad.type : Optional;
 import shaft.evaluator : Evaluator;
+import std.file : isDir;
 
 /// See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Runtime_environment
 struct Runtime
@@ -27,6 +28,8 @@ struct Runtime
     this(Node inputs, string outdir, string tmpdir,
          ResourceRequirement req, ResourceRequirement hint,
          Evaluator evaluator) @safe
+    in(outdir.isDir)
+    in(tmpdir.isDir)
     {
         this.outdir = outdir;
         this.tmpdir = tmpdir;
@@ -34,8 +37,8 @@ struct Runtime
         cores = reserved!"cores"(availableCores, inputs, req, hint, evaluator);
         ram = reserved!"ram"(availableRam, inputs, req, hint, evaluator);
 
-        outdirSize = reserved!"outdir"(availableOutdir, inputs, req, hint, evaluator);
-        tmpdirSize = reserved!"tmpdir"(availableTmpdir, inputs, req, hint, evaluator);
+        outdirSize = reserved!"outdir"(availableOutdir(outdir), inputs, req, hint, evaluator);
+        tmpdirSize = reserved!"tmpdir"(availableTmpdir(tmpdir), inputs, req, hint, evaluator);
     }
 
     ///
@@ -151,22 +154,72 @@ auto availableCores() @safe
     return totalCPUs;
 }
 
-///
-auto availableRam() @safe
+/// See_Also: getrlimi(2), sysctl(8)
+auto availableRam() @trusted
 {
-    return 1024; // default in cwltool
+    import core.sys.posix.sys.resource : getrlimit, rlimit, RLIMIT_AS, RLIM_INFINITY;
+    import shaft.exception : SystemException;
+    import std.exception : enforce, errnoEnforce, ErrnoException, ifThrown;
+
+    rlimit lim; // in bytes
+    errnoEnforce(
+        getrlimit(RLIMIT_AS, &lim) == 0
+    ).ifThrown!ErrnoException((e) {
+        enforce(false, new SystemException(e.msg));
+        return false;
+    });
+
+    version(linux)
+    {
+        import std.array : split;
+        import std.conv : to;
+        import std.stdio : File;
+        auto meminfo = File("/proc/meminfo").readln.split; // in kilobyte
+        enforce!SystemException(meminfo[0] == "MemTotal:");
+        enforce!SystemException(meminfo[2] == "kB");
+        auto totalMem = meminfo[1].to!ulong*10^^3/2^^10; // in mebibytes
+    }
+    else version(OSX)
+    {
+        // sysctl systemcall is unreliable on 64bit systems
+        // See_Also: https://github.com/vim/vim/issues/2646
+        // TODO: use `host_statistics64`
+        import core.sys.darwin.mach.port;
+        import std.array : split;
+        import std.conv : to;
+        import std.process : execute;
+        auto ret = execute(["sysctl", "hw.memsize"]); // in bytes
+        enforce!SystemException(ret.status == 0);
+        auto meminfo = ret.output.split;
+        enforce!SystemException(meminfo[0] == "hw.memsize:");
+        auto totalMeem = meminfo[1].to!size_t/2^^20; // in mebibytes
+    }
+
+    if (lim.rlim_cur == RLIM_INFINITY)
+    {
+        return totalMem;
+    }
+    else
+    {
+        import std.algorithm : min;
+        return min(lim.rlim_cur/2^^20, totalMem);
+    }
 }
 
 ///
-auto availableOutdir() @safe
+auto availableOutdir(string outdir) @safe
+in(outdir.isDir)
 {
-    return long.init;
+    import std.file : getAvailableDiskSpace;
+    return getAvailableDiskSpace(outdir)/2^^20;
 }
 
 ///
-auto availableTmpdir() @safe
+auto availableTmpdir(string tmpdir) @safe
+in(tmpdir.isDir)
 {
-    return long.init;
+    import std.file : getAvailableDiskSpace;
+    return getAvailableDiskSpace(tmpdir)/2^^20;
 }
 
 /// TODO: eval req or hint, or eval for each parameter?

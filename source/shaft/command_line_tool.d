@@ -247,6 +247,7 @@ auto processParameters(Param[] params)
 unittest
 {
     import dyaml : Loader, Node;
+    import std.file : mkdir, rmdir;
 
     enum inpDoc = q"EOS
         inp1: 10
@@ -274,10 +275,18 @@ EOS";
 
     auto evaluator = Evaluator(null, "v1.0", false);
 
+    auto outdir = "test-outdir";
+    mkdir(outdir);
+    scope(exit) rmdir(outdir);
+
+    auto tmpdir = "test-tmpdir";
+    mkdir(tmpdir);
+    scope(exit) rmdir(tmpdir);
+
     auto args = buildCommandLine(
         clt,
         params,
-        Runtime(params.parameters, "outDir", "tmpDir", null, null, evaluator),
+        Runtime(params.parameters, outdir, tmpdir, null, null, evaluator),
         evaluator
     );
 
