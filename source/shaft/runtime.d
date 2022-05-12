@@ -201,7 +201,7 @@ auto availableRamImpl() @trusted
         enforce!SystemException(ret.status == 0);
         auto meminfo = ret.output.split;
         enforce!SystemException(meminfo[0] == "hw.memsize:");
-        auto totalMeem = meminfo[1].to!size_t/2^^20; // in mebibytes
+        auto totalMem = meminfo[1].to!size_t/2^^20; // in mebibytes
     }
 
     if (lim.rlim_cur == RLIM_INFINITY)
