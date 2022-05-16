@@ -10,6 +10,7 @@ import dyaml : Mark;
 
 import std.exception : basicExceptionCtors;
 
+///
 abstract class ShaftException : Exception
 {
     mixin basicExceptionCtors;
