@@ -2,9 +2,9 @@
 	"fileVersion": 1,
 	"versions": {
 		"cachetools": "0.3.1",
-		"dyaml": {"version":"bc1773b4596fd99acdd72c11b292d20e7f8c742a","repository":"git+https://github.com/dlang-community/D-YAML.git"},
-		"requests": "2.0.5",
-		"schema-salad-d": "0.7.17",
+		"dyaml": "0.8.6",
+		"requests": "2.0.8",
+		"schema-salad-d": "0.7.18",
 		"sumtype": "1.1.4",
 		"tinyendian": "0.2.0"
 	}
