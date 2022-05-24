@@ -109,7 +109,6 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: |
-            /tmp/.buildx-cache
             ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-buildx
       - uses: dlang-community/setup-dlang@v1
@@ -120,9 +119,7 @@ jobs:
           dub --cache=local build -b release
       - name: Setup cache
         run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-          sudo chown -R $UID:$UID .dub
+          chown -R $UID:$UID .dub
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
