@@ -185,7 +185,7 @@ jobs:
           body_path: ${{ github.workspace }}/release.md
       - uses: actions/download-artifact@v3
         with:
-          name: shaft-linux-x86_64-master
+          name: shaft-linux-X64-master
       - run: |
           chmod +x shaft
           tar cf ${GITHUB_WORKSPACE}/shaft-linux-x86_64.tar.gz shaft
@@ -201,7 +201,7 @@ jobs:
           asset_content_type: application/tar+gzip
       - uses: actions/download-artifact@v3
         with:
-          name: shaft-osx-x86_64-master
+          name: shaft-osx-X64-master
       - run: |
           chmod +x shaft
           tar cf ${GITHUB_WORKSPACE}/shaft-osx-x86_64.tar.gz shaft
