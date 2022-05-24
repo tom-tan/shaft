@@ -110,16 +110,13 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.dub
-          key: ${{ runner.os }}-buildx
+          key: ${{ runner.os }}-dub
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-latest
       - name: Build a binary
         run: |
           dub --cache=local build -b release
-      - name: Setup cache
-        run: |
-          chown -R $UID:$UID .dub
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
