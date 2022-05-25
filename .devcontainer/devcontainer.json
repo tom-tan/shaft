@@ -1,7 +1,7 @@
 {
   "dockerComposeFile": "docker-compose.yml",
   "service": "dev",
-  "extensions": ["sbg-rabix.benten-cwl", "webfreak.dlang-bundle", "hbenl.vscode-test-explorer"],
+  "extensions": ["sbg-rabix.benten-cwl", "webfreak.dlang-bundle"],
   "settings": {
     "d.dmdPath": "dmd",
     "d.stdlibPath": [
