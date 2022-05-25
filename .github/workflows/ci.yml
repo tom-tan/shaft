@@ -37,7 +37,7 @@ jobs:
     needs: [info]
     strategy:
       matrix:
-        dc: [dmd-2.098.1, ldc-latest]
+        dc: [dmd-2.100.0, ldc-1.28.1]
         experimental: [false]
         include:
           - dc: dmd-master
