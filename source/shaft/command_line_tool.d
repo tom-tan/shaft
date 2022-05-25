@@ -226,8 +226,12 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
 auto processParameters(Param[] params)
 {
     import salad.type : match;
-    import std.algorithm : map, multiSort;
-    import std.array : join;
+    import shaft.exception : InvalidDocument;
+    import std.algorithm : filter, joiner, map, multiSort;
+    import std.array : array;
+    import std.exception : enforce, ifThrown;
+    import std.format : format;
+    import std.range : empty;
 
     // 4. Sort elements using the assigned sorting keys. Numeric entries sort before strings.
     params.multiSort!(
@@ -240,7 +244,21 @@ auto processParameters(Param[] params)
     );
 
     // 5. In the sorted order, apply the rules defined in `CommandLineBinding` to convert bindings to actual command line elements.
-    return params.map!(p => applyRules(p.tupleof[1..$])).join;
+    return params
+        .map!(p => 
+            applyRules(p.tupleof[1..$])
+                .ifThrown!InvalidDocument((e) {
+                    enforce(false, new InvalidDocument(format!"%s in `%s`"(e.msg, p.key[1]), e.mark));
+                    return CmdElemType.init;
+                })
+                .match!(
+                    (string s) => [s],
+                    ss => ss,
+                )
+        )
+        .joiner
+        .filter!(a => !a.empty)
+        .array;
 }
 
 //
@@ -293,31 +311,84 @@ EOS";
     assert(args == ["echo", "10"]);
 }
 
+alias CmdElemType = Either!(string, string[]);
+
+///
+auto toCmdElems(CmdElemType val, CommandLineBinding clb)
+{
+    import dyaml : Mark;
+    import salad.type : match, MatchException, None, tryMatch;
+    import shaft.exception : InvalidDocument;
+    import std.array : join;
+    import std.exception : enforce, ifThrown;
+    import std.range : empty;
+
+    if (clb is null)
+    {
+        return CmdElemType((string[]).init);
+    }
+
+    auto arg = val.match!(
+        (string _) {
+            clb.itemSeparator_
+               .tryMatch!((None _) => true)
+               .ifThrown!MatchException((e) {
+                   enforce(false, new InvalidDocument(
+                       "`itemSeparator` is supported only for array types: "~_,
+                       Mark.init,
+                   ));
+                   return true;
+               });
+            return val;
+        },
+        (string[] vs) => clb.itemSeparator_.match!(
+            (string sep) => vs.empty ? val : CmdElemType(vs.join(sep)),
+            none => val,
+        ),
+    );
+
+    auto ret = clb
+        .prefix_
+        .match!(
+            (string pr) {
+                return arg.match!(
+                    (string s) {
+                        auto sep = clb.separate_.orElse(true);
+                        return sep ? CmdElemType([pr, s]) : CmdElemType(pr~s);
+                    },
+                    (string[] ss) {
+                        clb.separate_.match!(
+                            (bool sep_) {
+                                enforce(sep_, new InvalidDocument(
+                                    "`separate: false` is supported only for scalar types",
+                                    Mark.init,
+                                ));
+                                return true;
+                            },
+                            none => true,
+                        );
+                        return CmdElemType(pr~ss);
+                    },
+                );
+            },
+            none => arg,
+        );
+
+    // process shellQuote: false
+    return ret.match!(
+        (string s) => ret,
+        (string[] ss) => ret,
+    );
+}
+
 /**
  * See_Also: https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding
  */
-string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
+CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType type)
 {
     import salad.type : match;
     import shaft.type.common : ArrayType, EnumType, RecordType;
     import std.exception : enforce;
-
-    alias toCmdElems = (string[] val, CommandLineBinding clb) {
-        import std.array : join;
-
-        if (clb is null)
-        {
-            return (string[]).init;
-        }
-
-        auto sep = clb.separate_.orElse(true);
-        // TODO: handle ShellCommandRequirement?
-        return clb.prefix_.match!(
-            // TODO: how to join an array of elems for arrays?
-            (string pr) => sep ? pr~val : [pr~val.join],
-            none => val,
-        );
-    };
 
     return type.match!(
         (CWLType t) {
@@ -325,31 +396,31 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
             {
             case "null":
                 // Add nothing.
-                return (string[]).init;
+                return CmdElemType((string[]).init);
             case "boolean":
                 // If true, add `prefix` to the command line. If false, add nothing.
                 if (self.as!bool)
                 {
                     if (binding is null)
                     {
-                        return (string[]).init;
+                        return CmdElemType((string[]).init);
                     }
                     return binding.prefix_.match!(
-                        (string pre) => [pre],
-                        none => (string[]).init,
+                        (string pre) => CmdElemType([pre]),
+                        none => CmdElemType((string[]).init),
                     );
                 }
                 else
                 {
-                    return (string[]).init;
+                    return CmdElemType((string[]).init);
                 }
             case "int", "long", "float", "double", "string":
                 // Add `prefix` and the string (or decimal representation for numbers) to command line.
-                return toCmdElems([self.as!string], binding);
+                return toCmdElems(CmdElemType(self.as!string), binding);
             case "File", "Directory":
                 assert("path" in self);
                 // Add `prefix` and the value of `File.path` (or `Directory.path`) to the command line.
-                return toCmdElems([self["path"].as!string], binding);
+                return toCmdElems(CmdElemType(self["path"].as!string), binding);
             }
         },
         (RecordType rtype) {
@@ -360,23 +431,24 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
             import std.array : array, byPair;
             import std.typecons : tuple;
 
-            auto cmdElems = rtype.fields
-                                 .byPair
-                                 .filter!(pair => pair.value[1].orElse(null))
-                                 .map!(pair => 
-                                     Param(
-                                         tuple(pair.value[1].dig!"position"(0), TieBreaker(pair.key)),
-                                         pair.value[1].orElse(null),
-                                         self[pair.key],
-                                         *pair.value[0],
-                                     )
-                                 )
-                                 .array
-                                 .processParameters;
-            return toCmdElems(cmdElems, binding);
+            auto cmdElems = rtype
+                .fields
+                .byPair
+                .filter!(pair => pair.value[1].orElse(null))
+                .map!(pair => 
+                    Param(
+                        tuple(pair.value[1].dig!"position"(0), TieBreaker(pair.key)),
+                        pair.value[1].orElse(null),
+                        self[pair.key],
+                        *pair.value[0],
+                    )
+                )
+                .array
+                .processParameters;
+            return toCmdElems(CmdElemType(cmdElems), binding);
         },
         (EnumType etype) {
-            return toCmdElems(toCmdElems([self.as!string], etype.inputBinding.orElse(new CommandLineBinding)),
+            return toCmdElems(toCmdElems(CmdElemType(self.as!string), etype.inputBinding.orElse(new CommandLineBinding)),
                               binding);
         },
         (ArrayType atype) {
@@ -389,7 +461,7 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
             if (arr.empty)
             {
                 // If the array is empty, it does not add anything to command line.
-                return (string[]).init;
+                return CmdElemType((string[]).init);
             }
             else
             {
@@ -399,20 +471,15 @@ string[] applyRules(CommandLineBinding binding, Node self, DeterminedType type)
                 import std.range : zip;
 
                 auto strs = zip(atype.types, self.sequence)
-                                .map!((tpl) {
-                                    auto clb = atype.inputBinding.orElse(new CommandLineBinding);
-                                    return applyRules(clb, tpl[1], *tpl[0]);
-                                })
-                                .join;
-
-                auto clb = binding ? binding : new CommandLineBinding;
-
-                return clb.itemSeparator_.match!(
-                    // If `itemSeparator` is specified, add `prefix` and the join the array into a single string with `itemSeparator` separating the items.
-                    (string isep) => toCmdElems([strs.join(isep)], binding),
-                    // Otherwise first add `prefix`, then recursively process individual elements.
-                    none => toCmdElems(strs, binding),
-                );
+                    .map!((tpl) {
+                        auto clb = atype.inputBinding.orElse(new CommandLineBinding);
+                        return applyRules(clb, tpl[1], *tpl[0]).match!(
+                            (string s) => [s],
+                            ss => ss,
+                        );
+                    })
+                    .join;
+                return toCmdElems(CmdElemType(strs), binding);
             }
         },
     );
