@@ -13,6 +13,7 @@ import salad.type : Either, orElse;
 
 import shaft.evaluator : Evaluator;
 import shaft.runtime : Runtime;
+import shaft.type.argstr : EscapedString, NonEscapedString;
 import shaft.type.common : DeterminedType, TypedParameters;
 
 import std.typecons : Tuple;
@@ -24,10 +25,11 @@ import std.typecons : Tuple;
 int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evaluator evaluator)
 {
     import salad.type : match;
+    import salad.util : dig;
     import std.array : join;
     import std.exception : enforce;
     import std.path : buildPath;
-    import std.process : Config, environment, Pid, spawnProcess, wait;
+    import std.process : Config, environment, Pid, wait;
     import std.stdio : File;
     // 6. Perform any further setup required by the specific process type.
 
@@ -59,7 +61,9 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
         string mappedStdin;
     }
 
-    auto args = buildCommandLine(clt, params, runtime, evaluator);
+    auto useShell = clt.dig!(["requirements", "ShellCommandRequirement"], ShellCommandRequirement) !is null;
+
+    auto args = buildCommandLine(clt, params, runtime, evaluator, useShell);
 
     version(none)
     {
@@ -72,7 +76,6 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
         "PATH": environment["PATH"],
     ];
 
-    import salad.util : dig;
     if (auto e = clt.dig!(["requirements", "EnvVarRequirement"], EnvVarRequirement))
     {
         foreach(def; e.envDef_)
@@ -90,13 +93,14 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
 
     Pid pid;
     // 7. Execute the process.
-    if (clt.dig!(["requirements", "ShellCommandRequirement"], ShellCommandRequirement))
+    if (useShell)
     {
-        pid = spawnProcess(args.join(" "), stdin, stdout, stderr, env, Config.newEnv, runtime.outdir);
+        import std.process : spawnShell;
+        pid = spawnShell(args.join(" "), stdin, stdout, stderr, env, Config.newEnv, runtime.outdir);
     }
     else
     {
-        // execute in the shell?
+        import std.process : spawnProcess;
         pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir);
     }
     scope(failure)
@@ -127,7 +131,7 @@ alias TieBreaker = Either!(size_t, string);
 /**
  * See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Input_binding
  */
-auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runtime, Evaluator evaluator)
+auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runtime, Evaluator evaluator, bool useShell)
 {
     import salad.type : match, None, orElse;
 
@@ -135,6 +139,7 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
 
     import std.algorithm : map, multiSort;
     import std.array : array, join;
+    import std.conv : to;
     import std.range : chain, enumerate;
     import std.typecons : tuple;
 
@@ -209,8 +214,7 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
 
     // 4. Sort elements using the assigned sorting keys. Numeric entries sort before strings.
     // 5. In the sorted order, apply the rules defined in `CommandLineBinding` to convert bindings to actual command line elements.
-    // TODO: pass ShellCommandRequirement?
-    auto cmdElems = processParameters(args~inp);
+    auto cmdElems = processParameters(args~inp, useShell).map!(to!string).array;
     
     // 6. Insert elements from `baseCommand` at the beginning of the command line.
     auto base = cmd.baseCommand_.match!(
@@ -223,12 +227,13 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
 }
 
 ///
-auto processParameters(Param[] params)
+auto processParameters(Param[] params, bool useShell)
 {
     import salad.type : match;
     import shaft.exception : InvalidDocument;
     import std.algorithm : filter, joiner, map, multiSort;
     import std.array : array;
+    import std.conv : to;
     import std.exception : enforce, ifThrown;
     import std.format : format;
     import std.range : empty;
@@ -246,18 +251,18 @@ auto processParameters(Param[] params)
     // 5. In the sorted order, apply the rules defined in `CommandLineBinding` to convert bindings to actual command line elements.
     return params
         .map!(p => 
-            applyRules(p.tupleof[1..$])
+            applyRules(p.tupleof[1..$], useShell)
                 .ifThrown!InvalidDocument((e) {
                     enforce(false, new InvalidDocument(format!"%s in `%s`"(e.msg, p.key[1]), e.mark));
                     return CmdElemType.init;
                 })
                 .match!(
-                    (string s) => [s],
+                    (Str s) => [s],
                     ss => ss,
                 )
         )
         .joiner
-        .filter!(a => !a.empty)
+        .filter!(a => !a.match!(to!string).empty)
         .array;
 }
 
@@ -305,44 +310,60 @@ EOS";
         clt,
         params,
         Runtime(params.parameters, outdir, tmpdir, null, null, evaluator),
-        evaluator
+        evaluator,
+        false,
     );
 
     assert(args == ["echo", "10"]);
 }
 
-alias CmdElemType = Either!(string, string[]);
+alias Str = Either!(NonEscapedString, EscapedString);
+alias CmdElemType = Either!(Str, Str[]);
 
 ///
-auto toCmdElems(CmdElemType val, CommandLineBinding clb)
+auto toCmdElems(CmdElemType val, CommandLineBinding clb, bool useShell)
 {
     import dyaml : Mark;
     import salad.type : match, MatchException, None, tryMatch;
     import shaft.exception : InvalidDocument;
-    import std.array : join;
+    import std.algorithm : map;
+    import std.array : array;
     import std.exception : enforce, ifThrown;
     import std.range : empty;
 
+    auto join(Str[] ss, string sep)
+    {
+        import std.algorithm : reduce;
+
+        if (ss.empty)
+        {
+            return Str.init;
+        }
+        return ss[0].reduce!((Str a, Str b) {
+            return match!((a_, b_) => Str(a_~sep~b_))(a, b);
+        })(ss[1..$]);
+    }
+
     if (clb is null)
     {
-        return CmdElemType((string[]).init);
+        return CmdElemType((Str[]).init);
     }
 
     auto arg = val.match!(
-        (string _) {
+        (Str _) {
             clb.itemSeparator_
                .tryMatch!((None _) => true)
                .ifThrown!MatchException((e) {
                    enforce(false, new InvalidDocument(
-                       "`itemSeparator` is supported only for array types: "~_,
+                       "`itemSeparator` is supported only for array types",
                        Mark.init,
                    ));
                    return true;
                });
             return val;
         },
-        (string[] vs) => clb.itemSeparator_.match!(
-            (string sep) => vs.empty ? val : CmdElemType(vs.join(sep)),
+        (Str[] vs) => clb.itemSeparator_.match!(
+            (string sep) => vs.empty ? val : CmdElemType(join(vs, sep)),
             none => val,
         ),
     );
@@ -352,11 +373,11 @@ auto toCmdElems(CmdElemType val, CommandLineBinding clb)
         .match!(
             (string pr) {
                 return arg.match!(
-                    (string s) {
+                    (Str s) {
                         auto sep = clb.separate_.orElse(true);
-                        return sep ? CmdElemType([pr, s]) : CmdElemType(pr~s);
+                        return sep ? CmdElemType([Str(pr), s]) : CmdElemType(s.match!(ss => Str(pr~ss)));
                     },
-                    (string[] ss) {
+                    (Str[] ss) {
                         clb.separate_.match!(
                             (bool sep_) {
                                 enforce(sep_, new InvalidDocument(
@@ -367,24 +388,29 @@ auto toCmdElems(CmdElemType val, CommandLineBinding clb)
                             },
                             none => true,
                         );
-                        return CmdElemType(pr~ss);
+                        return CmdElemType(Str(pr)~ss);
                     },
                 );
             },
             none => arg,
         );
 
-    // process shellQuote: false
+    // strings are not quoted when !useShell because it can be done by `spawnProcess` internally
+    auto shouldQuote = useShell && clb.shellQuote_.orElse(true);
+    alias escapeIfUseShell = s => s.match!(s_ =>
+        shouldQuote ? Str(EscapedString(s_))
+                    : Str(s_)
+    );
     return ret.match!(
-        (string s) => ret,
-        (string[] ss) => ret,
+        (Str s) => CmdElemType(escapeIfUseShell(s)),
+        (Str[] ss) => CmdElemType(ss.map!escapeIfUseShell.array),
     );
 }
 
 /**
  * See_Also: https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding
  */
-CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType type)
+CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType type, bool useShell)
 {
     import salad.type : match;
     import shaft.type.common : ArrayType, EnumType, RecordType;
@@ -396,31 +422,33 @@ CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType typ
             {
             case "null":
                 // Add nothing.
-                return CmdElemType((string[]).init);
+                return CmdElemType((Str[]).init);
             case "boolean":
                 // If true, add `prefix` to the command line. If false, add nothing.
                 if (self.as!bool)
                 {
                     if (binding is null)
                     {
-                        return CmdElemType((string[]).init);
+                        return CmdElemType((Str[]).init);
                     }
                     return binding.prefix_.match!(
-                        (string pre) => CmdElemType([pre]),
-                        none => CmdElemType((string[]).init),
+                        (string pre) => CmdElemType(Str(pre)),
+                        none => CmdElemType((Str[]).init),
                     );
                 }
                 else
                 {
-                    return CmdElemType((string[]).init);
+                    return CmdElemType((Str[]).init);
                 }
             case "int", "long", "float", "double", "string":
                 // Add `prefix` and the string (or decimal representation for numbers) to command line.
-                return toCmdElems(CmdElemType(self.as!string), binding);
+                return toCmdElems(CmdElemType(Str(self.as!string)), binding, useShell);
             case "File", "Directory":
                 assert("path" in self);
                 // Add `prefix` and the value of `File.path` (or `Directory.path`) to the command line.
-                return toCmdElems(CmdElemType(self["path"].as!string), binding);
+                auto path = useShell ? Str(EscapedString(self["path"].as!string))
+                                     : Str(self["path"].as!string);
+                return toCmdElems(CmdElemType(path), binding, useShell);
             }
         },
         (RecordType rtype) {
@@ -444,12 +472,15 @@ CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType typ
                     )
                 )
                 .array
-                .processParameters;
-            return toCmdElems(CmdElemType(cmdElems), binding);
+                .processParameters(useShell);
+            return toCmdElems(CmdElemType(cmdElems), binding, useShell);
         },
         (EnumType etype) {
-            return toCmdElems(toCmdElems(CmdElemType(self.as!string), etype.inputBinding.orElse(new CommandLineBinding)),
-                              binding);
+            return toCmdElems(toCmdElems(CmdElemType(Str(self.as!string)),
+                                         etype.inputBinding.orElse(new CommandLineBinding),
+                                         useShell),
+                              binding,
+                              useShell);
         },
         (ArrayType atype) {
             import dyaml : NodeType;
@@ -461,7 +492,7 @@ CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType typ
             if (arr.empty)
             {
                 // If the array is empty, it does not add anything to command line.
-                return CmdElemType((string[]).init);
+                return CmdElemType((Str[]).init);
             }
             else
             {
@@ -473,13 +504,13 @@ CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType typ
                 auto strs = zip(atype.types, self.sequence)
                     .map!((tpl) {
                         auto clb = atype.inputBinding.orElse(new CommandLineBinding);
-                        return applyRules(clb, tpl[1], *tpl[0]).match!(
-                            (string s) => [s],
+                        return applyRules(clb, tpl[1], *tpl[0], useShell).match!(
+                            (Str s) => [s],
                             ss => ss,
                         );
                     })
                     .join;
-                return toCmdElems(CmdElemType(strs), binding);
+                return toCmdElems(CmdElemType(strs), binding, useShell);
             }
         },
     );

@@ -268,13 +268,12 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         // DockerRequirement, SoftwareRequirement, ResourceRequirement can be hints
         // others -> should be requirements (warning if exists in reqs)
         import cwl.v1_0.schema : DockerRequirement, SoftwareRequirement, InitialWorkDirRequirement,
-                                 ShellCommandRequirement, ResourceRequirement;
+                                 ResourceRequirement;
 
         alias UnsupportedRequirements = AliasSeq!(
             DockerRequirement,
             SoftwareRequirement,
             InitialWorkDirRequirement,
-            ShellCommandRequirement,
             ResourceRequirement,
         );
         static foreach(req; UnsupportedRequirements)
