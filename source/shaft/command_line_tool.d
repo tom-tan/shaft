@@ -9,7 +9,7 @@ import cwl.v1_0.schema;
 
 import dyaml : Node;
 
-import salad.type : Either, orElse;
+import salad.type : Either, Optional, orElse;
 
 import shaft.evaluator : Evaluator;
 import shaft.runtime : Runtime;
@@ -171,53 +171,16 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
 
     // 2. Collect `CommandLineBinding` objects from the `inputs` schema and associate them with values from the input object. Where the input type is a record, array, or map, recursively walk the schema and input object, collecting nested `CommandLineBinding` objects and associating them with values from the input object.
     // 3. Create a sorting key by taking the value of the `position` field at each level leading to each leaf binding object. If `position` is not specified, it is not added to the sorting key. For bindings on arrays and maps, the sorting key must include the array index or map key following the position. If and only if two bindings have the same sort key, the tie must be broken using the ordering of the field or parameter name immediately containing the leaf binding.
-    auto inp = cmd.inputs_.map!((i) {
-        import salad.util : dig;
-
-        auto id = i.id_;
-        auto pos = i.dig!(["inputBinding", "position"])(0); // TODO for v1.2: Expression
-        Node val;
-        DeterminedType type;
-        CommandLineBinding clb;
-
-        i.inputBinding_.match!(
-            (None _) {
-                val = params.parameters[id];
-                type = params.types[id];
-                clb = null;
-            },
-            (clb_) {
-                clb = clb_;
-                clb_.valueFrom_.match!(
-                    (None _) {
-                        val = params.parameters[id];
-                        type = params.types[id];
-                    },
-                    (str) {
-                        import dyaml : NodeType;
-
-                        if (params.parameters[id].type == NodeType.null_)
-                        {
-                            // See_Also: `valueFrom` in https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding
-                            // If the value of the associated input parameter is `null`, `valueFrom` is not evaluated ...
-                            val = params.parameters[id];
-                            type = params.types[id];
-                        }
-                        else
-                        {
-                            val = evaluator.eval(str, params.parameters, runtime, params.parameters[id]);
-                            type = val.guessedType;
-                        }
-                    },
-                );
-            },
-        );
-        return Param(tuple(pos, TieBreaker(id)), clb, val, type);
-    }).array;
+    auto inp = cmd.inputs_.map!(i => 
+        collectParams(
+            i.id_, params.parameters[i.id_], params.types[i.id_], i.inputBinding_,
+            params.parameters, runtime, evaluator,
+        )
+    ).join;
 
     // 4. Sort elements using the assigned sorting keys. Numeric entries sort before strings.
     // 5. In the sorted order, apply the rules defined in `CommandLineBinding` to convert bindings to actual command line elements.
-    auto cmdElems = processParameters(args~inp, useShell).map!(to!string).array;
+    auto cmdElems = processParameters(args~inp, params.parameters, runtime, evaluator, useShell).map!(to!string).array;
     
     // 6. Insert elements from `baseCommand` at the beginning of the command line.
     auto base = cmd.baseCommand_.match!(
@@ -229,8 +192,76 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
     return base~cmdElems;
 }
 
+// 2. Collect `CommandLineBinding` objects from the `inputs` schema and associate them with values from the input object. Where the input type is a record, array, or map, recursively walk the schema and input object, collecting nested `CommandLineBinding` objects and associating them with values from the input object.
+// 3. Create a sorting key by taking the value of the `position` field at each level leading to each leaf binding object. If `position` is not specified, it is not added to the sorting key. For bindings on arrays and maps, the sorting key must include the array index or map key following the position. If and only if two bindings have the same sort key, the tie must be broken using the ordering of the field or parameter name immediately containing the leaf binding.
+Param[] collectParams(
+    string id, Node node, DeterminedType type, Optional!CommandLineBinding binding,
+    Node inputs, Runtime runtime, Evaluator evaluator
+)
+{
+    import salad.type : match, None;
+    import shaft.type.common : ArrayType, EnumType, RecordType;
+    import std.algorithm : map;
+    import std.array : byPair, join;
+    import std.typecons : tuple;
+
+    return binding.match!(
+        (None _) =>
+            type.match!(
+                (EnumType et) =>
+                    et.inputBinding.match!(
+                        (None _) => (Param[]).init,
+                        (binding_) {
+                            auto pos = binding_.position_.orElse(0);
+                            auto type_ = DeterminedType(EnumType(et.name, Optional!CommandLineBinding.init));
+                            return [Param(tuple(pos, TieBreaker(id)), binding_, node, type_)];
+                        },
+                    ),
+                (ArrayType at) =>
+                    at.inputBinding.match!(
+                        (None _) => (Param[]).init,
+                        (binding_) {
+                            auto pos = binding_.position_.orElse(0);
+                            // TODO: inputBinding for each element
+                            auto type_ = DeterminedType(ArrayType(at.types, Optional!CommandLineBinding.init));
+                            return [Param(tuple(pos, TieBreaker(id)), binding_, node, type_)];
+                        },
+                    ),
+                (RecordType rt) =>
+                    rt.fields.byPair.map!(fs =>
+                        collectParams(fs.key, node[fs.key], *fs.value[0], fs.value[1], inputs, runtime, evaluator)
+                    ).join,
+                other => (Param[]).init,
+            ),
+        clb =>
+            clb.valueFrom_.match!(
+                (None _) => [Param(tuple(clb.position_.orElse(0), TieBreaker(id)), clb, node, type)],
+                (str) {
+                    import dyaml : NodeType;
+
+                    Node val;
+                    DeterminedType type_;
+                    if (node.type == NodeType.null_)
+                    {
+                        // See_Also: `valueFrom` in https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding
+                        // If the value of the associated input parameter is `null`, `valueFrom` is not evaluated ...
+                        val = node;
+                        type_ = type;
+                    }
+                    else
+                    {
+                        import shaft.type.common : guessedType;
+                        val = evaluator.eval(str, inputs, runtime, node);
+                        type_ = val.guessedType;
+                    }
+                    return [Param(tuple(clb.position_.orElse(0), TieBreaker(id)), clb, val, type_)];
+                },
+            )
+    );
+}
+
 ///
-auto processParameters(Param[] params, bool useShell)
+auto processParameters(Param[] params, Node inputs, Runtime runtime, Evaluator evaluator, bool useShell)
 {
     import salad.type : match;
     import shaft.exception : InvalidDocument;
@@ -254,7 +285,7 @@ auto processParameters(Param[] params, bool useShell)
     // 5. In the sorted order, apply the rules defined in `CommandLineBinding` to convert bindings to actual command line elements.
     return params
         .map!(p => 
-            applyRules(p.tupleof[1..$], useShell)
+            applyRules(p.tupleof[1..$], inputs, runtime, evaluator, useShell)
                 .ifThrown!InvalidDocument((e) {
                     enforce(false, new InvalidDocument(format!"%s in `%s`"(e.msg, p.key[1]), e.mark));
                     return CmdElemType.init;
@@ -413,7 +444,10 @@ auto toCmdElems(CmdElemType val, CommandLineBinding clb, bool useShell)
 /**
  * See_Also: https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding
  */
-CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType type, bool useShell)
+CmdElemType applyRules(
+    CommandLineBinding binding, Node self, DeterminedType type,
+    Node inputs, Runtime runtime, Evaluator evaluator, bool useShell
+)
 {
     import salad.type : match;
     import shaft.type.common : ArrayType, EnumType, RecordType;
@@ -456,26 +490,17 @@ CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType typ
         },
         (RecordType rtype) {
             // Add `prefix` only, and recursively add object fields for which `inputBinding` is specified.
-            import salad.type : orElse;
-            import salad.util : dig;
-            import std.algorithm : filter, map;
-            import std.array : array, byPair;
-            import std.typecons : tuple;
+            import std.algorithm : map;
+            import std.array : byPair, join;
 
             auto cmdElems = rtype
                 .fields
                 .byPair
-                .filter!(pair => pair.value[1].orElse(null))
-                .map!(pair => 
-                    Param(
-                        tuple(pair.value[1].dig!"position"(0), TieBreaker(pair.key)),
-                        pair.value[1].orElse(null),
-                        self[pair.key],
-                        *pair.value[0],
-                    )
+                .map!(pair =>
+                    collectParams(pair.key, self[pair.key], *pair.value[0], pair.value[1], inputs, runtime, evaluator)
                 )
-                .array
-                .processParameters(useShell);
+                .join
+                .processParameters(inputs, runtime, evaluator, useShell);
             return toCmdElems(CmdElemType(cmdElems), binding, useShell);
         },
         (EnumType etype) {
@@ -507,7 +532,7 @@ CmdElemType applyRules(CommandLineBinding binding, Node self, DeterminedType typ
                 auto strs = zip(atype.types, self.sequence)
                     .map!((tpl) {
                         auto clb = atype.inputBinding.orElse(new CommandLineBinding);
-                        return applyRules(clb, tpl[1], *tpl[0], useShell).match!(
+                        return applyRules(clb, tpl[1], *tpl[0], inputs, runtime, evaluator, useShell).match!(
                             (Str s) => [s],
                             ss => ss,
                         );
