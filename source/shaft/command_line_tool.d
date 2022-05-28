@@ -206,6 +206,8 @@ Param[] collectParams(
     import std.typecons : tuple;
 
     return binding.match!(
+        // If none, search in leaves
+        // See_Also: record_output_binding
         (None _) =>
             type.match!(
                 (EnumType et) =>
