@@ -393,7 +393,11 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                         .fold!(
                             (acc, e) { acc.add(e[0], e[2]); return acc; },
                             (acc, e) {
-                               acc[e[0]] = tuple(&e[1], Optional!CommandLineBinding.init);
+                                import std.algorithm : moveEmplace;
+
+                                auto dt = new DeterminedType;
+                                moveEmplace(e[1], *dt);
+                               acc[e[0]] = tuple(dt, Optional!CommandLineBinding.init);
                                return acc;
                             },
                         )(Node((Node[string]).init), FieldTypes.init);
@@ -416,7 +420,11 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                             .fold!(
                                 (acc, e) { acc.add(e[0], e[2]); return acc; },
                                 (acc, e) {
-                                    acc[e[0]] = tuple(&e[1], Optional!CommandLineBinding.init);
+                                    import std.algorithm : moveEmplace;
+
+                                    auto dt = new DeterminedType;
+                                    moveEmplace(e[1], *dt);
+                                    acc[e[0]] = tuple(dt, Optional!CommandLineBinding.init);
                                     return acc;
                                 },
                             )(Node((Node[string]).init), FieldTypes.init);
