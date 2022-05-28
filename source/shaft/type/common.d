@@ -44,13 +44,12 @@ string toStr(DeterminedType dt) pure @safe
         (CWLType t) => cast(string)t.value_,
         (EnumType e) => e.name.empty ? "enum" : e.name,
         (ArrayType a) => format!"[%-(%s, %)]"(a.types.map!(e => toStr(*e)).array),
-        (RecordType r) => 
-            r.name.length > 0 ? r.name
-                              : format!"Record(%-(%s, %))"(
-                                    r.fields
-                                     .byPair
-                                     .map!(kv => kv.key~": "~toStr(*kv.value[0]))
-                                     .array),
+        (RecordType r) => format!"Record(%s, %-(%s, %))"(
+                                r.name,
+                                r.fields
+                                 .byPair
+                                 .map!(kv => kv.key~": "~toStr(*kv.value[0]))
+                                 .array),
     );
 }
 
@@ -74,6 +73,13 @@ struct TypedValue
         if (Filter!(ApplyLeft!(isImplicitlyConvertible, Type), DeterminedType.Types).length > 0)
     {
         this(v, DeterminedType(t));
+    }
+
+    ///
+    string toString() @safe
+    {
+        import std.format : format;
+        return format!"TypedValue(type: %s, value: %s)"(type.toStr, value.toJSON);
     }
 }
 
