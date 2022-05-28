@@ -16,6 +16,7 @@ import shaft.runtime : Runtime;
 import shaft.type.argstr : EscapedString, NonEscapedString;
 import shaft.type.common : DeterminedType, TypedParameters;
 
+import std.experimental.logger : sharedLog;
 import std.typecons : Tuple;
 
 /**
@@ -96,11 +97,13 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     if (useShell)
     {
         import std.process : spawnShell;
+        sharedLog.infof("CMD: %s", args.join(" "));
         pid = spawnShell(args.join(" "), stdin, stdout, stderr, env, Config.newEnv, runtime.outdir);
     }
     else
     {
         import std.process : spawnProcess;
+        sharedLog.infof("CMD: %s", args);
         pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir);
     }
     scope(failure)
