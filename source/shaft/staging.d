@@ -253,7 +253,25 @@ in(dest.isDir)
             }).array;
             return Node(staged);
         },
-        (RecordType rt) => tv.value, // TODO
+        (RecordType rt) {
+            import dyaml : NodeType;
+            import std.algorithm : map;
+            import std.array : assocArray, byPair;
+            import std.typecons : tuple;
+
+            auto node = tv.value;
+            assert(node.type == NodeType.mapping);
+
+            auto types = rt.fields.byPair.map!((tpl) {
+                return tuple(tpl.key, *tpl.value[0]);
+            }).assocArray;
+
+            auto staged = staging(
+                TypedParameters(node, types), dest,
+                keepStructure, forceStaging, overwrite,
+            );
+
+            return staged.parameters;
+        },
     );
 }
-
