@@ -124,6 +124,7 @@ in(params.type == NodeType.mapping)
         import dyaml : ScalarStyle;
         import salad.type : match, None;
         import salad.util : dig;
+        import std.exception : ifThrown;
 
         auto id = p.id_;
         Node n;
@@ -158,16 +159,13 @@ in(params.type == NodeType.mapping)
             others => DeclaredType(others),
         );
 
-        TypedValue v;
-        try
-        {
-            v = n.bindType(type, defMap, context);
-        }
-        catch(TypeConflicts e)
-        {
-            auto msg = new TypeConflicts(e.expected_, e.actual_, id).msg;
-            throw new InputCannotBeLoaded(msg, Mark());
-        }
+        TypedValue v = n
+            .bindType(type, defMap, context)
+            .ifThrown!TypeConflicts((e) {
+                auto msg = new TypeConflicts(e.expected_, e.actual_, id).msg;
+                enforce(false, new InputCannotBeLoaded(msg, Mark()));
+                return TypedValue.init;
+            });
         types[id] = v.type;
         retNode.add(id, v.value);
         rest.removeKey(id);
