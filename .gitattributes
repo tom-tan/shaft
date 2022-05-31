@@ -1,2 +1,2 @@
 /.* export-ignore
-/Dockerfile.build
+/Dockerfile.build export-ignore
