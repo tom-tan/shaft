@@ -212,7 +212,7 @@ in(dest.isDir)
                         auto dir = (keepStructure || !shouldBeStaged_) ? dest : randomDir(dest);
 
                         stagedPath = buildPath(dir, bname);
-                        // TODO
+                        // TODO: merge directories
                         enforce(overwrite || !stagedPath.exists,
                             format!"Dirctory already exists: %s"(stagedPath));
                     }
@@ -243,7 +243,6 @@ in(dest.isDir)
                 {
                     import dyaml : YAMLNull;
                     import std.file : mkdir;
-                    // staged elements if provided || LoadListingReq
                     if (auto lst_ = "listing" in node)
                     {
                         import shaft.type.common : DeterminedType;
@@ -258,6 +257,7 @@ in(dest.isDir)
                             .map!(l => stagingParam(TypedValue(l, DeterminedType(new CWLType(l["class"]))),
                                                     stagedPath, Yes.keepStructure, forceStaging, No.overwrite))
                             .array;
+                        // set listing if LoadListingReq
                         listing = lst.empty ? Node(YAMLNull()) : Node(lst);
                     }
                     else if (auto loc = "location" in node)
@@ -267,6 +267,7 @@ in(dest.isDir)
 
                         auto src = loc.as!string;
                         cpdirRecurse(src.path, stagedPath);
+                        // collectListing if LoadListing
                         listing = collectListing(stagedPath);
                     }
                     else
@@ -282,12 +283,12 @@ in(dest.isDir)
                     import std.exception : enforce;
 
                     assert(stagedPath.isDir);
-                    // cpdirRecurse if LoadListing
                     auto src = enforce("location" in node).as!string;
                     if (src.path != stagedPath)
                     {
                         cpdirRecurse(src.path, stagedPath);
                     }
+                    // collectListing if LoadListing
                     listing = collectListing(stagedPath);
                 }
                 return Node(stagedPath.toStagedDirectory(node, listing));
@@ -357,6 +358,8 @@ bool shouldBeStaged(File file)
     return
         // file literal
         file.contents_.match!((string _) => true, none => false) ||
+        // remote resource
+        file.edig!("location", string).scheme != "file" ||
         // must be renamed
         file.edig!("location", string).path.baseName != file.edig!("basename", string) ||
         // any secondaryFiles must be staged
@@ -366,7 +369,7 @@ bool shouldBeStaged(File file)
 ///
 bool shouldBeStaged(Directory dir)
 {
-    import salad.resolver : path;
+    import salad.resolver : path, scheme;
     import salad.type : match, orElse;
     import salad.util : edig;
     import std.algorithm : any;
@@ -375,6 +378,8 @@ bool shouldBeStaged(Directory dir)
     return
         // directory literal
         dir.location_.match!((string _) => false, none => true) ||
+        // remote resource
+        dir.edig!("location", string).scheme != "file" ||
         // must be renamed
         dir.edig!("location", string).path.baseName != dir.edig!("basename", string) ||
         // any listing must be staged
