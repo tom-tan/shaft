@@ -27,6 +27,7 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
 {
     import salad.type : match;
     import salad.util : dig;
+    import shaft.runtime : availableCores, availableDirSize, availableRam;
     import std.array : join;
     import std.exception : enforce;
     import std.path : buildPath;
@@ -92,6 +93,37 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
         }
     }
 
+    long[string] limits;
+        
+    if (runtime.cores < availableCores)
+    {
+        limits["cores"] = runtime.cores;
+    }
+
+    if (runtime.ram < availableRam)
+    {
+        limits["ram"] = runtime.ram;
+    }
+
+    if (runtime.tmpdirSize < availableDirSize(runtime.tmpdir))
+    {
+        limits["tmpdirSize"] = runtime.tmpdirSize;
+    }
+
+    if (runtime.outdirSize < availableDirSize(runtime.outdir))
+    {
+        limits["outdirSize"] = runtime.outdirSize;
+    }
+
+    if (false /**/)
+    {
+        // user hooks such as container
+    }
+    else
+    {
+        // TODO: embedded limit fun
+    }
+
     Pid pid;
     // 7. Execute the process.
     if (useShell)
@@ -111,6 +143,11 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
         import std.process : kill;
         kill(pid);
         wait(pid);
+    }
+
+    version(none)
+    {
+        // TODO: restore resource limit for embedded limit fun
     }
 
     auto code = wait(pid);

@@ -215,24 +215,17 @@ auto availableRamImpl() @trusted
     }
 }
 
-///
-alias availableOutdir = memoize!availableOutdirImpl;
-
-auto availableOutdirImpl(string outdir) @safe
-in(outdir.isDir)
-{
-    import std.file : getAvailableDiskSpace;
-    return getAvailableDiskSpace(outdir)/2^^20;
-}
+private alias availableOutdir = memoize!availableDirImpl;
+private alias availableTmpdir = memoize!availableDirImpl;
 
 ///
-alias availableTmpdir = memoize!availableTmpdirImpl;
+alias availableDirSize = memoize!availableDirImpl;
 
-auto availableTmpdirImpl(string tmpdir) @safe
-in(tmpdir.isDir)
+auto availableDirImpl(string dir) @safe
+in(dir.isDir)
 {
     import std.file : getAvailableDiskSpace;
-    return getAvailableDiskSpace(tmpdir)/2^^20;
+    return getAvailableDiskSpace(dir)/2^^20;
 }
 
 /// TODO: eval req or hint, or eval for each parameter?

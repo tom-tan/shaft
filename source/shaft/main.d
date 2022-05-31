@@ -274,7 +274,6 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             DockerRequirement,
             SoftwareRequirement,
             InitialWorkDirRequirement,
-            ResourceRequirement,
         );
         static foreach(req; UnsupportedRequirements)
         {
