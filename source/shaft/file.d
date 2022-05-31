@@ -394,3 +394,42 @@ void enforceValid(Directory dir) @safe
         _ => true
     );
 }
+
+///
+Node collectListing(string baseDir)
+in(baseDir.isDir)
+in(baseDir.isAbsolute)
+out(r; r.type == NodeType.sequence || r.type == NodeType.null_)
+{
+    import std.file : dirEntries, SpanMode;
+
+    auto ret = Node((Node[]).init);
+    foreach(string name; dirEntries(baseDir, SpanMode.shallow, false))
+    {
+        assert(name.isAbsolute);
+        if (name.isFile)
+        {
+            ret.add(Node(name.toStagedFile));
+        }
+        else if (name.isDir)
+        {
+            import dyaml : YAMLNull;
+            auto listing = collectListing(name);
+            ret.add(Node(name.toStagedDirectory(Node(YAMLNull()), listing)));
+        }
+        else
+        {
+            assert(false);
+        }
+    }
+
+    if (ret.sequence.empty)
+    {
+        import dyaml : YAMLNull;
+        return Node(YAMLNull());
+    }
+    else
+    {
+        return ret;
+    }
+}

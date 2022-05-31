@@ -5,12 +5,15 @@
  */
 module shaft.staging;
 
+import cwl.v1_0.schema : Directory, File;
+
 import dyaml : Node, NodeType;
 
 import salad.resolver : scheme;
 import shaft.type.common : TypedParameters, TypedValue;
 
-import std.file : isDir;
+import std.file : exists, isDir;
+import std.path : baseName, buildPath, isAbsolute;
 import std.range : empty;
 import std.typecons : Flag, No, Yes;
 
@@ -71,22 +74,15 @@ in(dest.isDir)
 
     return tv.type.match!(
         (CWLType t) {
-            auto mkdirIfNeeded(string dst)
+            auto randomDir(string baseDir)
             {
-                if (keepStructure == Yes.keepStructure)
-                {
-                    return dst;
-                }
-                else
-                {
-                    import std.file : mkdirRecurse;
-                    import std.path : buildPath;
-                    import std.uuid : randomUUID;
+                import std.file : mkdirRecurse;
+                import std.path : buildPath;
+                import std.uuid : randomUUID;
 
-                    auto base = buildPath(dst, randomUUID.toString);
-                    mkdirRecurse(base);
-                    return base;
-                }
+                auto base = buildPath(baseDir, randomUUID.toString);
+                mkdirRecurse(base);
+                return base;
             }
 
             switch(t.value_) {
@@ -95,8 +91,16 @@ in(dest.isDir)
                 import std.path : buildPath;
 
                 auto node = tv.value;
+                assert("class" in node);
+                assert(node["class"] == "File");
+
+                // TODO: validate format?
+                // TODO: contents (need `loadContents`)
+
+                auto shouldBeStaged_ = node.shouldBeStaged;
 
                 string stagedPath;
+                Flag!"forceStaging" forceStaging_ = forceStaging;
                 if (auto con = "contents" in node)
                 {
                     // file literal
@@ -112,9 +116,11 @@ in(dest.isDir)
                         import std.uuid : randomUUID;
                         bname = randomUUID.toString;
                     }
-                    auto dir = mkdirIfNeeded(dest);
+
+                    auto dir = (keepStructure || !shouldBeStaged_) ? dest : randomDir(dest);
                     stagedPath = buildPath(dir, bname);
                     stagedPath.write(con.as!string);
+                    forceStaging_ |= Yes.forceStaging;
                 }
                 else
                 {
@@ -123,36 +129,73 @@ in(dest.isDir)
 
                     auto bname = node["basename"].as!string;
                     auto loc = node["location"].as!string.path;
-                    if (loc.baseName != bname || forceStaging == Yes.forceStaging)
+                    if (loc.baseName != bname || shouldBeStaged_ || forceStaging)
                     {
                         import std.exception : enforce;
                         import std.file : copy, exists;
                         import std.format : format;
 
-                        auto dir = mkdirIfNeeded(dest);
+                        auto dir = (keepStructure || !shouldBeStaged_) ? dest : randomDir(dest);
                         stagedPath = buildPath(dir, bname);
-                        enforce(overwrite == Yes.overwrite || !stagedPath.exists,
+                        enforce(overwrite || !stagedPath.exists,
                             format!"File already exists: %s"(stagedPath));
                         loc.copy(stagedPath);
+                        forceStaging_ |= Yes.forceStaging;
                     }
                     else
                     {
                         stagedPath = loc;
+                        forceStaging_ |= No.forceStaging;
                     }
                 }
-                // TODO: secondaryFiles
-                // TODO: validate format?
-                // TODO: contents (need `loadContents`)
-                return Node(stagedPath.toStagedFile(node));
+
+                Node sec;
+                if (auto sec_ = "secondaryFiles" in node)
+                {
+                    import std.algorithm : map;
+                    import std.array : array;
+
+                    sec = Node(
+                        sec_.sequence.map!((e) {
+                            import shaft.type.common : DeterminedType;
+                            import std.path : dirName;
+
+                            assert("class" in e);
+                            switch(e["class"].as!string)
+                            {
+                            case "File":
+                                return stagingParam(
+                                    TypedValue(e, DeterminedType(new CWLType("File"))),
+                                    stagedPath.dirName, Yes.keepStructure, forceStaging_, No.overwrite,
+                                );
+                            case "Directory":
+                                return stagingParam(
+                                    TypedValue(e, DeterminedType(new CWLType("Directory"))),
+                                    stagedPath.dirName, Yes.keepStructure, forceStaging_, No.overwrite,
+                                );
+                            default: assert(false);
+                            }
+                        }).array
+                    );
+                }
+                else
+                {
+                    import dyaml : YAMLNull;
+                    sec = Node(YAMLNull());
+                }
+                return Node(stagedPath.toStagedFile(node, sec));
             }
             case "Directory": {
                 import shaft.file : toStagedDirectory;
                 import std.path : buildPath;
 
                 auto node = tv.value;
+                assert("class" in node);
+                assert(node["class"] == "Directory");
+
+                auto shouldBeStaged_ = node.shouldBeStaged;
 
                 string stagedPath;
-                Node listing;
                 if (auto location = "location" in node)
                 {
                     import salad.resolver : path;
@@ -160,50 +203,26 @@ in(dest.isDir)
 
                     auto bname = node["basename"].as!string;
                     auto loc = location.as!string.path;
-                    if (loc.baseName != bname || forceStaging == Yes.forceStaging)
+                    if (loc.baseName != bname || shouldBeStaged_ || forceStaging)
                     {
                         import std.exception : enforce;
                         import std.file : exists, mkdir;
                         import std.format : format;
 
-                        auto dir = mkdirIfNeeded(dest);
-                        stagedPath = buildPath(dir, bname);
-                        enforce(overwrite == Yes.overwrite || !stagedPath.exists,
-                            format!"Dirctory already exists: %s"(stagedPath));
-                        mkdir(stagedPath);
-                        if (auto listing_ = "listing" in node)
-                        {
-                            import shaft.type.common : DeterminedType;
-                            import std.algorithm : map;
-                            import std.array : array;
+                        auto dir = (keepStructure || !shouldBeStaged_) ? dest : randomDir(dest);
 
-                            assert(listing_.type == NodeType.sequence);
-                            auto lst = listing_
-                                .sequence
-                                .map!(l => stagingParam(TypedValue(l, DeterminedType(new CWLType(l["class"]))),
-                                                        stagedPath, Yes.keepStructure, Yes.forceStaging))
-                                .array;
-                            listing = Node(lst);
-                        }
+                        stagedPath = buildPath(dir, bname);
+                        // TODO
+                        enforce(overwrite || !stagedPath.exists,
+                            format!"Dirctory already exists: %s"(stagedPath));
                     }
                     else
                     {
                         stagedPath = loc;
-                        if (auto lst = "listing" in node)
-                        {
-                            listing = *lst;
-                        }
-                        else
-                        {
-                            import dyaml : YAMLNull;
-                            listing = Node(YAMLNull());
-                        }
                     }
                 }
                 else
                 {
-                    import std.file : mkdir;
-
                     // directory literal
                     string bname;
                     if (auto bn_ = "basename" in node)
@@ -215,23 +234,61 @@ in(dest.isDir)
                         import std.uuid : randomUUID;
                         bname = randomUUID.toString;
                     }
-                    auto dir = mkdirIfNeeded(dest);
+                    auto dir = (keepStructure || !shouldBeStaged_) ? dest : randomDir(dest);
                     stagedPath = buildPath(dir, bname);
-                    mkdir(stagedPath);
-                    if (auto listing_ = "listing" in node)
+                }
+
+                Node listing;
+                if (shouldBeStaged_)
+                {
+                    import dyaml : YAMLNull;
+                    import std.file : mkdir;
+                    // staged elements if provided || LoadListingReq
+                    if (auto lst_ = "listing" in node)
                     {
                         import shaft.type.common : DeterminedType;
                         import std.algorithm : map;
                         import std.array : array;
+                        import std.path : dirName;
+                        import std.range : empty;
 
-                        assert(listing_.type == NodeType.sequence);
-                        auto lst = listing_
+                        mkdir(stagedPath);
+                        auto lst = lst_
                             .sequence
                             .map!(l => stagingParam(TypedValue(l, DeterminedType(new CWLType(l["class"]))),
-                                                    stagedPath, Yes.keepStructure, Yes.forceStaging))
+                                                    stagedPath, Yes.keepStructure, forceStaging, No.overwrite))
                             .array;
-                        listing = Node(lst);
+                        listing = lst.empty ? Node(YAMLNull()) : Node(lst);
                     }
+                    else if (auto loc = "location" in node)
+                    {
+                        import salad.resolver : path;
+                        import shaft.file : collectListing;
+
+                        auto src = loc.as!string;
+                        cpdirRecurse(src.path, stagedPath);
+                        listing = collectListing(stagedPath);
+                    }
+                    else
+                    {
+                        import dyaml : YAMLNull;
+                        listing = Node(YAMLNull());
+                    }
+                }
+                else
+                {
+                    import salad.resolver : path;
+                    import shaft.file : collectListing;
+                    import std.exception : enforce;
+
+                    assert(stagedPath.isDir);
+                    // cpdirRecurse if LoadListing
+                    auto src = enforce("location" in node).as!string;
+                    if (src.path != stagedPath)
+                    {
+                        cpdirRecurse(src.path, stagedPath);
+                    }
+                    listing = collectListing(stagedPath);
                 }
                 return Node(stagedPath.toStagedDirectory(node, listing));
             }
@@ -274,4 +331,90 @@ in(dest.isDir)
             return staged.parameters;
         },
     );
+}
+
+///
+bool shouldBeStaged(Node node)
+in("class" in node)
+{
+    switch(node["class"].as!string)
+    {
+    case "File": return node.as!File.shouldBeStaged;
+    case "Directory": return node.as!Directory.shouldBeStaged;
+    default: assert(false);
+    }
+}
+
+///
+bool shouldBeStaged(File file)
+{
+    import salad.resolver : path;
+    import salad.type : match, orElse;
+    import salad.util : edig;
+    import std.algorithm : any;
+    import std.path : baseName;
+
+    return
+        // file literal
+        file.contents_.match!((string _) => true, none => false) ||
+        // must be renamed
+        file.edig!("location", string).path.baseName != file.edig!("basename", string) ||
+        // any secondaryFiles must be staged
+        file.secondaryFiles_.orElse([]).any!(sec => sec.match!(f => f.shouldBeStaged));
+}
+
+///
+bool shouldBeStaged(Directory dir)
+{
+    import salad.resolver : path;
+    import salad.type : match, orElse;
+    import salad.util : edig;
+    import std.algorithm : any;
+    import std.path : baseName;
+
+    return
+        // directory literal
+        dir.location_.match!((string _) => false, none => true) ||
+        // must be renamed
+        dir.edig!("location", string).path.baseName != dir.edig!("basename", string) ||
+        // any listing must be staged
+        dir.listing_.orElse([]).any!(lst => lst.match!(f => f.shouldBeStaged));
+}
+
+/**
+ * Copy `src` directory to `dst` recursively.
+ * It makes `dst/src.baseName`.
+ *
+ * TODO: how to do with symlinks?
+ */
+void cpdirRecurse(string src, string dst)
+in(src.isAbsolute, src)
+in(dst.isAbsolute && !dst.exists, dst)
+{
+    import std.file : dirEntries, mkdirRecurse, SpanMode;
+
+    mkdirRecurse(dst);
+    foreach(string name; dirEntries(src, SpanMode.depth, false))
+    {
+        import std.file : isDir, isFile;
+        import std.path : buildPath, dirName, relativePath;
+
+        auto rel = name.relativePath(src);
+        if (name.isFile)
+        {
+            import std.file : copy;
+            auto file = buildPath(dst, rel);
+            mkdirRecurse(file.dirName);
+            copy(name, file);
+        }
+        else if (name.isDir)
+        {
+            auto dir = buildPath(dst, rel);
+            mkdirRecurse(dir);
+        }
+        else
+        {
+            assert(false);
+        }
+    }
 }
