@@ -31,7 +31,7 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     import std.array : join;
     import std.exception : enforce;
     import std.path : buildPath;
-    import std.process : Config, environment, Pid, wait;
+    import std.process : Config, environment, spawnProcess, wait;
     import std.stdio : File;
     // 6. Perform any further setup required by the specific process type.
 
@@ -124,20 +124,9 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
         // TODO: embedded limit fun
     }
 
-    Pid pid;
     // 7. Execute the process.
-    if (useShell)
-    {
-        import std.process : spawnShell;
-        sharedLog.infof("CMD: %s", args.join(" "));
-        pid = spawnShell(args.join(" "), stdin, stdout, stderr, env, Config.newEnv, runtime.outdir);
-    }
-    else
-    {
-        import std.process : spawnProcess;
-        sharedLog.infof("CMD: %s", args);
-        pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir);
-    }
+    sharedLog.infof("CMD: %s", args);
+    auto pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir);
     scope(failure)
     {
         import std.process : kill;
@@ -226,7 +215,8 @@ auto buildCommandLine(CommandLineTool cmd, TypedParameters params, Runtime runti
         _ => (string[]).init,
     );
 
-    return base~cmdElems;
+    auto retArgs = base~cmdElems;
+    return useShell ? ["sh", "-c", retArgs.join(" ")] : retArgs;
 }
 
 // 2. Collect `CommandLineBinding` objects from the `inputs` schema and associate them with values from the input object. Where the input type is a record, array, or map, recursively walk the schema and input object, collecting nested `CommandLineBinding` objects and associating them with values from the input object.
@@ -468,7 +458,7 @@ auto toCmdElems(CmdElemType val, CommandLineBinding clb, bool useShell)
             none => arg,
         );
 
-    // strings are not quoted when !useShell because it can be done by `spawnProcess` internally
+    // strings are not quoted when !useShell because it can be done by `buildCommandLine`
     auto shouldQuote = useShell && clb.shellQuote_.orElse(true);
     alias escapeIfUseShell = s => s.match!(s_ =>
         shouldQuote ? Str(EscapedString(s_))
