@@ -137,6 +137,8 @@ in(dest.isDir)
 
                         auto dir = (keepStructure || !shouldBeStaged_) ? dest : randomDir(dest);
                         stagedPath = buildPath(dir, bname);
+                        // TODO: it may happen with duplicated secondaryFile entries
+                        // it must be detected before staging to throw InvalidDocument
                         enforce(overwrite || !stagedPath.exists,
                             format!"File already exists: %s"(stagedPath));
                         loc.copy(stagedPath);
@@ -212,7 +214,8 @@ in(dest.isDir)
                         auto dir = (keepStructure || !shouldBeStaged_) ? dest : randomDir(dest);
 
                         stagedPath = buildPath(dir, bname);
-                        // TODO: merge directories
+                        // TODO: it may happen with duplicated secondaryFile entries
+                        // they must be merged when duplicated entries are directories
                         enforce(overwrite || !stagedPath.exists,
                             format!"Dirctory already exists: %s"(stagedPath));
                     }
@@ -280,10 +283,10 @@ in(dest.isDir)
                 {
                     import salad.resolver : path;
                     import shaft.file : collectListing;
-                    import std.exception : enforce;
 
                     assert(stagedPath.isDir);
-                    auto src = enforce("location" in node).as!string;
+                    assert("location" in node);
+                    auto src = node["location"].as!string;
                     if (src.path != stagedPath)
                     {
                         cpdirRecurse(src.path, stagedPath);

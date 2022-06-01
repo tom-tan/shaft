@@ -383,7 +383,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                         .orElse([])
                         .map!((f) {
                             // validate types for each fields with a given node element
-                            auto fnode = *enforce(f.name_ in node);
+                            auto fnode = *enforce(f.name_ in node, new TypeConflicts(type, node.guessedType));
                             auto collected = collectOutputParameter(
                                 Either!(Node, CommandOutputBinding)(fnode), f.type_,
                                 inputs, runtime, context, evaluator
