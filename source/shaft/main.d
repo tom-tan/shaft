@@ -139,12 +139,16 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
         enforce!SystemException(!baseTmpdir.exists, format!"%s already exists"(baseTmpdir));
 
+        // fetched inputs for remote files and literals
         auto rstagedir = buildPath(baseTmpdir, "stagein");
         mkdirRecurse(rstagedir);
+        // designated output directory
         auto routdir = buildPath(baseTmpdir, "output");
         mkdirRecurse(routdir);
+        // designated temporary directory
         auto rtmpdir = buildPath(baseTmpdir, "temporary");
         mkdirRecurse(rtmpdir);
+        // directory to store non-captured stdout and stderr
         auto rlogdir = buildPath(baseTmpdir, "log");
         mkdirRecurse(rlogdir);
         scope(success)

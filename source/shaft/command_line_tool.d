@@ -59,8 +59,6 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
         // path mapping
         Node mappedInputs;
         Runtime mappedRuntime;
-        // TODO
-        string mappedStdin;
     }
 
     auto useShell = clt.dig!(["requirements", "ShellCommandRequirement"], ShellCommandRequirement) !is null;
@@ -419,7 +417,7 @@ auto toCmdElems(CmdElemType val, CommandLineBinding clb, bool useShell)
                .ifThrown!MatchException((e) {
                    enforce(false, new InvalidDocument(
                        "`itemSeparator` is supported only for array types",
-                       Mark.init,
+                       Mark(),
                    ));
                    return true;
                });
@@ -445,7 +443,7 @@ auto toCmdElems(CmdElemType val, CommandLineBinding clb, bool useShell)
                             (bool sep_) {
                                 enforce(sep_, new InvalidDocument(
                                     "`separate: false` is supported only for scalar types",
-                                    Mark.init,
+                                    Mark(),
                                 ));
                                 return true;
                             },
@@ -480,7 +478,6 @@ CmdElemType applyRules(
 {
     import salad.type : match;
     import shaft.type.common : ArrayType, EnumType, RecordType;
-    import std.exception : enforce;
 
     return type.match!(
         (CWLType t) {
