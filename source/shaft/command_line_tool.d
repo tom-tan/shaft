@@ -27,11 +27,12 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
 {
     import salad.type : match;
     import salad.util : dig;
+    import shaft.exception : SystemException;
     import shaft.runtime : availableCores, availableDirSize, availableRam;
     import std.array : join;
-    import std.exception : enforce;
+    import std.exception : enforce, ifThrown;
     import std.path : buildPath;
-    import std.process : Config, environment, spawnProcess, wait;
+    import std.process : Config, environment, ProcessException, spawnProcess, wait;
     import std.stdio : File;
     // 6. Perform any further setup required by the specific process type.
 
@@ -124,7 +125,12 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
 
     // 7. Execute the process.
     sharedLog.infof("CMD: %s", args);
-    auto pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir);
+    auto pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir)
+        .ifThrown!ProcessException((e) {
+            import std.process : Pid;
+            enforce!SystemException(false, e.msg);
+            return Pid.init;
+        });
     scope(failure)
     {
         import std.process : kill;
