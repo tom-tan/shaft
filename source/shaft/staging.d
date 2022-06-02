@@ -5,11 +5,13 @@
  */
 module shaft.staging;
 
-import cwl.v1_0.schema : Directory, File;
+import cwl.v1_0.schema : Directory, File, InitialWorkDirRequirement;
 
 import dyaml : Node, NodeType;
 
 import salad.resolver : scheme;
+import shaft.evaluator : Evaluator;
+import shaft.runtime : Runtime;
 import shaft.type.common : TypedParameters, TypedValue;
 
 import std.file : exists, isDir;
@@ -28,6 +30,151 @@ auto fetch(TypedParameters params, string dest)
 auto stageOut(TypedParameters params, string dest, Flag!"overwrite" overwrite = No.overwrite)
 {
     return staging(params, dest, Yes.keepStructure, Yes.forceStaging, overwrite);
+}
+
+///
+auto initWorkDir(
+    TypedParameters params, Runtime runtime, InitialWorkDirRequirement req,
+    Evaluator evaluator)
+{
+    import cwl.v1_0.schema : Dirent;
+    import salad.type : Either, match;
+    import std.typecons : Tuple;
+
+    if (req is null)
+    {
+        return params;
+    }
+
+    alias EntryType = Either!(File, Directory);
+
+    auto evalEntry(string exp)
+    {
+        import dyaml : Mark, NodeException, NodeType;
+        import shaft.exception : InvalidDocument;
+        import std.exception : enforce, ifThrown;
+
+        return evaluator
+            .eval!(EntryType[])(exp, params.parameters, runtime)
+            .ifThrown!NodeException((e) {
+                enforce(
+                    false,
+                    new InvalidDocument("An expression must be evaluated to (File | Directory)[]", Mark())
+                );
+                return (EntryType[]).init;
+            });
+    }
+
+    EntryType[] evalDirEntry(Dirent ent)
+    {
+        import dyaml : NodeType;
+        auto evaled = evaluator.eval(ent.entry_, params.parameters, runtime);
+
+        switch(evaled.type)
+        {
+        case NodeType.null_: return (EntryType[]).init;
+        case NodeType.mapping:
+            if ("class" in evaled && (evaled["class"] == "File" || evaled["class"] == "Directory"))
+            {
+                import salad.context : LoadingContext;
+                import salad.meta.impl : as_;
+
+                auto ret = evaled.as_!(EntryType)(LoadingContext.init);
+                // Optional when entry evaluates to a File or Directory object with a basename
+                return ent.entryname_
+                   .match!(
+                       (string exp) {
+                            ret.match!(r => r.basename_ = evaluator.eval!string(exp, params.parameters, runtime));
+                            return [ret];
+                       },
+                       (_) => [ret],
+                   );
+            }
+            else
+            {
+                goto default;
+            }
+        case NodeType.sequence:
+            import dyaml : NodeException;
+            try
+            {
+                import salad.context : LoadingContext;
+                import salad.meta.impl : as_;
+                import salad.type : MatchException, None, tryMatch;
+                import std.exception : enforce, ifThrown;
+
+                auto ret = evaled.as_!(EntryType[])(LoadingContext.init);
+                // Invalid when entry evaluates to an array of File or Directory objects.
+                ent.entryname_
+                   .tryMatch!((None _) => true)
+                   .ifThrown!MatchException((e) {
+                       import dyaml : Mark;
+                       import shaft.exception : InvalidDocument;
+                       import std.exception : enforce;
+
+                       enforce(false, new InvalidDocument("`entryname_` is only valid for File, Directory types", Mark()));
+                       return false;
+                   });
+                return ret;
+            }
+            catch(NodeException _)
+            {
+                goto default;
+            }
+        default:
+            import salad.type : MatchException, tryMatch;
+            import shaft.file : toStagedFile;
+            import shaft.type.common : toJSON;
+            import std.algorithm : map;
+            import std.conv : to;
+            import std.exception : ifThrown;
+
+            // Required when entry evaluates to file contents only
+            auto basename = ent
+                .entryname_
+                .tryMatch!((string exp) => evaluator.eval!string(exp, params.parameters, runtime))
+                .ifThrown!MatchException((e) {
+                    import dyaml : Mark;
+                    import shaft.exception : InvalidDocument;
+                    import std.exception : enforce;
+
+                    enforce(false, new InvalidDocument("`entryname_` is only valid for File, Directory types", Mark()));
+                    return "";
+                });
+            auto ret = buildPath(runtime.outdir, basename).toStagedFile;
+            ret.contents_ = evaled.toJSON.to!string;
+            return [EntryType(ret)];
+        }
+    }
+
+    auto toBeStaged = req.listing_.match!(
+        (Either!(
+            File,
+            Directory,
+            Dirent,
+            string,
+        )[] listing) {
+            import std.algorithm : map;
+            import std.array : join;
+
+            return listing.map!(match!(
+                (File f) => [EntryType(f)],
+                (Directory d) => [EntryType(d)],
+                (Dirent ent) => evalDirEntry(ent),
+                (string exp) => evalEntry(exp),
+            )).join;
+        },
+        (string exp) => evalEntry(exp),
+    );
+
+    foreach(ent; toBeStaged)
+    {
+        stagingParam(
+            ent.match!(e => TypedValue(new CWLType(e.edig!("class", string), e))),
+            runtime.outdir, Yes.keepStructure
+        );
+    }
+    return params;
 }
 
 /**

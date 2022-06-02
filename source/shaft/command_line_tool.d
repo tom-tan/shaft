@@ -51,15 +51,15 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
         _ => File(buildPath(runtime.internal.logdir, "stderr.txt"), "w"),
     );
 
-    version(none) // TODO
+    version(none)
     {
-        // stage in (all process types)
-        auto staged = stageIn(params, runtime,
-                              clt.dig!(["requirements", "InitialWorkDirRequirement"], InitialWorkDirRequirement),
-                              evaluator);
+        auto staged = initWorkDir(
+            params, runtime, clt.dig!(["requirements", "InitialWorkDirRequirement"], InitialWorkDirRequirement),
+            evaluator
+        );
         // path mapping
-        Node mappedInputs;
-        Runtime mappedRuntime;
+        Node mappedInputs = staged.inputs;
+        Runtime mappedRuntime = staged.runtime;
     }
 
     auto useShell = clt.dig!(["requirements", "ShellCommandRequirement"], ShellCommandRequirement) !is null;
