@@ -72,7 +72,9 @@ struct Evaluator
      */
     T eval(T)(string expression, Node inputs, Runtime runtime, Node self = YAMLNull()) const /+ pure +/ @safe
     {
-        return eval(expression, inputs, runtime, self).as!T;
+        import salad.context : LoadingContext;
+        import salad.meta.impl : as_;
+        return eval(expression, inputs, runtime, self).as_!T(LoadingContext.init);
     }
 
     /**
