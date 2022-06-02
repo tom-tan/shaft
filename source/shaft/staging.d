@@ -169,6 +169,7 @@ auto initWorkDir(
 
     foreach(ent; toBeStaged)
     {
+        // TODO: replace File and Directory objects
         stagingParam(
             ent.match!(e => TypedValue(new CWLType(e.edig!("class", string), e))),
             runtime.outdir, Yes.keepStructure
