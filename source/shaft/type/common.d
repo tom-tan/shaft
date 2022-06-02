@@ -32,7 +32,7 @@ alias ArrayType = Tuple!(DeterminedType*[], "types", Optional!CommandLineBinding
 ///
 alias RecordType = Tuple!(string, "name", Tuple!(DeterminedType*, Optional!CommandLineBinding)[string], "fields");
 
-string toStr(DeterminedType dt) pure @safe
+string toStr(in DeterminedType dt) pure @safe
 {
     import salad.type : match;
     import std.algorithm : map;
@@ -41,10 +41,10 @@ string toStr(DeterminedType dt) pure @safe
     import std.range : empty;
 
     return dt.match!(
-        (CWLType t) => cast(string)t.value_,
-        (EnumType e) => e.name.empty ? "enum" : e.name,
-        (ArrayType a) => format!"[%-(%s, %)]"(a.types.map!(e => toStr(*e)).array),
-        (RecordType r) => format!"Record(%s, %-(%s, %))"(
+        (in CWLType t) => cast(string)t.value_,
+        (in EnumType e) => e.name.empty ? "enum" : e.name,
+        (in ArrayType a) => format!"[%-(%s, %)]"(a.types.map!(e => toStr(*e)).array),
+        (in RecordType r) => format!"Record(%s, %-(%s, %))"(
                                 r.name,
                                 r.fields
                                  .byPair
@@ -76,7 +76,7 @@ struct TypedValue
     }
 
     ///
-    string toString() @safe
+    string toString() const @safe
     {
         import std.format : format;
         return format!"TypedValue(type: %s, value: %s)"(type.toStr, value.toJSON);
