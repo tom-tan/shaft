@@ -4,7 +4,7 @@
 		"cachetools": "0.3.1",
 		"dyaml": "0.8.6",
 		"requests": "2.0.8",
-		"schema-salad-d": "0.7.18",
+		"schema-salad-d": "0.7.19",
 		"sumtype": "1.1.4",
 		"tinyendian": "0.2.0"
 	}

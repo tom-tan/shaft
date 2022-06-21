@@ -41,7 +41,7 @@ string toStr(in DeterminedType dt) pure @safe
     import std.range : empty;
 
     return dt.match!(
-        (in CWLType t) => cast(string)t.value_,
+        (in CWLType t) => cast(string)t.value,
         (in EnumType e) => e.name.empty ? "enum" : e.name,
         (in ArrayType a) => format!"[%-(%s, %)]"(a.types.map!(e => toStr(*e)).array),
         (in RecordType r) => format!"Record(%s, %-(%s, %))"(

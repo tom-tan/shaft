@@ -85,7 +85,7 @@ in(dest.isDir)
                 return base;
             }
 
-            switch(t.value_) {
+            switch(t.value) {
             case "File": {
                 import shaft.file : toStagedFile;
                 import std.path : buildPath;

@@ -45,7 +45,7 @@ string toStr(DeclaredType dt) pure @safe
     import std.meta : AliasSeq;
 
     alias funs = AliasSeq!(
-        (CWLType t) => cast(string)t.value_,
+        (CWLType t) => cast(string)t.value,
         (CommandOutputRecordSchema s) => 
             s.name_.orElse(format!"Record(%-(%s, %))"(s.fields_
                                                       .orElse([])
@@ -260,8 +260,8 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     }
                 }
             );
-            sharedLog.trace("type: ", cast(string)t.value_);
-            final switch(t.value_)
+            sharedLog.trace("type: ", cast(string)t.value);
+            final switch(t.value)
             {
             case "null": {
                 if (node.type == NodeType.null_)
@@ -590,7 +590,7 @@ unittest
     ];
 
     auto tv = collectOutputParameter(node, dt, Node(), Runtime.init, LoadingContext.init, Evaluator.init);
-    assert(tv.type.tryMatch!((CWLType type) => cast(string)type.value_) == "boolean");
+    assert(tv.type.tryMatch!((CWLType type) => cast(string)type.value) == "boolean");
 }
 
 /**

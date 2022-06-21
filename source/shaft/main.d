@@ -223,7 +223,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             ),
         )
         .ifThrown!DocumentException((e) {
-            enforce(false, new InvalidDocument(e.msg, e.node.startMark));
+            enforce(false, new InvalidDocument(e.msg, e.mark));
             return null;
         })
         .ifThrown!MarkedYAMLException((e) {
@@ -238,7 +238,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         // -> done by `importFromURI`
 
         // store current version of CWL for parameter references
-        auto cwlVersion = cmd.cwlVersion_.tryMatch!((CWLVersion ver) => ver.value_);
+        auto cwlVersion = cmd.cwlVersion_.tryMatch!((CWLVersion ver) => ver.value);
         enforce!FeatureUnsupported(cwlVersion == "v1.0", format!"CWL %s is not supported yet"(cwlVersion));
         // TODO: upgrade document to the latest version
 

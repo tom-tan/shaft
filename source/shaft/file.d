@@ -79,6 +79,7 @@ do
     alias OStr = Optional!string;
 
     auto ret = new File;
+    ret.mark = file.mark;
     ret.location_ = match!(
         (None _1, None _2) => OStr.init,
         (None _, string loc) => OStr(loc),
@@ -142,6 +143,7 @@ in(node.type == NodeType.null_ || node["class"] == "File")
     import std.range : empty;
 
     auto ret = new File;
+    ret.mark = node.startMark;
 
     ret.location_ = path.absoluteURI;
     ret.path_ = path;
@@ -236,6 +238,7 @@ in(node.type == NodeType.null_ || node["class"] == "Directory")
     import std.range : empty;
 
     auto ret = new Directory;
+    ret.mark = node.startMark;
     ret.location_ = path.absoluteURI;
     ret.path_ = path;
     ret.basename_ = path.baseName;

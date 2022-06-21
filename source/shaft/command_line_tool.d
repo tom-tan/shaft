@@ -487,7 +487,7 @@ CmdElemType applyRules(
 
     return type.match!(
         (CWLType t) {
-            final switch(t.value_)
+            final switch(t.value)
             {
             case "null":
                 // Add nothing.

@@ -43,7 +43,7 @@ string toStr(DeclaredType dt) pure @safe
     import std.meta : AliasSeq;
 
     alias funs = AliasSeq!(
-        (CWLType t) => cast(string)t.value_,
+        (CWLType t) => cast(string)t.value,
         (CommandInputRecordSchema s) => 
             s.name_.orElse(format!"Record(%-(%s, %))"(s.fields_
                                                       .orElse([])
@@ -134,7 +134,7 @@ in(params.type == NodeType.mapping)
         }
         else if (auto def = p.dig!("default", Any))
         {
-            n = def.value_;
+            n = def.value;
         }
         else
         {
@@ -194,8 +194,8 @@ TypedValue bindType(
     return type.match!(
         (CWLType t) {
             import salad.type : None;
-            sharedLog.tracef("type: %s", cast(string)t.value_);
-            final switch(t.value_)
+            sharedLog.tracef("type: %s", cast(string)t.value);
+            final switch(t.value)
             {
             case "null":
                 enforce(n.type == NodeType.null_, new TypeConflicts(type, n.guessedType));
@@ -306,7 +306,7 @@ TypedValue bindType(
                 sharedLog.trace("type: Any");
                 return n.guessedType.tryMatch!(
                     (CWLType t) {
-                        enforce(t.value_ != "null" || declared == No.declared,
+                        enforce(t.value != "null" || declared == No.declared,
                                 new TypeConflicts(type, n.guessedType));
                         return n.bindType(DeclaredType(t), defMap, context);
                     },
@@ -383,7 +383,7 @@ unittest
     auto type = new CWLType("int");
     auto val = Node(10);
     auto bound = val.bindType(DeclaredType(type), (DeclaredType[string]).init, LoadingContext.init);
-    assert(bound.type.tryMatch!((CWLType t) => t.value_ == "int"));
+    assert(bound.type.tryMatch!((CWLType t) => t.value == "int"));
 }
 
 /// only for v1.0
