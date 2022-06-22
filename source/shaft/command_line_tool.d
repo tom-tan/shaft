@@ -423,7 +423,7 @@ auto toCmdElems(CmdElemType val, CommandLineBinding clb, bool useShell)
                .ifThrown!MatchException((e) {
                    enforce(false, new InvalidDocument(
                        "`itemSeparator` is supported only for array types",
-                       Mark(),
+                       clb.mark,
                    ));
                    return true;
                });
@@ -449,7 +449,7 @@ auto toCmdElems(CmdElemType val, CommandLineBinding clb, bool useShell)
                             (bool sep_) {
                                 enforce(sep_, new InvalidDocument(
                                     "`separate: false` is supported only for scalar types",
-                                    Mark(),
+                                    clb.mark,
                                 ));
                                 return true;
                             },

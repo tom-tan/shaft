@@ -103,7 +103,7 @@ in(params.type == NodeType.mapping)
                                    false,
                                    new InvalidDocument(
                                        "InputArraySchema is not supported in SchemaDefRequirement",
-                                       Mark()
+                                       s.mark,
                                    )
                                );
                                return tuple("", DeclaredType.init);
@@ -151,7 +151,7 @@ in(params.type == NodeType.mapping)
                     false,
                     new InvalidDocument(
                         format!"`type` field is missing in `%s` input parameter"(id),
-                        Mark(),
+                        p.mark,
                     )
                 );
                 return DeclaredType("Any");
@@ -163,7 +163,7 @@ in(params.type == NodeType.mapping)
             .bindType(type, defMap, context)
             .ifThrown!TypeConflicts((e) {
                 auto msg = new TypeConflicts(e.expected_, e.actual_, id).msg;
-                enforce(false, new InputCannotBeLoaded(msg, Mark()));
+                enforce(false, new InputCannotBeLoaded(msg, n.startMark));
                 return TypedValue.init;
             });
         types[id] = v.type;

@@ -63,7 +63,7 @@ struct Runtime
 
                 auto ret = evaluator.eval!string(exp, inputs, this);
                 //  If ... the resulting path contains illegal characters (such as the path separator `/`) it is an error.
-                enforce(!ret.canFind("/"), new InvalidDocument("`stdout` must not contain `/`", Mark()));
+                enforce(!ret.canFind("/"), new InvalidDocument("`stdout` must not contain `/`", cmd.mark));
                 return Optional!string(ret);
             },
             (_) {
@@ -94,7 +94,7 @@ struct Runtime
 
                 auto ret = evaluator.eval!string(exp, inputs, this);
                 //  If ... the resulting path contains illegal characters (such as the path separator `/`) it is an error.
-                enforce(!ret.canFind("/"), new InvalidDocument("`stdout` must not contain `/`", Mark()));
+                enforce(!ret.canFind("/"), new InvalidDocument("`stdout` must not contain `/`", cmd.mark));
                 return Optional!string(ret);
             },
             (_) {
@@ -264,7 +264,7 @@ auto reserved(string prop)(
         rmin <= rmax,
         new InvalidDocument(
             format!"Conflict requirements for `%s`: minimum (%s) and maximum (%s)"(prop, rmin, rmax),
-            Mark()
+            rr.mark
         )
     );
 

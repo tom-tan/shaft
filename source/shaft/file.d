@@ -276,9 +276,9 @@ void enforceValid(File file) @safe
         (None _1, None _2) => file.contents_.match!(
             (string s) => enforce(
                 s.length <= 64*2^^10,
-                new InvalidDocument("too large `contents` field", Mark())
+                new InvalidDocument("too large `contents` field", file.mark)
             ),
-            none => enforce(false, new InvalidDocument("`contents`, `location` or `path` is required", Mark())),
+            none => enforce(false, new InvalidDocument("`contents`, `location` or `path` is required", file.mark)),
         ),
         (None _, string loc) {
             import std.format : format;
@@ -287,7 +287,7 @@ void enforceValid(File file) @safe
             assert(loc.isAbsoluteURI, format!"`location` (%s) must be an absolute URI"(loc));
             enforce(
                 file.contents_.tryMatch!((None _) => true),
-                new InvalidDocument("`location` and `contents` fields are exclusive", Mark())
+                new InvalidDocument("`location` and `contents` fields are exclusive", file.mark)
             );
             location = loc;
             return true;
@@ -300,7 +300,7 @@ void enforceValid(File file) @safe
             assert(path.isAbsolute || path.isAbsoluteURI, format!"`path` (%s) must be absolute"(path));
             enforce(
                 file.contents_.tryMatch!((None _) => true),
-                new InvalidDocument("`path` and `contents` fields are exclusive", Mark())
+                new InvalidDocument("`path` and `contents` fields are exclusive", file.mark)
             );
             location = path;
             return true;
@@ -314,7 +314,7 @@ void enforceValid(File file) @safe
             assert(loc.isAbsoluteURI, format!"`location` (%s) must be an absolute URI"(loc));
             enforce(
                 loc.endsWith(path),
-                new InvalidDocument("`path` and `location` have inconsistent values", Mark())
+                new InvalidDocument("`path` and `location` have inconsistent values", file.mark)
             );
             location = loc;
             return true;
@@ -324,7 +324,7 @@ void enforceValid(File file) @safe
     file.basename_.match!(
         (string s) => enforce(
             !s.canFind("/"),
-            new InvalidDocument("basename must not include `/`", Mark())),
+            new InvalidDocument("basename must not include `/`", file.mark)),
         _ => true,
     );
 
@@ -371,7 +371,7 @@ void enforceValid(Directory dir) @safe
     match!(
         (None _1, None _2) => dir.listing_.match!(
             (Either!(File, Directory)[] ls) => true,
-            none => enforce(false, new InvalidDocument("`listing`, `location` or `path` is required", Mark())),
+            none => enforce(false, new InvalidDocument("`listing`, `location` or `path` is required", dir.mark)),
         ),
         (None _, string loc) {
             import salad.resolver : isAbsoluteURI;
@@ -397,7 +397,7 @@ void enforceValid(Directory dir) @safe
             assert(loc.isAbsoluteURI, format!"`location` (%s) must be an absolute URI"(loc));
             enforce(
                 loc.endsWith(path),
-                new InvalidDocument("`path` and `location` have inconsistent values", Mark())
+                new InvalidDocument("`path` and `location` have inconsistent values", dir.mark)
             );
             return true;
         },
@@ -406,7 +406,7 @@ void enforceValid(Directory dir) @safe
     dir.basename_.match!(
         (string s) => enforce(
             !s.canFind("/"),
-            new InvalidDocument("basename must not include `/`", Mark())
+            new InvalidDocument("basename must not include `/`", dir.mark)
         ),
         _ => true,
     );
