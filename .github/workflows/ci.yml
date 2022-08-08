@@ -74,9 +74,10 @@ jobs:
           ./configure --test262=NO
           make libnjs
           cd ..
-          sudo install -m 644 -D -t /opt/njs/lib njs/build/libnjs.a
-          sudo install -m 644 -D -t /opt/njs/include njs/src/*.h
-          sudo install -m 644 -D -t /opt/njs/include njs/build/njs_auto_config.h
+          sudo install -d /opt/njs/include /opt/njs/lib
+          sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
+          sudo install -m 644 njs/src/*.h /opt/njs/include
+          sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
       - name: Run tests
         run: |
           dub --cache=local test
@@ -143,9 +144,10 @@ jobs:
           ./configure --test262=NO
           make libnjs
           cd ..
-          sudo install -m 644 -D -t /opt/njs/lib njs/build/libnjs.a
-          sudo install -m 644 -D -t /opt/njs/include njs/src/*.h
-          sudo install -m 644 -D -t /opt/njs/include njs/build/njs_auto_config.h
+          sudo install -d /opt/njs/include /opt/njs/lib
+          sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
+          sudo install -m 644 njs/src/*.h /opt/njs/include
+          sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
