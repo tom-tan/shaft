@@ -10,5 +10,5 @@ import shaft.runtime : Runtime;
 
 interface JSEngine
 {
-    string evaluate(scope string exp, Node inputs, Runtime runtime, Node self, in string[] libs) const;
+    string evaluate(scope string exp, Node inputs, Runtime runtime, Node self, in string[] libs);
 }

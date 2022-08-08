@@ -29,7 +29,7 @@ abstract class ExternalEngine : JSEngine
         );
     }
 
-    override string evaluate(scope string exp, Node inputs, Runtime runtime, Node self, in string[] libs) const
+    override string evaluate(scope string exp, Node inputs, Runtime runtime, Node self, in string[] libs)
     in(exp.length != 0)
     {
         import std.exception : enforce;

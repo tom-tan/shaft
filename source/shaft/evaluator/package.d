@@ -5,7 +5,7 @@
  */
 module shaft.evaluator;
 
-import shaft.evaluator.engine : JSEngine, ExternalNodeEngine, ExternalNJSEngine;
+import shaft.evaluator.engine : JSEngine, ExternalNodeEngine, ExternalNJSEngine, EmbeddedNJSEngine;
 import shaft.exception : ExpressionFailed, FeatureUnsupported;
 import shaft.runtime : Runtime;
 
@@ -44,7 +44,7 @@ struct Evaluator
         {
             import salad.util : dig;
 
-            engine = new ExternalNJSEngine;
+            engine = new EmbeddedNJSEngine;
             isJS = true;
             expressionLibs = req.dig!("expressionLib", string[]);
         }
@@ -58,7 +58,7 @@ struct Evaluator
      * Throws:
      *   - NodeExpression if the evaluated expression cannot be converted to `T`
      */
-    T eval(T)(string expression, Node inputs, Runtime runtime, Node self = YAMLNull()) const /+ pure +/ @safe
+    T eval(T)(string expression, Node inputs, Runtime runtime, Node self = YAMLNull()) /+ pure +/ @safe
     {
         import salad.context : LoadingContext;
         import salad.meta.impl : as_;
@@ -69,7 +69,7 @@ struct Evaluator
      * Evaluate an expression
      * Returns: evaluated expression as `Node` instance
      */
-    Node eval(string expression, Node inputs, Runtime runtime, Node self = YAMLNull()) const /+ pure +/ @safe
+    Node eval(string expression, Node inputs, Runtime runtime, Node self = YAMLNull()) /+ pure +/ @safe
     {
         import salad.type : Either, match;
         import std.algorithm : map;
@@ -218,7 +218,7 @@ auto matchParameterReferenceFirst(string exp) pure @safe
 
 Node evalParameterReference(
     string exp, Node inputs, Runtime runtime, Node self,
-    in string[] _, bool enableExtProps, in JSEngine _node
+    in string[] _, bool enableExtProps, JSEngine _engine
 ) @safe
 in(exp.startsWith("$("))
 in(exp.endsWith(")"))
@@ -407,20 +407,23 @@ auto matchJSExpressionFirst(string str) pure @safe
 
 Node evalJSExpression(
     string exp, Node inputs, Runtime runtime, Node self,
-    in string[] libs, bool _, in JSEngine engine
+    in string[] libs, bool _, JSEngine engine
 ) @trusted
 {
     import dyaml : Loader, NodeType;
     import std.exception : enforce, ifThrown;
     import std.format : format;
 
+    import std : stderr;
     auto evaled = engine
-        .evaluate(exp, inputs, runtime, self, libs)
-        .ifThrown!ExpressionFailed((_) {
-            enforce!ExpressionFailed(false, format!"Evaluation failed: `%s`"(exp));
-            return "";
-        });
+        .evaluate(exp, inputs, runtime, self, libs);
+        // .ifThrown!ExpressionFailed((_) {
+        //     enforce!ExpressionFailed(false, format!"Evaluation failed: `%s`"(exp));
+        //     return "";
+        // });
+    stderr.writefln!"eval `%s` -> `%s`"(exp, evaled);
     auto retNode = Loader.fromString(evaled).load;
+    
     
     if (retNode.type == NodeType.mapping)
     {

@@ -5,6 +5,16 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
     echo \
         "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
         $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-    apt-get update && apt-get install -y --no-install-recommends python-is-python3 python3-pip docker-ce-cli nodejs && \
+    apt-get update && apt-get install -y --no-install-recommends python-is-python3 python3-pip docker-ce-cli \
+                                                                 libclang-dev libpcre2-dev clang make && \
+    cd /usr/lib/x86_64-linux-gnu/ && \
+    ln -s libclang-10.so libclang.so && \
     pip install cwltest && \
     apt-get clean -y && rm -rf /var/lib/apt/lists/* /tmp/library-scripts
+
+RUN git clone https://github.com/nginx/njs.git -b 0.7.6 && \
+    cd njs && ./configure --test262=NO && make libnjs && cd .. && \
+    install -m 644 -D -t /opt/njs/lib njs/build/libnjs.a && \
+    install -m 644 -D -t /opt/njs/include njs/src/*.h && \
+    install -m 644 -D -t /opt/njs/include njs/build/njs_auto_config.h && \
+    rm -rf njs

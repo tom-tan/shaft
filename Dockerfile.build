@@ -3,4 +3,11 @@ FROM alpine:3.16
 RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static && \
     git config --global --add safe.directory /workdir
 
+RUN git clone https://github.com/nginx/njs.git -b 0.7.6 && \
+    cd njs && ./configure --test262=NO && make libnjs && cd .. && \
+    install -m 644 -D -t /opt/njs/lib njs/build/libnjs.a && \
+    install -m 644 -D -t /opt/njs/include njs/src/*.h && \
+    install -m 644 -D -t /opt/njs/include njs/build/njs_auto_config.h && \
+    rm -rf njs
+
 WORKDIR /workdir

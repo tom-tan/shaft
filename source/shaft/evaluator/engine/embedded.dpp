@@ -1,0 +1,165 @@
+/**
+ * Authors: Tomoya Tanjo
+ * Copyright: © 2022 Tomoya Tanjo
+ * License: Apache-2.0
+ */
+module shaft.evaluator.engine.embedded;
+
+import shaft.evaluator.engine.interface_ : JSEngine;
+import shaft.exception : ExpressionFailed, FeatureUnsupported;
+import dyaml : Node;
+import shaft.runtime : Runtime;
+
+#include <njs_main.h>
+
+//
+// workaround for dpp
+// 
+private alias u_char = ubyte;
+
+///
+class EmbeddedNJSEngine : JSEngine
+{
+    this() @trusted
+    {
+        import std.exception : enforce;
+        import std.string : toStringz;
+
+        njs_vm_opt_t vm_options;
+
+        njs_vm_opt_init(&vm_options);
+
+        enum Mode
+        {
+            command = "string",
+            shell = "shell",
+        }
+        auto mode = Mode.command;
+
+        vm_options.file.start = cast(u_char*)mode.toStringz;
+        vm_options.file.length = mode.length;
+
+        vm_options.init = 1;
+        vm_options.interactive = 0;
+        vm_options.backtrace = 1;
+        vm_options.quiet = 0;
+        vm_options.sandbox = 1;
+        vm_options.unhandled_rejection = NJS_VM_OPT_UNHANDLED_REJECTION_IGNORE;
+
+        vm = enforce!FeatureUnsupported(
+            njs_vm_create(&vm_options),
+            "Failed to initialize JavaScript engine"
+        );
+
+        vm.eval_(
+            q"EOS
+            "use strict";
+            this.global = {};
+            delete this.global;
+            delete this.njs;
+            delete this.process;
+            if ("$262" in this)
+            {
+                delete this["$262"];
+            }
+EOS"
+        );
+    }
+
+    ~this() @trusted
+    {
+        njs_vm_destroy(vm);
+    }
+
+    override string evaluate(scope string exp, Node inputs, Runtime runtime, Node self, in string[] libs)
+    in(exp.length != 0)
+    {
+        import std : enforce, toStringz, format;
+
+        auto to(T: string)(njs_str_t chars)
+        {
+            import std.conv : castFrom;
+            return castFrom!(u_char[]).to!string(chars.start[0..chars.length]);
+        }
+
+        auto code = toJSCode(exp, inputs, runtime, self, libs);
+        return vm.eval_(code);
+    }
+
+private:
+    string toJSCode(string exp, Node inputs, Runtime runtime, Node self,
+        in string[] libs) const
+    {
+        import shaft.type.common : toJSON;
+        import std.array : join;
+        import std.format : format;
+        import std.range : chain;
+
+        auto expBody = exp[1] == '('
+            ? format!"(function() { return %s; })()"(exp[1..$])
+            : format!"(function() { %s; })()"(exp[2..$-1]);
+        auto toBeEvaled = chain(libs, [expBody]).join(";\n");
+
+        return format!q"EOS
+            (function() {
+                var globalThis = {};
+                try
+                {
+                    var runtime = %s;
+                    var inputs = %s;
+                    var self = %s;
+                    return JSON.stringify(%s);
+                }
+                catch(e)
+                {
+                    return JSON.stringify({ 'class': 'exception', 'message': `${e.name}: ${e.message}`});
+                }
+            })();
+EOS"(Node(runtime).toJSON, inputs.toJSON, self.toJSON, toBeEvaled);
+    }
+
+    njs_vm_t* vm;
+}
+
+private:
+
+auto eval_(scope njs_vm_t* vm, scope string code)
+{
+    import std.exception : enforce;
+    import std.format : format;
+    import std.string : toStringz;
+
+    auto to(T: string)(njs_str_t chars)
+    {
+        import std.conv : castFrom;
+        return castFrom!(u_char[]).to!string(chars.start[0..chars.length]);
+    }
+    auto ccode = code.toStringz;
+
+    auto start = cast(u_char*)(ccode);
+    auto end = cast(u_char*)(ccode+code.length);
+    auto ret1 = njs_vm_compile(vm, &start, end);
+
+    enforce(ret1 == NJS_OK,
+    {
+        njs_str_t msg;
+        njs_vm_retval_string(vm, &msg);
+        throw new ExpressionFailed(format!"%s in the expression `%s`"(to!string(msg), code));
+    });
+    assert(start is end);
+    auto ret2 = njs_vm_start(vm);
+    enforce(ret2 == NJS_OK,
+    {
+        njs_str_t msg;
+        njs_vm_retval_string(vm, &msg);
+        throw new ExpressionFailed(format!"%s in the expression `%s`"(to!string(msg), code));
+    });
+
+    njs_str_t result;
+    
+    enforce!ExpressionFailed(
+        njs_vm_value_dump(vm, &result, &vm.retval, 1, 1) == NJS_OK,
+        "Failed to get return value from JavaScript engine"
+    );
+    return to!string(result);
+}
