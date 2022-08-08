@@ -56,6 +56,27 @@ jobs:
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
+      - name: Checkout njs repository
+        uses: actions/checkout@v2
+        with:
+          repository: nginx/njs
+          ref: 0.7.6
+          fetch-depth: 1
+          path: ${{ github.workspace }}/njs
+      - name: Install dependencies for njs and dpp
+        run: |
+          sudo apt-get install -y libclang-dev libpcre2-dev clang make
+          cd /usr/lib/x86_64-linux-gnu/
+          sudo ln -s libclang-10.so libclang.so
+      - name: Install njs libs
+        run: |
+          cd ${{ github.workspace }}/njs
+          ./configure --test262=NO
+          make libnjs
+          cd ..
+          sudo install -m 644 -D -t /opt/njs/lib njs/build/libnjs.a
+          sudo install -m 644 -D -t /opt/njs/include njs/src/*.h
+          sudo install -m 644 -D -t /opt/njs/include njs/build/njs_auto_config.h
       - name: Run tests
         run: |
           dub --cache=local test
@@ -116,9 +137,9 @@ jobs:
           repository: nginx/njs
           ref: 0.7.6
           fetch-depth: 1
-          path: ${{ github.workspace }}/.njs
+          path: ${{ github.workspace }}/njs
       - run: |
-          cd njs
+          cd ${{ github.workspace }}/njs
           ./configure --test262=NO
           make libnjs
           cd ..

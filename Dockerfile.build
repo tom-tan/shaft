@@ -1,6 +1,6 @@
 FROM alpine:3.16
 
-RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static && \
+RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static pcre && \
     git config --global --add safe.directory /workdir
 
 RUN git clone https://github.com/nginx/njs.git -b 0.7.6 && \
