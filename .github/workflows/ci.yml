@@ -151,8 +151,8 @@ jobs:
         with:
           name: njs-linux-${{ runner.arch }}-0.7.6
       - run: |
-        sudo install -m 755 njs /usr/bin
-        sudo apt-get install -y libpcre2
+          sudo install -m 755 njs /usr/bin
+          sudo apt-get install -y libpcre2
       # - uses: actions/download-artifact@v3
       #   with:
       #     name: shaft-linux-${{ runner.arch }}-master
