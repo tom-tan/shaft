@@ -136,7 +136,7 @@ jobs:
           make njs
       - uses: actions/upload-artifact@v2
         with:
-          name: njs-${{ runner.arch }}-0.7.6
+          name: njs-linux-${{ runner.arch }}-0.7.6
           path: ${{ github.workspace }}/build/njs
 
   conformance:
