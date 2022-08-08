@@ -10,7 +10,10 @@
       "/dlang/dc/src/phobos",
       // for ldc and gdc
       "/dlang/dc/import"
-    ]
+    ],
+    "files.associations": {
+      ".dpp": "D"
+    }
   },
   "remoteUser": "vscode",
   "workspaceFolder": "/workspaces/shaft",
