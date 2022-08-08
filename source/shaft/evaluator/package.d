@@ -5,6 +5,7 @@
  */
 module shaft.evaluator;
 
+import shaft.evaluator.engine : JSEngine, ExternalNodeEngine, ExternalNJSEngine;
 import shaft.exception : ExpressionFailed, FeatureUnsupported;
 import shaft.runtime : Runtime;
 
@@ -28,14 +29,6 @@ import dyaml : Node, YAMLNull;
 struct Evaluator
 {
     private import cwl.v1_0.schema : InlineJavascriptRequirement;
-    enum nodebin = "node";
-
-    static canSupportJavaScript() @safe
-    {
-        import std.process : executeShell;
-        auto ret = executeShell("which "~nodebin);
-        return ret.status == 0;
-     }
 
     /**
      * Params: 
@@ -50,13 +43,8 @@ struct Evaluator
         if (req !is null)
         {
             import salad.util : dig;
-            import std.exception : enforce;
 
-            enforce!FeatureUnsupported(
-                canSupportJavaScript,
-                "nodejs is not available"
-            );
-
+            engine = new ExternalNJSEngine;
             isJS = true;
             expressionLibs = req.dig!("expressionLib", string[]);
         }
@@ -102,7 +90,7 @@ struct Evaluator
                 evaled ~= Either!(string, Node)(c.pre);
             }
 
-            auto result = evaluate(c.hit, inputs, runtime, self, expressionLibs, enableExtProps, nodebin);
+            auto result = evaluate(c.hit, inputs, runtime, self, expressionLibs, enableExtProps, engine);
             evaled ~= Either!(string, Node)(result);
 
             exp = c.post;
@@ -149,6 +137,7 @@ struct Evaluator
 
 private:
     bool isJS;
+    JSEngine engine;
     string[] expressionLibs;
     string cwlVersion;
     bool enableExtProps;
@@ -229,7 +218,7 @@ auto matchParameterReferenceFirst(string exp) pure @safe
 
 Node evalParameterReference(
     string exp, Node inputs, Runtime runtime, Node self,
-    in string[] _, bool enableExtProps, string _node
+    in string[] _, bool enableExtProps, in JSEngine _node
 ) @safe
 in(exp.startsWith("$("))
 in(exp.endsWith(")"))
@@ -418,22 +407,20 @@ auto matchJSExpressionFirst(string str) pure @safe
 
 Node evalJSExpression(
     string exp, Node inputs, Runtime runtime, Node self,
-    in string[] libs, bool _, string node
+    in string[] libs, bool _, in JSEngine engine
 ) @trusted
 {
     import dyaml : Loader, NodeType;
-    import std.exception : enforce;
+    import std.exception : enforce, ifThrown;
     import std.format : format;
-    import std.process : Config, execute;
 
-    auto cmd = exp.toJSCode(inputs, runtime, self, libs);
-    auto ret = execute(
-        [node, "--eval", cmd],
-        null, Config.newEnv,
-    );
-    
-    enforce!ExpressionFailed(ret.status == 0, format!"Evaluation failed: `%s`"(exp));
-    auto retNode = Loader.fromString(ret.output).load;
+    auto evaled = engine
+        .evaluate(exp, inputs, runtime, self, libs)
+        .ifThrown!ExpressionFailed((_) {
+            enforce!ExpressionFailed(false, format!"Evaluation failed: `%s`"(exp));
+            return "";
+        });
+    auto retNode = Loader.fromString(evaled).load;
     
     if (retNode.type == NodeType.mapping)
     {
@@ -446,46 +433,6 @@ Node evalJSExpression(
         );
     }
     return retNode;
-}
-
-auto escape(string exp) @safe
-{
-    import std.regex : ctRegex, replaceAll;
-    return exp
-        .replaceAll(ctRegex!`\\`, `\\`)
-        .replaceAll(ctRegex!`"`, `\"`)
-        .replaceAll(ctRegex!`\n`, `\n`);
-}
-
-auto toJSCode(
-    string exp, Node inputs, Runtime runtime, Node self,
-    in string[] libs
-) @safe
-in(!exp.empty)
-{
-    import shaft.type.common : toJSON;
-    import std.array : join;
-    import std.format : format;
-    import std.range : chain;
-
-    auto expBody = exp[1] == '('
-        ? exp[1..$]
-        : format!"(function() { %s })()"(exp[2..$-1]);
-    auto toBeEvaled = chain(libs, [expBody]).join(";\n").escape;
-
-    return format!q"EOS
-        'use strict'
-        try{
-            const exp = "%s";
-            process.stdout.write(JSON.stringify(require('vm').runInNewContext(exp, {
-                'runtime': %s,
-                'inputs': %s,
-                'self': %s,
-            })));
-        } catch(e) {
-            process.stdout.write(JSON.stringify({ 'class': 'exception', 'message': `${e.name}: ${e.message}`}))
-        }
-EOS"(toBeEvaled, Node(runtime).toJSON, inputs.toJSON, self.toJSON);
 }
 
 // similar to std.regex.Captures

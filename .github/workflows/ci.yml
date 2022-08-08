@@ -122,6 +122,23 @@ jobs:
           name: shaft-osx-${{ runner.arch }}-master
           path: ${{ github.workspace }}/bin/shaft
 
+  build-njs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: nginx/njs
+          ref: 0.7.6
+          fetch-depth: 1
+      - run: sudo apt install -y libpcre2-dev
+      - run: |
+          ./configure --test262=NO
+          make njs
+      - uses: actions/upload-artifact@v2
+        with:
+          name: njs-${{ runner.arch }}-0.7.6
+          path: ${{ github.workspace }}/build/njs
+
   conformance:
     needs: [test, build-linux, build-mac]
     runs-on: ubuntu-latest
@@ -130,9 +147,15 @@ jobs:
         with:
           name: shaft-linux-${{ runner.arch }}-master
       - run: chmod +x shaft
-      - uses: actions/setup-node@v3
+      - uses: actions/download-artifact@v3
         with:
-          node-version: 16
+          name: njs-linux-${{ runner.arch }}-0.7.6
+      - run: |
+        sudo install -m 755 njs /usr/bin
+        sudo apt-get install -y libpcre2
+      # - uses: actions/download-artifact@v3
+      #   with:
+      #     name: shaft-linux-${{ runner.arch }}-master
       - name: Run conformance tests
         id: run-conformance
         uses: common-workflow-lab/run-conformance-tests@v1
