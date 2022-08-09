@@ -71,7 +71,7 @@ jobs:
       - name: Install njs libs
         run: |
           cd ${{ github.workspace }}/njs
-          ./configure --test262=NO
+          ./configure --test262=NO --no-openssl
           make libnjs
           cd ..
           sudo install -d /opt/njs/include /opt/njs/lib
@@ -146,7 +146,7 @@ jobs:
           path: ${{ github.workspace }}/njs
       - run: |
           cd ${{ github.workspace }}/njs
-          ./configure --test262=NO
+          ./configure --test262=NO --no-openssl
           make libnjs
           cd ..
           sudo install -d /opt/njs/include /opt/njs/lib

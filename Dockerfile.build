@@ -5,7 +5,7 @@ RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static pcre2-dev 
     ln -s /usr/lib/libclang.so.13 /usr/lib/libclang.so
 
 RUN git clone https://github.com/nginx/njs.git -b 0.7.6 && \
-    cd njs && ./configure --test262=NO && make libnjs && cd .. && \
+    cd njs && ./configure --test262=NO --no-openssl && make libnjs && cd .. && \
     install -d /opt/njs/include /opt/njs/lib && \
     install -m 644 njs/build/libnjs.a /opt/njs/lib && \
     install -m 644 njs/src/*.h /opt/njs/include && \

@@ -17,7 +17,11 @@
 			]
 		}
 	},
+	"preGenerateCommands": [
+		"dub fetch dpp"
+	],
 	"preBuildCommands": [
+		"dub run dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp",
 		"./gen-version.sh > resources/version"
 	],
 	"extraDependencyFiles": [
