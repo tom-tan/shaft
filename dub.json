@@ -20,8 +20,7 @@
 	"preBuildCommands": [
 		"./gen-version.sh > resources/version",
 		"dub fetch dpp",
-		"dub run dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp",
-		"ls source/shaft/evaluator/engine/"
+		"dub run dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp"
 	],
 	"extraDependencyFiles": [
 		"source/shaft/evaluator/engine/embedded.dpp"
