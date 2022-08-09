@@ -106,8 +106,8 @@ jobs:
           file: Dockerfile.build
           load: true
           tags: shaft-dev
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+          # cache-from: type=local,src=/tmp/.buildx-cache
+          # cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
       - run: |
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
             sh -c "dub build -b release-static && strip bin/shaft"
