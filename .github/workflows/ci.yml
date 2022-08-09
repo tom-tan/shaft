@@ -80,7 +80,7 @@ jobs:
           sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
       - name: Run tests
         run: |
-          dub --cache=local test --force
+          dub test
 
   build-linux:
     needs: [info]
@@ -110,7 +110,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
       - run: |
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
-            sh -c "dub --cache=local build -b release-static && strip bin/shaft"
+            sh -c "dub build -b release-static && strip bin/shaft"
       - name: Setup cache
         run: |
           rm -rf /tmp/.buildx-cache
