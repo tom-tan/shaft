@@ -25,6 +25,7 @@
 	"extraDependencyFiles": [
 		"source/shaft/evaluator/engine/embedded.dpp"
 	],
+	"dflags": ["-Xcc=--verbose"],
 	"lflags": ["-L/opt/njs/lib", "-lnjs", "-lpcre2-8"],
 	"stringImportPaths": [
 		"resources"
