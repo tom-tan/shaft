@@ -22,6 +22,9 @@
 		"dub fetch dpp",
 		"dub run dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp"
 	],
+	"extraDependencyFiles": [
+		"source/shaft/evaluator/engine/embedded.dpp"
+	],
 	"lflags": ["-L/opt/njs/lib", "-lnjs", "-lpcre2-8"],
 	"stringImportPaths": [
 		"resources"
