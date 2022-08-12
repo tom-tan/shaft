@@ -83,6 +83,7 @@ jobs:
         run: dub --cache=local test
 
   build-linux:
+    if: false
     needs: [info]
     runs-on: ubuntu-latest
     steps:
@@ -139,6 +140,10 @@ jobs:
           ref: 0.7.6
           fetch-depth: 1
           path: ${{ github.workspace }}/njs
+      - name: Setup for dpp
+        run: |
+          sudo xcode-select -s /Library/Developer/CommandLineTools
+          brew uninstall llvm
       - run: |
           cd ${{ github.workspace }}/njs
           ./configure --test262=NO --no-openssl
@@ -148,12 +153,6 @@ jobs:
           sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
           sudo install -m 644 njs/src/*.h /opt/njs/include
           sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
-      - name: Setup for dpp
-        run: |
-          brew uninstall llvm
-          ls /Library/Developer
-          ls /Library/Developer/Toolchains
-          false
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
