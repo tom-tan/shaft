@@ -13,7 +13,8 @@ RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
 
 RUN git clone https://github.com/nginx/njs.git -b 0.7.6 && \
     cd njs && ./configure --test262=NO --no-openssl && make libnjs && cd .. && \
-    install -m 644 -D -t /opt/njs/lib njs/build/libnjs.a && \
-    install -m 644 -D -t /opt/njs/include njs/src/*.h && \
-    install -m 644 -D -t /opt/njs/include njs/build/njs_auto_config.h && \
+    install -d /opt/njs/include /opt/njs/lib && \
+    install -m 644 njs/build/libnjs.a /opt/njs/lib && \
+    install -m 644 njs/src/*.h /opt/njs/include && \
+    install -m 644 njs/build/njs_auto_config.h /opt/njs/include && \
     rm -rf njs
