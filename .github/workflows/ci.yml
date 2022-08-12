@@ -54,7 +54,8 @@ jobs:
           path: |
             ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-${{ runner.arch }}-glibc-dub-${{ matrix.dc }}-${{ hashFiles('dub.selections.json') }}
-      - uses: actions/cache@v2
+      - id: njs_cache
+        uses: actions/cache@v2
         with:
           path: |
             /opt/njs
@@ -63,6 +64,7 @@ jobs:
         with:
           compiler: ${{ matrix.dc }}
       - name: Checkout njs repository
+        if: steps.njs_cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
           repository: nginx/njs
@@ -75,17 +77,16 @@ jobs:
           cd /usr/lib/x86_64-linux-gnu/
           sudo ln -s libclang-10.so libclang.so
       - name: Install njs libs
+        if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
-          if [ ! -f /opt/njs/lib/libnjs.a ]; then
-            cd ${{ github.workspace }}/njs
-            ./configure --test262=NO --no-openssl
-            make libnjs
-            cd ..
-            sudo install -d /opt/njs/include /opt/njs/lib
-            sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
-            sudo install -m 644 njs/src/*.h /opt/njs/include
-            sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
-          fi
+          cd ${{ github.workspace }}/njs
+          ./configure --test262=NO --no-openssl
+          make libnjs
+          cd ..
+          sudo install -d /opt/njs/include /opt/njs/lib
+          sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
+          sudo install -m 644 njs/src/*.h /opt/njs/include
+          sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
       - name: Run tests
         run: |
           touch source/shaft/evaluator/engine/embedded.d
@@ -146,12 +147,14 @@ jobs:
           path: |
             ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-dub
-      - uses: actions/cache@v2
+      - id: njs_cache
+        uses: actions/cache@v2
         with:
           path: |
             /opt/njs
           key: ${{ runner.os }}-${{ runner.arch }}-0.7.6
       - uses: actions/checkout@v2
+        if: steps.njs_cache.outputs.cache-hit != 'true'
         with:
           repository: nginx/njs
           ref: 0.7.6
@@ -161,17 +164,17 @@ jobs:
         run: |
           brew uninstall llvm
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
-      - run: |
-          if [ ! -f /opt/njs/lib/libnjs.a ]; then
-            cd ${{ github.workspace }}/njs
-            ./configure --test262=NO --no-openssl
-            make libnjs
-            cd ..
-            sudo install -d /opt/njs/include /opt/njs/lib
-            sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
-            sudo install -m 644 njs/src/*.h /opt/njs/include
-            sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
-          fi
+      - name: Build njs
+        if: steps.njs_cache.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ github.workspace }}/njs
+          ./configure --test262=NO --no-openssl
+          make libnjs
+          cd ..
+          sudo install -d /opt/njs/include /opt/njs/lib
+          sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
+          sudo install -m 644 njs/src/*.h /opt/njs/include
+          sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
