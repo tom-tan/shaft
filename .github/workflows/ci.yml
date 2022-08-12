@@ -147,8 +147,7 @@ jobs:
           sudo mkdir -p /usr/local/opt/llvm/lib
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/opt/llvm/lib/libclang.dylib
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
-      - if: false
-        run: |
+      - run: |
           if [ ! -f /opt/njs/lib/libnjs.a ]; then
             cd ${{ github.workspace }}/njs
             ./configure --test262=NO --no-openssl
@@ -163,8 +162,7 @@ jobs:
         with:
           compiler: ldc-1.28.1
       - name: Build a binary
-        run: |
-          dub --cache=local build -b release
+        run: dub --cache=local build -b release
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
