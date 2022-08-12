@@ -162,8 +162,8 @@ jobs:
         run: |
           dub --cache=local build -b release
         env:
-          LIBRARY_PATH: ${{ env.LIBRARY_PATH }}:/Library/Developer/CommandLineTools/usr/lib
-          DYLD_LIBRARY_PATH: ${{ env.DYLD_LIBRARY_PATH }}:/Library/Developer/CommandLineTools/usr/lib
+          LDFLAGS: -L/Library/Developer/CommandLineTools/usr/lib
+          DYLD_LIBRARY_PATH: /Library/Developer/CommandLineTools/usr/lib
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
