@@ -146,6 +146,7 @@ jobs:
           brew uninstall llvm
           sudo mkdir -p /usr/local/opt/llvm/lib
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/opt/llvm/lib/libclang.dylib
+          otool -D /Library/Developer/CommandLineTools/usr/lib/libclang.dylib
       - run: |
           if [ ! -f /opt/njs/lib/libnjs.a ]; then
             cd ${{ github.workspace }}/njs
