@@ -34,7 +34,6 @@ jobs:
           fi
 
   test:
-    if: false
     needs: [info]
     strategy:
       matrix:
@@ -52,7 +51,9 @@ jobs:
           fetch-depth: 1
       - uses: actions/cache@v2
         with:
-          path: ${{ github.workspace }}/.dub
+          path: |
+            ${{ github.workspace }}/.dub
+            /opt/njs
           key: ${{ runner.os }}-${{ runner.arch }}-glibc-dub-${{ matrix.dc }}-${{ hashFiles('dub.selections.json') }}
       - uses: dlang-community/setup-dlang@v1
         with:
@@ -71,19 +72,20 @@ jobs:
           sudo ln -s libclang-10.so libclang.so
       - name: Install njs libs
         run: |
-          cd ${{ github.workspace }}/njs
-          ./configure --test262=NO --no-openssl
-          make libnjs
-          cd ..
-          sudo install -d /opt/njs/include /opt/njs/lib
-          sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
-          sudo install -m 644 njs/src/*.h /opt/njs/include
-          sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
+          if [ ! -f /opt/njs/lib/libnjs.a ]; then
+            cd ${{ github.workspace }}/njs
+            ./configure --test262=NO --no-openssl
+            make libnjs
+            cd ..
+            sudo install -d /opt/njs/include /opt/njs/lib
+            sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
+            sudo install -m 644 njs/src/*.h /opt/njs/include
+            sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
+          fi
       - name: Run tests
         run: dub --cache=local test
 
   build-linux:
-    if: false
     needs: [info]
     runs-on: ubuntu-latest
     steps:
