@@ -147,7 +147,8 @@ jobs:
           sudo mkdir -p /usr/local/opt/llvm/lib
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/opt/llvm/lib/libclang.dylib
           otool -D /Library/Developer/CommandLineTools/usr/lib/libclang.dylib
-      - run: |
+      - if: false
+        run: |
           if [ ! -f /opt/njs/lib/libnjs.a ]; then
             cd ${{ github.workspace }}/njs
             ./configure --test262=NO --no-openssl
@@ -163,6 +164,9 @@ jobs:
           compiler: ldc-1.28.1
       - name: Build a binary
         run: |
+          dub build dpp
+          otool -l /Users/runner/.dub/packages/dpp-0.4.10/dpp/bin/d++ | grep -A5 LC_RPATH
+          false
           dub --cache=local build -b release
         env:
           DYLD_LIBRARY_PATH: /usr/local/opt/llvm/lib
