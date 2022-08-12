@@ -150,7 +150,7 @@ jobs:
       - name: Setup for dpp
         run: |
           brew uninstall llvm
-          sudo mkdir -p /usr/local/opt/llvm/lib
+          sudo mkdir -p /usr/local/opt/llvm/lib /usr/lib/llvm-3.9/lib
           sudo ln -s /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libclang.dylib /usr/local/opt/llvm/lib
       - uses: dlang-community/setup-dlang@v1
         with:

@@ -18,8 +18,15 @@
 		}
 	},
 	"preBuildCommands": [
-		"dub run -y dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp",
 		"./gen-version.sh > resources/version"
+	],
+	"preBuildCommands-osx": [
+		"mkdir -p .libclang",
+		"ln -sf /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/ $PACKAGE_DIR/.libclang",
+		"env LDFLAGS=\"-L$PACKAGE_DIR/.libclang -Wl,-rpath,$PACKAGE_DIR/.libclang\" dub run -y dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp"
+	],
+	"preBuildCommands-linux": [
+		"dub run -y dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp"
 	],
 	"extraDependencyFiles": [
 		"source/shaft/evaluator/engine/embedded.dpp",
