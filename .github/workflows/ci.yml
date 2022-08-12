@@ -152,6 +152,9 @@ jobs:
           brew uninstall llvm
           sudo mkdir -p /usr/local/opt/llvm
           sudo ln -s /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib /usr/local/opt/llvm/lib
+          echo "-----"
+          ls /usr/local/opt/llvm/lib
+          echo "-----"
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
