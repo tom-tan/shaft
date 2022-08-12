@@ -142,7 +142,6 @@ jobs:
           path: ${{ github.workspace }}/njs
       - name: Setup for dpp
         run: |
-          sudo xcode-select -s /Library/Developer/CommandLineTools
           brew uninstall llvm
       - run: |
           cd ${{ github.workspace }}/njs
@@ -158,6 +157,7 @@ jobs:
           compiler: ldc-1.28.1
       - name: Build a binary
         run: |
+          sudo xcode-select -s /Library/Developer/CommandLineTools
           dub --cache=local build -b release
       - uses: actions/upload-artifact@v2
         with:
