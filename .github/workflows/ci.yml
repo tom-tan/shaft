@@ -148,7 +148,9 @@ jobs:
           sudo install -m 644 njs/src/*.h /opt/njs/include
           sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
       - name: Setup for dpp
-        run: brew uninstall llvm
+        run: |
+          brew uninstall llvm
+          ls -l /usr/local/opt/llvm*
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1

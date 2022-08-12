@@ -18,7 +18,6 @@
 		}
 	},
 	"preBuildCommands": [
-		"env | grep LIBRARY_PATH",
 		"dub run -y dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp",
 		"./gen-version.sh > resources/version"
 	],
