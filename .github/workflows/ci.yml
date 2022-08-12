@@ -150,26 +150,13 @@ jobs:
       - name: Setup for dpp
         run: |
           brew uninstall llvm
-          sudo mkdir -p /usr/local/opt/llvm
-          sudo ln -s /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib /usr/local/opt/llvm/lib
-          echo "-----"
-          ls /Library/
-          echo "-----"
-          sudo xcode-select -p
-          echo "-----"
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
       - name: Build a binary
         run: |
-          dub build -y dpp
-          otool -L /Users/runner/.dub/packages/dpp-0.4.10/dpp/bin/d++
           dub --cache=local build -b release
-        env:
-          LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
-          DYLD_LIBRARY_PATH: $DYLD_LIBRARY_PATH::/usr/local/opt/llvm/lib
-          LC_RPATH: /usr/local/opt/llvm/lib
-          DYLD_FALLBACK_LIBRARY_PATH: /usr/local/opt/llvm/lib
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
