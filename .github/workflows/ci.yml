@@ -150,7 +150,7 @@ jobs:
       - name: Setup for dpp
         run: |
           brew uninstall llvm
-          ls -l /usr/local/opt/llvm*
+          ls -l /usr/local/opt/*
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
