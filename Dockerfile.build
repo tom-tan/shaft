@@ -13,3 +13,4 @@ RUN git clone https://github.com/nginx/njs.git -b 0.7.6 && \
     rm -rf njs
 
 WORKDIR /workdir
+ENV NJS_BASE=/opt/njs

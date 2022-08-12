@@ -18,7 +18,7 @@
 		}
 	},
 	"preBuildCommands": [
-		"dub run -y dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp --source-output-path=/tmp",
+		"dub run -y dpp -- --ignore-system-paths --include-path=$NJS_BASE/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp --source-output-path=/tmp",
 		"grep -v ' \\+#' /tmp/embedded.d > source/shaft/evaluator/engine/embedded.d",
 		"rm /tmp/embedded.d",
 		"./gen-version.sh > resources/version"
@@ -27,7 +27,7 @@
 		"source/shaft/evaluator/engine/embedded.dpp",
 		"source/shaft/evaluator/engine/embedded.d"
 	],
-	"lflags": ["-L/opt/njs/lib", "-lnjs", "-lpcre2-8"],
+	"lflags": ["-L$NJS_BASE/lib", "-lnjs", "-lpcre2-8"],
 	"stringImportPaths": [
 		"resources"
 	],

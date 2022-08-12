@@ -18,3 +18,5 @@ RUN git clone https://github.com/nginx/njs.git -b 0.7.6 && \
     install -m 644 njs/src/*.h /opt/njs/include && \
     install -m 644 njs/build/njs_auto_config.h /opt/njs/include && \
     rm -rf njs
+
+ENV NJS_BASE /opt/njs

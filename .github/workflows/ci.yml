@@ -58,7 +58,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: |
-            /opt/njs
+            ${{ github.workspace }}/.njs
           key: ${{ runner.os }}-${{ runner.arch }}-0.7.6
       - uses: dlang-community/setup-dlang@v1
         with:
@@ -79,21 +79,20 @@ jobs:
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
-          cd ${{ github.workspace }}/njs
+          cd $GITHUB_WORKSPACE/njs
           ./configure --test262=NO --no-openssl
           make libnjs
           cd ..
-          sudo install -d /opt/njs/include /opt/njs/lib
-          sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
-          sudo install -m 644 njs/src/*.h /opt/njs/include
-          sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
+          install -d $GITHUB_WORKSPACE/.njs/include $GITHUB_WORKSPACE/.njs/lib
+          install -m 644 njs/build/libnjs.a $GITHUB_WORKSPACE/.njs/lib
+          install -m 644 njs/src/*.h $GITHUB_WORKSPACE/.njs/include
+          install -m 644 njs/build/njs_auto_config.h $GITHUB_WORKSPACE/.njs/include
       - name: Run tests
         run: |
           touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local test
-      - name: Setup cache
-        run: |
-          sudo chown -R $UID:$UID /opt/njs
+        env:
+          NJS_BASE: ${{ github.workspace }}/.njs
 
   build-linux:
     needs: [info]
@@ -151,7 +150,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: |
-            /opt/njs
+            ${{ github.workspace }}/.njs
           key: ${{ runner.os }}-${{ runner.arch }}-0.7.6
       - uses: actions/checkout@v2
         if: steps.njs_cache.outputs.cache-hit != 'true'
@@ -167,14 +166,14 @@ jobs:
       - name: Build njs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
-          cd ${{ github.workspace }}/njs
+          cd $GITHUB_WORKSPACE/njs
           ./configure --test262=NO --no-openssl
           make libnjs
           cd ..
-          sudo install -d /opt/njs/include /opt/njs/lib
-          sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
-          sudo install -m 644 njs/src/*.h /opt/njs/include
-          sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
+          install -d $GITHUB_WORKSPACE/.njs/include $GITHUB_WORKSPACE/.njs/lib
+          install -m 644 njs/build/libnjs.a $GITHUB_WORKSPACE/.njs/lib
+          install -m 644 njs/src/*.h $GITHUB_WORKSPACE/.njs/include
+          install -m 644 njs/build/njs_auto_config.h $GITHUB_WORKSPACE/.njs/include
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
@@ -182,13 +181,12 @@ jobs:
         run: |
           touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local build -b release
+        env:
+          NJS_BASE: ${{ github.workspace }}/.njs
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
           path: ${{ github.workspace }}/bin/shaft
-      - name: Setup cache
-        run: |
-          sudo chown -R $UID:$UID /opt/njs
 
   conformance:
     needs: [test, build-linux, build-mac]
