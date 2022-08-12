@@ -146,6 +146,7 @@ jobs:
           brew uninstall llvm
           sudo mkdir -p /usr/local/opt/llvm/lib
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/opt/llvm/lib/libclang.dylib
+          sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
       - if: false
         run: |
           if [ ! -f /opt/njs/lib/libnjs.a ]; then
@@ -164,8 +165,6 @@ jobs:
       - name: Build a binary
         run: |
           dub --cache=local build -b release
-        env:
-          DYLD_LIBRARY_PATH: /usr/local/opt/llvm/lib
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
