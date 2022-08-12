@@ -53,8 +53,12 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.dub
-            /opt/njs
           key: ${{ runner.os }}-${{ runner.arch }}-glibc-dub-${{ matrix.dc }}-${{ hashFiles('dub.selections.json') }}
+      - uses: actions/cache@v2
+        with:
+          path: |
+            /opt/njs
+          key: ${{ runner.os }}-${{ runner.arch }}-0.7.6
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
@@ -83,7 +87,9 @@ jobs:
             sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
           fi
       - name: Run tests
-        run: dub --cache=local test
+        run: |
+          touch source/shaft/evaluator/engine/embedded.d
+          dub --cache=local test
 
   build-linux:
     needs: [info]
@@ -112,8 +118,9 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
       - run: |
+          touch source/shaft/evaluator/engine/embedded.d
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
-            sh -c "dub build -b release-static && strip bin/shaft"
+            sh -c "dub --cache=local build -b release-static && strip bin/shaft"
       - name: Setup cache
         run: |
           rm -rf /tmp/.buildx-cache
@@ -135,8 +142,12 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.dub
-            /opt/njs
           key: ${{ runner.os }}-dub
+      - uses: actions/cache@v2
+        with:
+          path: |
+            /opt/njs
+          key: ${{ runner.os }}-${{ runner.arch }}-0.7.6
       - uses: actions/checkout@v2
         with:
           repository: nginx/njs
@@ -162,7 +173,9 @@ jobs:
         with:
           compiler: ldc-1.28.1
       - name: Build a binary
-        run: dub --cache=local build -b release
+        run: |
+          touch source/shaft/evaluator/engine/embedded.d
+          dub --cache=local build -b release
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
