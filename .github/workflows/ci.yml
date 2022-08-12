@@ -143,6 +143,7 @@ jobs:
           path: ${{ github.workspace }}/njs
       - name: Setup for dpp
         run: |
+          brew uninstall llvm
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
       - run: |
           if [ ! -f /opt/njs/lib/libnjs.a ]; then
