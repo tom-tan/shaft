@@ -147,11 +147,16 @@ jobs:
           sudo install -m 644 njs/build/libnjs.a /opt/njs/lib
           sudo install -m 644 njs/src/*.h /opt/njs/include
           sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
+      - name: Setup for dpp
+        run: brew uninstall llvm
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
       - name: Build a binary
         run: dub --cache=local build -b release
+        env:
+          LIBRARY_PATH: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib
+          DYLD_LIBRARY_PATH: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
