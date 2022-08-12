@@ -162,6 +162,8 @@ jobs:
           dub --cache=local build -b release
         env:
           LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
+          DYLD_LIBRARY_PATH: $DYLD_LIBRARY_PATH::/usr/local/opt/llvm/lib
+          LC_RPATH: /usr/local/opt/llvm/lib
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
