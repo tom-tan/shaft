@@ -90,6 +90,9 @@ jobs:
         run: |
           touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local test
+      - name: Setup cache
+        run: |
+          sudo chown -R $UID:$UID /opt/njs
 
   build-linux:
     needs: [info]
@@ -180,6 +183,9 @@ jobs:
         with:
           name: shaft-osx-${{ runner.arch }}-master
           path: ${{ github.workspace }}/bin/shaft
+      - name: Setup cache
+        run: |
+          sudo chown -R $UID:$UID /opt/njs
 
   conformance:
     needs: [test, build-linux, build-mac]
