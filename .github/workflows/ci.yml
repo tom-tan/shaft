@@ -144,6 +144,8 @@ jobs:
       - name: Setup for dpp
         run: |
           brew uninstall llvm
+          sudo mkdir -p /usr/local/opt/llvm/lib
+          sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/opt/llvm/lib
       - run: |
           if [ ! -f /opt/njs/lib/libnjs.a ]; then
             cd ${{ github.workspace }}/njs
@@ -160,13 +162,7 @@ jobs:
           compiler: ldc-1.28.1
       - name: Build a binary
         run: |
-          echo "----"
-          ls /Library/Developer/CommandLineTools/usr/lib
-          echo "----"
           dub --cache=local build -b release
-        env:
-          LDFLAGS: -L/Library/Developer/CommandLineTools/usr/lib
-          DYLD_LIBRARY_PATH: /Library/Developer/CommandLineTools/usr/lib
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
