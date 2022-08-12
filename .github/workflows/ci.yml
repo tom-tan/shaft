@@ -160,6 +160,9 @@ jobs:
           compiler: ldc-1.28.1
       - name: Build a binary
         run: |
+          echo "----"
+          ls /Library/Developer/CommandLineTools/usr/lib
+          echo "----"
           dub --cache=local build -b release
         env:
           LDFLAGS: -L/Library/Developer/CommandLineTools/usr/lib
