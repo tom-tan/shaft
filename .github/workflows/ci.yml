@@ -79,10 +79,7 @@ jobs:
           sudo install -m 644 njs/src/*.h /opt/njs/include
           sudo install -m 644 njs/build/njs_auto_config.h /opt/njs/include
       - name: Run tests
-        run: |
-          dub fetch dpp
-          dub run dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp
-          dub --cache=local test
+        run: dub --cache=local test
 
   build-linux:
     needs: [info]
@@ -112,10 +109,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
       - run: |
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
-            sh -c "dub fetch dpp && \
-                   dub run dpp -- --ignore-system-paths --include-path=/opt/njs/include \
-                                  --preprocess-only source/shaft/evaluator/engine/embedded.dpp && \
-                   dub build -b release-static && strip bin/shaft"
+            sh -c "dub build -b release-static && strip bin/shaft"
       - name: Setup cache
         run: |
           rm -rf /tmp/.buildx-cache
@@ -157,10 +151,7 @@ jobs:
         with:
           compiler: ldc-1.28.1
       - name: Build a binary
-        run: |
-          dub fetch dpp
-          dub run dpp -- --ignore-system-paths --include-path=/opt/njs/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp
-          dub --cache=local build -b release
+        run: dub --cache=local build -b release
       - uses: actions/upload-artifact@v2
         with:
           name: shaft-osx-${{ runner.arch }}-master
