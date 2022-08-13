@@ -16,15 +16,11 @@
 				"--eh-frame-hdr"
 			],
 			"preBuildCommands-posix": [
-				"echo ==== preBuild for release-static ====",
-				"pwd",
-				"ls -l",
 				"test -f $ROOT_PACKAGE_DIR/resources/license-musl.txt || wget -O $ROOT_PACKAGE_DIR/resources/license-musl.txt https://git.musl-libc.org/cgit/musl/plain/COPYRIGHT"
 			]
 		}
 	},
 	"preBuildCommands": [
-		"echo ==== preBuild for release ====",
 		"dub run -y dpp -- --ignore-system-paths --include-path=$NJS_BASE/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp --source-output-path=/tmp",
 		"grep -v ' \\+#' /tmp/embedded.d > source/shaft/evaluator/engine/embedded.d",
 		"rm /tmp/embedded.d",
