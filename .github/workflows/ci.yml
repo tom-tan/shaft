@@ -83,10 +83,11 @@ jobs:
           ./configure --test262=NO --no-openssl
           make libnjs
           cd ..
-          install -d $GITHUB_WORKSPACE/.njs/include $GITHUB_WORKSPACE/.njs/lib
+          install -d $GITHUB_WORKSPACE/.njs/include $GITHUB_WORKSPACE/.njs/lib $GITHUB_WORKSPACE/.njs/doc
           install -m 644 njs/build/libnjs.a $GITHUB_WORKSPACE/.njs/lib
           install -m 644 njs/src/*.h $GITHUB_WORKSPACE/.njs/include
           install -m 644 njs/build/njs_auto_config.h $GITHUB_WORKSPACE/.njs/include
+          install -m 644 njs/LICENSE $GITHUB_WORKSPACE/.njs/doc
       - name: Run tests
         run: |
           touch source/shaft/evaluator/engine/embedded.d
@@ -170,10 +171,11 @@ jobs:
           ./configure --test262=NO --no-openssl
           make libnjs
           cd ..
-          install -d $GITHUB_WORKSPACE/.njs/include $GITHUB_WORKSPACE/.njs/lib
+          install -d $GITHUB_WORKSPACE/.njs/include $GITHUB_WORKSPACE/.njs/lib $GITHUB_WORKSPACE/.njs/doc
           install -m 644 njs/build/libnjs.a $GITHUB_WORKSPACE/.njs/lib
           install -m 644 njs/src/*.h $GITHUB_WORKSPACE/.njs/include
           install -m 644 njs/build/njs_auto_config.h $GITHUB_WORKSPACE/.njs/include
+          install -m 644 njs/LICENSE $GITHUB_WORKSPACE/.njs/doc
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1

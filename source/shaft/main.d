@@ -53,6 +53,7 @@ int shaftMain(string[] args)
 
     	bool showVersion;
         bool showSupportedVersions;
+        bool showLicense;
 
         sharedLog.logLevel = LogLevel.info;
 
@@ -70,7 +71,8 @@ int shaftMain(string[] args)
             "force-overwrite", "overwrite existing files and directories with output object",
             () { forceOverwrite = Yes.overwrite; },
             "enable-compat", "enable compatibility options (`--enable-compat=help` for details)", &compatOptions,
-    		"print-supported-versions", "print supported CWL specs", &showSupportedVersions,
+    		"show-supported-versions", "show supported CWL specs", &showSupportedVersions,
+            "license", "show license information", &showLicense,
 		    "version", "show version information", &showVersion,
     	).ifThrown!GetOptException((e) {
             enforce!SystemException(false, e.msg);
@@ -106,6 +108,12 @@ int shaftMain(string[] args)
         else if (showSupportedVersions)
         {
             writefln("%-(%s\n%)", suppertedVersions);
+            return 0;
+        }
+        else if (showLicense)
+        {
+            import shaft.license : licenseString;
+            write(licenseString);
             return 0;
         }
         else if (opts.helpWanted || args.length <= 1 || args.length > 3)
