@@ -118,7 +118,6 @@ jobs:
         with:
           name: shaft-linux-${{ runner.arch }}-master
           path: ${{ github.workspace }}/bin/shaft
-      - run: ${{ github.workspace }}/bin/shaft --license
 
   build-mac:
     needs: [info]
