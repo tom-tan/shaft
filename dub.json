@@ -19,7 +19,7 @@
 				"echo ==== preBuild for release-static ====",
 				"pwd",
 				"ls -l",
-				"wget -O resources/license-musl.txt https://git.musl-libc.org/cgit/musl/plain/COPYRIGHT"
+				"test -f $ROOT_PACKAGE_DIR/resources/license-musl.txt || wget -O $ROOT_PACKAGE_DIR/resources/license-musl.txt https://git.musl-libc.org/cgit/musl/plain/COPYRIGHT"
 			]
 		}
 	},
