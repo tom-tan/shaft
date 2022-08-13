@@ -59,35 +59,19 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.njs
-          key: ${{ runner.os }}-${{ runner.arch }}-0.7.6
+          key: ${{ runner.os }}-${{ runner.arch }}-0.7.6-1
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
-      - name: Checkout njs repository
-        if: steps.njs_cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v2
-        with:
-          repository: nginx/njs
-          ref: 0.7.6
-          fetch-depth: 1
-          path: ${{ github.workspace }}/njs
-      - name: Install dependencies for njs and dpp
+      - name: Install dependencies for dpp
         run: |
-          sudo apt-get install -y libclang-dev libpcre2-dev clang make
+          sudo apt-get install -y libclang-dev clang
           cd /usr/lib/x86_64-linux-gnu/
           sudo ln -s libclang-10.so libclang.so
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
-          cd $GITHUB_WORKSPACE/njs
-          ./configure --test262=NO --no-openssl
-          make libnjs
-          cd ..
-          install -d $GITHUB_WORKSPACE/.njs/include $GITHUB_WORKSPACE/.njs/lib $GITHUB_WORKSPACE/.njs/doc
-          install -m 644 njs/build/libnjs.a $GITHUB_WORKSPACE/.njs/lib
-          install -m 644 njs/src/*.h $GITHUB_WORKSPACE/.njs/include
-          install -m 644 njs/build/njs_auto_config.h $GITHUB_WORKSPACE/.njs/include
-          install -m 644 njs/LICENSE $GITHUB_WORKSPACE/.njs/doc
+          ./.devcontainer/setup-njs.sh 0.7.6 .njs
       - name: Run tests
         run: |
           touch source/shaft/evaluator/engine/embedded.d
@@ -152,33 +136,18 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.njs
-          key: ${{ runner.os }}-${{ runner.arch }}-0.7.6
-      - uses: actions/checkout@v2
-        if: steps.njs_cache.outputs.cache-hit != 'true'
+          key: ${{ runner.os }}-${{ runner.arch }}-0.7.6-1
+      - uses: dlang-community/setup-dlang@v1
         with:
-          repository: nginx/njs
-          ref: 0.7.6
-          fetch-depth: 1
-          path: ${{ github.workspace }}/njs
+          compiler: ldc-1.28.1
       - name: Setup for dpp
         run: |
           brew uninstall llvm
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
-      - name: Build njs
+      - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
-          cd $GITHUB_WORKSPACE/njs
-          ./configure --test262=NO --no-openssl
-          make libnjs
-          cd ..
-          install -d $GITHUB_WORKSPACE/.njs/include $GITHUB_WORKSPACE/.njs/lib $GITHUB_WORKSPACE/.njs/doc
-          install -m 644 njs/build/libnjs.a $GITHUB_WORKSPACE/.njs/lib
-          install -m 644 njs/src/*.h $GITHUB_WORKSPACE/.njs/include
-          install -m 644 njs/build/njs_auto_config.h $GITHUB_WORKSPACE/.njs/include
-          install -m 644 njs/LICENSE $GITHUB_WORKSPACE/.njs/doc
-      - uses: dlang-community/setup-dlang@v1
-        with:
-          compiler: ldc-1.28.1
+          ./.devcontainer/setup-njs.sh 0.7.6 .njs
       - name: Build a binary
         run: |
           touch source/shaft/evaluator/engine/embedded.d
