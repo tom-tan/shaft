@@ -64,7 +64,7 @@ jobs:
         with:
           compiler: ${{ matrix.dc }}
       - name: Checkout njs repository
-        if: steps.njs_cache.outputs.cache-hit != 'true'
+        # if: steps.njs_cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
           repository: nginx/njs
@@ -154,7 +154,7 @@ jobs:
             ${{ github.workspace }}/.njs
           key: ${{ runner.os }}-${{ runner.arch }}-0.7.6
       - uses: actions/checkout@v2
-        if: steps.njs_cache.outputs.cache-hit != 'true'
+        # if: steps.njs_cache.outputs.cache-hit != 'true'
         with:
           repository: nginx/njs
           ref: 0.7.6
