@@ -1,6 +1,6 @@
 FROM alpine:3.16
 
-COPY .devcotainer/setup-njs.sh /tmp
+COPY .devcontainer/setup-njs.sh /tmp
 
 RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static pcre2-dev make clang-libs clang binutils-gold && \
     git config --global --add safe.directory /workdir && \
