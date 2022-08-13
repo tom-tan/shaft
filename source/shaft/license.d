@@ -43,7 +43,7 @@ This software is licensed under the following Apache-2.0 License.
 ```
 
 # THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
-This software incorporates material from the following third party.
+This software incorporates material from the following third parties.
 
 %s
 EOS"(
