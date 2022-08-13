@@ -77,7 +77,7 @@ jobs:
           cd /usr/lib/x86_64-linux-gnu/
           sudo ln -s libclang-10.so libclang.so
       - name: Install njs libs
-        if: steps.njs_cache.outputs.cache-hit != 'true'
+        # if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
           cd $GITHUB_WORKSPACE/njs
           ./configure --test262=NO --no-openssl
@@ -165,7 +165,7 @@ jobs:
           brew uninstall llvm
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
       - name: Build njs
-        if: steps.njs_cache.outputs.cache-hit != 'true'
+        # if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
           cd $GITHUB_WORKSPACE/njs
           ./configure --test262=NO --no-openssl
