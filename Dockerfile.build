@@ -1,17 +1,13 @@
 FROM alpine:3.16
 
+COPY .devcotainer/setup-njs.sh /tmp
+
 RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static pcre2-dev make clang-libs clang binutils-gold && \
     git config --global --add safe.directory /workdir && \
     ln -s /usr/lib/libclang.so.13 /usr/lib/libclang.so
 
-RUN git clone https://github.com/nginx/njs.git -b 0.7.6 && \
-    cd njs && ./configure --test262=NO --no-openssl && make libnjs && cd .. && \
-    install -d /opt/njs/include /opt/njs/lib /opt/njs/doc && \
-    install -m 644 njs/build/libnjs.a /opt/njs/lib && \
-    install -m 644 njs/src/*.h /opt/njs/include && \
-    install -m 644 njs/build/njs_auto_config.h /opt/njs/include && \
-    install -m 644 njs/LICENSE /opt/njs/doc && \
-    rm -rf njs
+RUN /tmp/setup-njs.sh 0.7.6 /opt/njs && rm /tmp/setup-njs.sh
 
 WORKDIR /workdir
+
 ENV NJS_BASE=/opt/njs

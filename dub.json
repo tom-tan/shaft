@@ -17,6 +17,8 @@
 			],
 			"preBuildCommands-posix": [
 				"echo ==== preBuild for release-static ====",
+				"pwd",
+				"ls -l",
 				"wget -O resources/license-musl.txt https://git.musl-libc.org/cgit/musl/plain/COPYRIGHT"
 			]
 		}
