@@ -74,7 +74,6 @@ jobs:
           ./.devcontainer/setup-njs.sh 0.7.6 .njs
       - name: Run tests
         run: |
-          touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local test
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
@@ -106,7 +105,6 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
       - run: |
-          touch source/shaft/evaluator/engine/embedded.d
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
             sh -c "dub --cache=local build -b release-static && strip bin/shaft"
       - name: Setup cache
@@ -150,7 +148,6 @@ jobs:
           ./.devcontainer/setup-njs.sh 0.7.6 .njs
       - name: Build a binary
         run: |
-          touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local build -b release
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
