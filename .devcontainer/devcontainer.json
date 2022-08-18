@@ -1,23 +1,46 @@
 {
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "dev",
-  "extensions": ["sbg-rabix.benten-cwl", "webfreak.dlang-bundle"],
-  "settings": {
-    "d.dmdPath": "dmd",
-    "d.stdlibPath": [
-      // for dmd
-      "/dlang/dc/src/druntime/import",
-      "/dlang/dc/src/phobos",
-      // for ldc and gdc
-      "/dlang/dc/import"
-    ],
-    "files.associations": {
-      ".dpp": "D"
+  "name": "Shaft",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "DC": "ldc",
+      "VERSION": "1.28.1"
     }
   },
-  "remoteUser": "vscode",
-  "workspaceFolder": "/workspaces/shaft",
+  "runArgs": ["--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined"],
+
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+      "settings": {
+        "d.dmdPath": "dmd",
+        "d.stdlibPath": [
+          // for dmd
+          "/dlang/dc/src/druntime/import",
+          "/dlang/dc/src/phobos",
+          // for ldc and gdc
+          "/dlang/dc/import"
+        ],
+        "files.associations": {
+          ".dpp": "D"
+        }
+      },
+      // Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"sbg-rabix.benten-cwl",
+        "webfreak.dlang-bundle"
+			]
+		}
+	},
+
   "postCreateCommand": [
     "./.devcontainer/cloneCWL.sh"
-  ]
+  ],
+
+	"remoteUser": "vscode",
+	"features": {
+		"docker-in-docker": "latest",
+		"git": "os-provided"
+	}
 }
