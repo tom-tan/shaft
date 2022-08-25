@@ -21,12 +21,13 @@ jobs:
       - id: get_info
         run: |
           tag="${GITHUB_REF##*/}"
-          branch=""
+          raw=$(git branch -r --contains $GITHUB_REF)
+          branch=${raw/origin\/}
           echo "::set-output name=has_tag::$has_tag"
           echo "::set-output name=tag::$tag"
           echo "has_tag: $has_tag"
           echo "tag: $tag"
-          echo "branch: ${{ github.ref_name }}"
+          echo "branch: $branch"
         env:
           has_tag: ${{ startsWith(github.ref, 'refs/tags/') }}
       - name: Validate version tag
