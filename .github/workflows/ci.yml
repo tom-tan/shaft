@@ -24,17 +24,28 @@ jobs:
           raw=$(git branch -r --contains $GITHUB_REF | tr -d ' ')
           branch=${raw/origin\/}
           def_branch=${{ github.event.repository.default_branch }}
+          if [ $branch = $def_branch ]; then
+            is_default_branch='true'
+          else
+            is_default_branch='false'
+          fi
           echo "has_tag: $has_tag"
           echo "tag: $tag"
           echo "branch: $branch"
           echo "default branch: $def_branch"
           echo "::set-output name=has_tag::$has_tag"
           echo "::set-output name=tag::$tag"
+          echo "::set-output name=is_default_branch::$is_default_branch"
         env:
           has_tag: ${{ startsWith(github.ref, 'refs/tags/') }}
       - name: Validate version tag
         if: github.event_name == 'push' && steps.get_info.outputs.has_tag == 'true'
         run: |
+          if [ ${{ steps.get_info.outputs.is_default_branch }} != 'true' ]; then
+            echo "::error file=VERSION,line=1,col=1::A tag is used non-default branch"
+            exit 1
+          fi
+
           if [ $(cat VERSION) != ${{ steps.get_info.outputs.tag }} ]; then
             echo "::error file=VERSION,line=1,col=1::Version string in VERSION ($(cat VERSION)) does not match the tag string (${{ steps.get_info.outputs.tag }})"
             exit 1
