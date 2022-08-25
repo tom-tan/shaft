@@ -27,7 +27,7 @@ jobs:
           echo "::set-output name=tag::$tag"
           echo "has_tag: $has_tag"
           echo "tag: $tag"
-          echo "branch: `$branch`"
+          echo "branch: '$branch'"
         env:
           has_tag: ${{ startsWith(github.ref, 'refs/tags/') }}
       - name: Validate version tag
