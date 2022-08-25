@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - '*'
     tags:
       - '*'
   pull_request: {}
@@ -21,8 +21,12 @@ jobs:
       - id: get_info
         run: |
           tag="${GITHUB_REF##*/}"
+          branch=""
           echo "::set-output name=has_tag::$has_tag"
           echo "::set-output name=tag::$tag"
+          echo "has_tag: $has_tag"
+          echo "tag: $tag"
+          echo "branch: ${{ github.ref_name }}"
         env:
           has_tag: ${{ startsWith(github.ref, 'refs/tags/') }}
       - name: Validate version tag
@@ -33,219 +37,219 @@ jobs:
             exit 1
           fi
 
-  test:
-    needs: [info]
-    strategy:
-      matrix:
-        dc: [dmd-2.100.0, ldc-1.28.1]
-        experimental: [false]
-        include:
-          - dc: dmd-master
-            experimental: true
-    runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.experimental }}
+  # test:
+  #   needs: [info]
+  #   strategy:
+  #     matrix:
+  #       dc: [dmd-2.100.0, ldc-1.28.1]
+  #       experimental: [false]
+  #       include:
+  #         - dc: dmd-master
+  #           experimental: true
+  #   runs-on: ubuntu-latest
+  #   continue-on-error: ${{ matrix.experimental }}
 
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ${{ github.workspace }}/.dub
-          key: ${{ runner.os }}-${{ runner.arch }}-glibc-dub-${{ matrix.dc }}-${{ hashFiles('dub.selections.json') }}
-      - id: njs_cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ github.workspace }}/.njs
-          key: ${{ runner.os }}-${{ runner.arch }}-0.7.6-1
-      - uses: dlang-community/setup-dlang@v1
-        with:
-          compiler: ${{ matrix.dc }}
-      - name: Install dependencies for dpp
-        run: |
-          sudo apt-get install -y libclang-dev clang
-          cd /usr/lib/x86_64-linux-gnu/
-          sudo ln -s libclang-10.so libclang.so
-      - name: Install njs libs
-        if: steps.njs_cache.outputs.cache-hit != 'true'
-        run: |
-          ./.devcontainer/setup-njs.sh 0.7.6 .njs
-      - name: Run tests
-        run: |
-          touch source/shaft/evaluator/engine/embedded.d
-          dub --cache=local test
-        env:
-          NJS_BASE: ${{ github.workspace }}/.njs
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 1
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ${{ github.workspace }}/.dub
+  #         key: ${{ runner.os }}-${{ runner.arch }}-glibc-dub-${{ matrix.dc }}-${{ hashFiles('dub.selections.json') }}
+  #     - id: njs_cache
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ${{ github.workspace }}/.njs
+  #         key: ${{ runner.os }}-${{ runner.arch }}-0.7.6-1
+  #     - uses: dlang-community/setup-dlang@v1
+  #       with:
+  #         compiler: ${{ matrix.dc }}
+  #     - name: Install dependencies for dpp
+  #       run: |
+  #         sudo apt-get install -y libclang-dev clang
+  #         cd /usr/lib/x86_64-linux-gnu/
+  #         sudo ln -s libclang-10.so libclang.so
+  #     - name: Install njs libs
+  #       if: steps.njs_cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         ./.devcontainer/setup-njs.sh 0.7.6 .njs
+  #     - name: Run tests
+  #       run: |
+  #         touch source/shaft/evaluator/engine/embedded.d
+  #         dub --cache=local test
+  #       env:
+  #         NJS_BASE: ${{ github.workspace }}/.njs
 
-  build-linux:
-    needs: [info]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      - uses: actions/cache@v2
-        with:
-          path: |
-            /tmp/.buildx-cache
-            ${{ github.workspace }}/.dub
-          key: ${{ runner.os }}-buildx
-      - name: Build container to build single binary
-        id: dev_container
-        uses: docker/build-push-action@v2
-        with:
-          file: Dockerfile.build
-          load: true
-          tags: shaft-dev
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-      - run: |
-          touch source/shaft/evaluator/engine/embedded.d
-          docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
-            sh -c "dub --cache=local build -b release-static && strip bin/shaft"
-      - name: Setup cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-          sudo chown -R $UID:$UID .dub
-      - uses: actions/upload-artifact@v2
-        with:
-          name: shaft-linux-${{ runner.arch }}-master
-          path: ${{ github.workspace }}/bin/shaft
+  # build-linux:
+  #   needs: [info]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 1
+  #     - name: Set up QEMU
+  #       uses: docker/setup-qemu-action@v1
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v1
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           /tmp/.buildx-cache
+  #           ${{ github.workspace }}/.dub
+  #         key: ${{ runner.os }}-buildx
+  #     - name: Build container to build single binary
+  #       id: dev_container
+  #       uses: docker/build-push-action@v2
+  #       with:
+  #         file: Dockerfile.build
+  #         load: true
+  #         tags: shaft-dev
+  #         cache-from: type=local,src=/tmp/.buildx-cache
+  #         cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+  #     - run: |
+  #         touch source/shaft/evaluator/engine/embedded.d
+  #         docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
+  #           sh -c "dub --cache=local build -b release-static && strip bin/shaft"
+  #     - name: Setup cache
+  #       run: |
+  #         rm -rf /tmp/.buildx-cache
+  #         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+  #         sudo chown -R $UID:$UID .dub
+  #     - uses: actions/upload-artifact@v2
+  #       with:
+  #         name: shaft-linux-${{ runner.arch }}-master
+  #         path: ${{ github.workspace }}/bin/shaft
 
-  build-mac:
-    needs: [info]
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ${{ github.workspace }}/.dub
-          key: ${{ runner.os }}-dub
-      - id: njs_cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ github.workspace }}/.njs
-          key: ${{ runner.os }}-${{ runner.arch }}-0.7.6-1
-      - uses: dlang-community/setup-dlang@v1
-        with:
-          compiler: ldc-1.28.1
-      - name: Setup for dpp
-        run: |
-          brew uninstall llvm
-          sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
-      - name: Install njs libs
-        if: steps.njs_cache.outputs.cache-hit != 'true'
-        run: |
-          ./.devcontainer/setup-njs.sh 0.7.6 .njs
-      - name: Build a binary
-        run: |
-          touch source/shaft/evaluator/engine/embedded.d
-          dub --cache=local build -b release
-        env:
-          NJS_BASE: ${{ github.workspace }}/.njs
-      - uses: actions/upload-artifact@v2
-        with:
-          name: shaft-osx-${{ runner.arch }}-master
-          path: ${{ github.workspace }}/bin/shaft
+  # build-mac:
+  #   needs: [info]
+  #   runs-on: macos-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 1
+  #     - uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ${{ github.workspace }}/.dub
+  #         key: ${{ runner.os }}-dub
+  #     - id: njs_cache
+  #       uses: actions/cache@v2
+  #       with:
+  #         path: |
+  #           ${{ github.workspace }}/.njs
+  #         key: ${{ runner.os }}-${{ runner.arch }}-0.7.6-1
+  #     - uses: dlang-community/setup-dlang@v1
+  #       with:
+  #         compiler: ldc-1.28.1
+  #     - name: Setup for dpp
+  #       run: |
+  #         brew uninstall llvm
+  #         sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
+  #     - name: Install njs libs
+  #       if: steps.njs_cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         ./.devcontainer/setup-njs.sh 0.7.6 .njs
+  #     - name: Build a binary
+  #       run: |
+  #         touch source/shaft/evaluator/engine/embedded.d
+  #         dub --cache=local build -b release
+  #       env:
+  #         NJS_BASE: ${{ github.workspace }}/.njs
+  #     - uses: actions/upload-artifact@v2
+  #       with:
+  #         name: shaft-osx-${{ runner.arch }}-master
+  #         path: ${{ github.workspace }}/bin/shaft
 
-  conformance:
-    needs: [test, build-linux, build-mac]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: shaft-linux-${{ runner.arch }}-master
-      - run: chmod +x shaft
-      - name: Run conformance tests
-        id: run-conformance
-        uses: common-workflow-lab/run-conformance-tests@v1
-        with:
-          cwlVersion: v1.0
-          runner: ${{ github.workspace }}/shaft
-          timeout: 30
-          tags: command_line_tool,expression_tool
-          extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
-      - name: Save badges
-        if: success() && github.event_name == 'push'
-        uses: common-workflow-lab/upload-conformance-badges@v1
-        with:
-          cwlVersion: v1.0
-          runner-name: shaft
-          badgedir: ${{ steps.run-conformance.outputs.badgedir }}
-          repository: ${{ github.repository_owner }}/conformance
-          upload-default-branch: true
-          ssh-key: ${{ secrets.CONFORMANCE_KEY }}
+  # conformance:
+  #   needs: [test, build-linux, build-mac]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: shaft-linux-${{ runner.arch }}-master
+  #     - run: chmod +x shaft
+  #     - name: Run conformance tests
+  #       id: run-conformance
+  #       uses: common-workflow-lab/run-conformance-tests@v1
+  #       with:
+  #         cwlVersion: v1.0
+  #         runner: ${{ github.workspace }}/shaft
+  #         timeout: 30
+  #         tags: command_line_tool,expression_tool
+  #         extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
+  #     - name: Save badges
+  #       if: success() && github.event_name == 'push'
+  #       uses: common-workflow-lab/upload-conformance-badges@v1
+  #       with:
+  #         cwlVersion: v1.0
+  #         runner-name: shaft
+  #         badgedir: ${{ steps.run-conformance.outputs.badgedir }}
+  #         repository: ${{ github.repository_owner }}/conformance
+  #         upload-default-branch: true
+  #         ssh-key: ${{ secrets.CONFORMANCE_KEY }}
 
-  release:
-    runs-on: ubuntu-latest
-    needs: [info, conformance]
-    if: github.event_name == 'push' && needs.info.outputs.has_tag == 'true'
-    steps:
-      - name: Generate release text
-        run: |
-          cat << EOS > $GITHUB_WORKSPACE/release.md
-          ## Conformance tests for CWL ${cwlVersion}
-          [![version](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/version.json)](https://github.com/tom-tan/shaft/releases/tag/${tag}) [![commit](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/commit.json)](https://github.com/tom-tan/shaft/tree/${tag})
-          ### Classes
-          [![CommandLineTool](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/command_line_tool.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html) [![ExpressionTool](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/expression_tool.json?icon=commonwl)](https://www.commonwl.org/v1.0/Workflow.html#ExpressionTool)
+  # release:
+  #   runs-on: ubuntu-latest
+  #   needs: [info, conformance]
+  #   if: github.event_name == 'push' && needs.info.outputs.has_tag == 'true'
+  #   steps:
+  #     - name: Generate release text
+  #       run: |
+  #         cat << EOS > $GITHUB_WORKSPACE/release.md
+  #         ## Conformance tests for CWL ${cwlVersion}
+  #         [![version](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/version.json)](https://github.com/tom-tan/shaft/releases/tag/${tag}) [![commit](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/commit.json)](https://github.com/tom-tan/shaft/tree/${tag})
+  #         ### Classes
+  #         [![CommandLineTool](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/command_line_tool.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html) [![ExpressionTool](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/expression_tool.json?icon=commonwl)](https://www.commonwl.org/v1.0/Workflow.html#ExpressionTool)
 
-          ### Required features
-          [![Required](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/required.json?icon=commonwl)](https://www.commonwl.org/v1.0/)
+  #         ### Required features
+  #         [![Required](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/required.json?icon=commonwl)](https://www.commonwl.org/v1.0/)
 
-          ### Optional features
-          [![DockerRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/docker.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#DockerRequirement) [![EnvVarRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/env_var.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#EnvVarRequirement) [![InitialWorkDirRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/initial_work_dir.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#InitialWorkDirRequirement) [![InlineJavascriptRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/inline_javascript.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#InlineJavascriptRequirement) [![ResourceRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/resource.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#ResourceRequirement) [![SchemaDefRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/schema_def.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#SchemaDefRequirement) [![ShellCommandRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/shell_command.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#ShellCommandRequirement)
-          EOS
-        env:
-          cwlVersion: v1.0
-          tag: ${{ needs.info.outputs.tag }}
-      - uses: actions/create-release@v1
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ needs.info.outputs.tag }}
-          release_name: ${{ needs.info.outputs.tag }}
-          body_path: ${{ github.workspace }}/release.md
-      - uses: actions/download-artifact@v3
-        with:
-          name: shaft-linux-X64-master
-      - run: |
-          chmod +x shaft
-          tar cf ${GITHUB_WORKSPACE}/shaft-linux-x86_64.tar.gz shaft
-          rm shaft
-      - name: Upload shaft for linux x86_64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/shaft-linux-x86_64.tar.gz
-          asset_name: shaft-linux-x86_64.tar.gz
-          asset_content_type: application/tar+gzip
-      - uses: actions/download-artifact@v3
-        with:
-          name: shaft-osx-X64-master
-      - run: |
-          chmod +x shaft
-          tar cf ${GITHUB_WORKSPACE}/shaft-osx-x86_64.tar.gz shaft
-          rm shaft
-      - name: Upload shaft for macOS x86_64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/shaft-osx-x86_64.tar.gz
-          asset_name: shaft-osx-x86_64.tar.gz
-          asset_content_type: application/tar+gzip
+  #         ### Optional features
+  #         [![DockerRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/docker.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#DockerRequirement) [![EnvVarRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/env_var.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#EnvVarRequirement) [![InitialWorkDirRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/initial_work_dir.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#InitialWorkDirRequirement) [![InlineJavascriptRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/inline_javascript.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#InlineJavascriptRequirement) [![ResourceRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/resource.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#ResourceRequirement) [![SchemaDefRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/schema_def.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#SchemaDefRequirement) [![ShellCommandRequirement](https://badgen.net/https/raw.githubusercontent.com/tom-tan/conformance/master/shaft/cwl_${cwlVersion}/shaft_${tag}/shell_command.json?icon=commonwl)](https://www.commonwl.org/v1.0/CommandLineTool.html#ShellCommandRequirement)
+  #         EOS
+  #       env:
+  #         cwlVersion: v1.0
+  #         tag: ${{ needs.info.outputs.tag }}
+  #     - uses: actions/create-release@v1
+  #       id: create_release
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         tag_name: ${{ needs.info.outputs.tag }}
+  #         release_name: ${{ needs.info.outputs.tag }}
+  #         body_path: ${{ github.workspace }}/release.md
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: shaft-linux-X64-master
+  #     - run: |
+  #         chmod +x shaft
+  #         tar cf ${GITHUB_WORKSPACE}/shaft-linux-x86_64.tar.gz shaft
+  #         rm shaft
+  #     - name: Upload shaft for linux x86_64
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ${{ github.workspace }}/shaft-linux-x86_64.tar.gz
+  #         asset_name: shaft-linux-x86_64.tar.gz
+  #         asset_content_type: application/tar+gzip
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: shaft-osx-X64-master
+  #     - run: |
+  #         chmod +x shaft
+  #         tar cf ${GITHUB_WORKSPACE}/shaft-osx-x86_64.tar.gz shaft
+  #         rm shaft
+  #     - name: Upload shaft for macOS x86_64
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ steps.create_release.outputs.upload_url }}
+  #         asset_path: ${{ github.workspace }}/shaft-osx-x86_64.tar.gz
+  #         asset_name: shaft-osx-x86_64.tar.gz
+  #         asset_content_type: application/tar+gzip
