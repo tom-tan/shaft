@@ -22,6 +22,7 @@ jobs:
         run: |
           tag="${GITHUB_REF##*/}"
           raw=$(git branch -r --contains $GITHUB_REF)
+          echo "raw: '$raw'"
           branch=${raw/origin\/}
           echo "::set-output name=has_tag::$has_tag"
           echo "::set-output name=tag::$tag"
