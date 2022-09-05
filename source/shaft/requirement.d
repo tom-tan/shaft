@@ -27,7 +27,7 @@ in(inputs.type == NodeType.mapping)
             reqs.type == NodeType.sequence,
             new InputCannotBeLoaded("`cwl:requirements` must be an array of process requirements", reqs.startMark)
         );
-        auto rng = reqs.sequence.find(r => r.dig!("class", string) == Req.stringof);
+        auto rng = reqs.sequence.find!(r => r.dig!("class", string) == Req.stringof);
         if (!rng.empty)
         {
             return rng.front.as_!Req;
@@ -45,7 +45,7 @@ in(inputs.type == NodeType.mapping)
             reqs.type == NodeType.sequence,
             new InputCannotBeLoaded("`shaft:inherited-requirements` must be an array of process requirements", reqs.startMark)
         );
-        auto rng = reqs.sequence.find(r => r.dig!("class", string) == Req.stringof);
+        auto rng = reqs.sequence.find!(r => r.dig!("class", string) == Req.stringof);
         if (!rng.empty)
         {
             return rng.front.as_!Req;
@@ -63,7 +63,7 @@ in(inputs.type == NodeType.mapping)
             hints.type == NodeType.sequence,
             new InputCannotBeLoaded("`shaft:inherited-hints` must be an array of process requirements", hints.startMark)
         );
-        auto rng = hints.sequence.find(r => r.dig!("class", string) == Req.stringof);
+        auto rng = hints.sequence.find!(r => r.dig!("class", string) == Req.stringof);
         if (!rng.empty)
         {
             return rng.front.as_!Req;
