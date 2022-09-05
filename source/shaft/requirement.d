@@ -35,7 +35,7 @@ in(inputs.type == NodeType.mapping)
         }
     }
     
-    if (auto req = document.dig!("requirements", Req.stringof)(Req.init))
+    if (auto req = document.dig!("requirements", Req))
     {
         return *req;
     }
@@ -53,7 +53,7 @@ in(inputs.type == NodeType.mapping)
         }
     }
     
-    if (auto hint = document.dig!("hints", Req.stringof)(Req.init))
+    if (auto hint = document.dig!("hints", Req))
     {
         return *hint;
     }
