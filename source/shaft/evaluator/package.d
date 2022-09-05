@@ -414,14 +414,12 @@ Node evalJSExpression(
     import std.exception : enforce, ifThrown;
     import std.format : format;
 
-    import std : stderr;
     auto evaled = engine
-        .evaluate(exp, inputs, runtime, self, libs);
-        // .ifThrown!ExpressionFailed((_) {
-        //     enforce!ExpressionFailed(false, format!"Evaluation failed: `%s`"(exp));
-        //     return "";
-        // });
-    stderr.writefln!"eval `%s` -> `%s`"(exp, evaled);
+        .evaluate(exp, inputs, runtime, self, libs)
+        .ifThrown!ExpressionFailed((_) {
+            enforce!ExpressionFailed(false, format!"Evaluation failed: `%s`"(exp));
+            return "";
+        });
     auto retNode = Loader.fromString(evaled).load;
     
     
