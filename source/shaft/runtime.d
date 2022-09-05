@@ -271,7 +271,7 @@ auto reserved(string prop)(
 
 @safe unittest
 {
-    auto hint = new ResourceRequirement;
-    (() @trusted =>  hint.coresMin_ = 2)();
-    assert(reserved!"cores"(10, Node(), null, hint, Evaluator.init) == 2);
+    auto req = new ResourceRequirement;
+    (() @trusted =>  req.coresMin_ = 2)();
+    assert(reserved!"cores"(10, Node(), req, Evaluator.init) == 2);
 }

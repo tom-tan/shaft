@@ -370,7 +370,7 @@ EOS";
     auto args = buildCommandLine(
         clt,
         params,
-        Runtime(params.parameters, outdir, tmpdir, null, null, evaluator),
+        Runtime(params.parameters, outdir, tmpdir, null, evaluator),
         evaluator,
         false,
     );
