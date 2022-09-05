@@ -76,6 +76,7 @@ in(inputs.type == NodeType.mapping)
     return null;
 }
 
+/// cwl:requirements vs Process.requirements (platform dependent)
 unittest
 {
     import cwl : CommandLineTool, DockerRequirement;
@@ -114,17 +115,119 @@ EOS";
     assert(cmd.getRequirement!DockerRequirement(inp).edig!("dockerPull", string) == "debian:slim");
 }
 
+/// Process.requirements vs shaft:inherited-requirements
 unittest
 {
-    // TODO: Process.requirements vs shaft:inherited-requirements
+    import cwl : CommandLineTool, DockerRequirement;
+    import dyaml : Loader;
+
+    import salad.context : LoadingContext;
+    import salad.meta.impl : as_;
+    import salad.util : edig;
+
+    enum cmdStr = q"EOS
+        cwlVersion: v1.0
+        class: CommandLineTool
+        inputs:
+            in1: int
+        outputs: []
+
+        requirements:
+            - class: DockerRequirement
+              dockerPull: alpine:latest
+EOS";
+
+    enum inpStr = q"EOS
+        in1: 3
+        shaft:inherited-requirements:
+            - class: DockerRequirement
+              dockerPull: debian:slim
+EOS";
+
+    auto cmd = Loader
+        .fromString(cmdStr)
+        .load
+        .as_!CommandLineTool(LoadingContext.init);
+
+    auto inp = Loader.fromString(inpStr).load;
+
+    assert(cmd.getRequirement!DockerRequirement(inp).edig!("dockerPull", string) == "alpine:latest");
 }
 
+/// shaft:inherited-requirements vs hints
 unittest
 {
-    // TODO: shaft:inherited-requirements vs Process.hints
+    import cwl : CommandLineTool, DockerRequirement;
+    import dyaml : Loader;
+
+    import salad.context : LoadingContext;
+    import salad.meta.impl : as_;
+    import salad.util : edig;
+
+    enum cmdStr = q"EOS
+        cwlVersion: v1.0
+        class: CommandLineTool
+        inputs:
+            in1: int
+        outputs: []
+
+        hints:
+            - class: DockerRequirement
+              dockerPull: alpine:latest
+EOS";
+
+    enum inpStr = q"EOS
+        in1: 3
+        shaft:inherited-requirements:
+            - class: DockerRequirement
+              dockerPull: debian:slim
+EOS";
+
+    auto cmd = Loader
+        .fromString(cmdStr)
+        .load
+        .as_!CommandLineTool(LoadingContext.init);
+
+    auto inp = Loader.fromString(inpStr).load;
+
+    assert(cmd.getRequirement!DockerRequirement(inp).edig!("dockerPull", string) == "debian:slim");
 }
 
+/// hints vs shaft:inherited-hints
 unittest
 {
-    // TODO: Process.hints vs shaft:inherited-hints
+    import cwl : CommandLineTool, DockerRequirement;
+    import dyaml : Loader;
+
+    import salad.context : LoadingContext;
+    import salad.meta.impl : as_;
+    import salad.util : edig;
+
+    enum cmdStr = q"EOS
+        cwlVersion: v1.0
+        class: CommandLineTool
+        inputs:
+            in1: int
+        outputs: []
+
+        hints:
+            - class: DockerRequirement
+              dockerPull: alpine:latest
+EOS";
+
+    enum inpStr = q"EOS
+        in1: 3
+        shaft:inherited-hints:
+            - class: DockerRequirement
+              dockerPull: debian:slim
+EOS";
+
+    auto cmd = Loader
+        .fromString(cmdStr)
+        .load
+        .as_!CommandLineTool(LoadingContext.init);
+
+    auto inp = Loader.fromString(inpStr).load;
+
+    assert(cmd.getRequirement!DockerRequirement(inp).edig!("dockerPull", string) == "alpine:latest");
 }
