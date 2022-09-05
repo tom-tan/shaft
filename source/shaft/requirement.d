@@ -37,7 +37,7 @@ in(inputs.type == NodeType.mapping)
     
     if (auto req = document.dig!("requirements", Req))
     {
-        return *req;
+        return req;
     }
     
     if (auto reqs = "shaft:inherited-requirements" in inputs)
@@ -55,7 +55,7 @@ in(inputs.type == NodeType.mapping)
     
     if (auto hint = document.dig!("hints", Req))
     {
-        return *hint;
+        return hint;
     }
     
     if (auto hints = "shaft:inherited-hints" in inputs)
