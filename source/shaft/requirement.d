@@ -80,7 +80,7 @@ unittest
 
     import salad.context : LoadingContext;
     import salad.meta.impl : as_;
-    import salad.util : dig;
+    import salad.util : edig;
 
     enum cmdStr = q"EOS
         cwlVersion: v1.0
