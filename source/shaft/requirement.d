@@ -5,12 +5,16 @@
  */
 module shaft.requirement;
 
+import cwl : DocumentRootType;
 import dyaml : Node, NodeType;
+import std.meta : anySatisfy, ApplyLeft;
+import std.traits : allSameType;
 
 /**
  * See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Requirements_and_hints
  */
 Req getRequirement(alias Req, DocType)(DocType document, Node inputs)
+in(anySatisfy!(ApplyLeft!(allSameType, DocType), DocumentRootType.Types))
 in(inputs.type == NodeType.mapping)
 {
     import salad.context : LoadingContext;
@@ -108,4 +112,19 @@ EOS";
     auto inp = Loader.fromString(inpStr).load;
 
     assert(cmd.getRequirement!DockerRequirement(inp).edig!("dockerPull", string) == "debian:slim");
+}
+
+unittest
+{
+    // TODO: Process.requirements vs shaft:inherited-requirements
+}
+
+unittest
+{
+    // TODO: shaft:inherited-requirements vs Process.hints
+}
+
+unittest
+{
+    // TODO: Process.hints vs shaft:inherited-hints
 }
