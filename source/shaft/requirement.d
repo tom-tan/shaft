@@ -90,8 +90,8 @@ unittest
         outputs: []
 
         requirements:
-            class: DockerRequirement
-            dockerPull: alpine:latest
+            - class: DockerRequirement
+              dockerPull: alpine:latest
 EOS";
 
     enum inpStr = q"EOS
