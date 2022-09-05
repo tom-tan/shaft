@@ -27,7 +27,7 @@ struct Runtime
 
     ///
     this(Node inputs, string outdir, string tmpdir,
-         ResourceRequirement req, ResourceRequirement hint,
+         ResourceRequirement req,
          Evaluator evaluator) @safe
     in(outdir.isDir)
     in(tmpdir.isDir)
@@ -35,11 +35,11 @@ struct Runtime
         this.outdir = outdir;
         this.tmpdir = tmpdir;
 
-        cores = reserved!"cores"(availableCores, inputs, req, hint, evaluator);
-        ram = reserved!"ram"(availableRam, inputs, req, hint, evaluator);
+        cores = reserved!"cores"(availableCores, inputs, req, evaluator);
+        ram = reserved!"ram"(availableRam, inputs, req, evaluator);
 
-        outdirSize = reserved!"outdir"(availableOutdir(outdir), inputs, req, hint, evaluator);
-        tmpdirSize = reserved!"tmpdir"(availableTmpdir(tmpdir), inputs, req, hint, evaluator);
+        outdirSize = reserved!"outdir"(availableOutdir(outdir), inputs, req, evaluator);
+        tmpdirSize = reserved!"tmpdir"(availableTmpdir(tmpdir), inputs, req, evaluator);
     }
 
     ///
@@ -231,7 +231,7 @@ in(dir.isDir)
 /// TODO: eval req or hint, or eval for each parameter?
 auto reserved(string prop)(
     long avail, Node inputs,
-    ResourceRequirement req, ResourceRequirement hint,
+    ResourceRequirement req,
     Evaluator evaluator) @safe // must be pure
 {
     import dyaml : Mark;
@@ -241,21 +241,19 @@ auto reserved(string prop)(
     import std.exception : enforce;
     import std.format : format;
 
-    auto rr = req is null ? hint : req;
-
-    if (rr is null)
+    if (req is null)
     {
         return avail;
     }
 
-    auto rmin = __traits(getMember, rr, prop~"Min_").match!(
+    auto rmin = __traits(getMember, req, prop~"Min_").match!(
         (None _) => 0,
         (long l) => l,
         (string exp) => evaluator.eval!long(exp, inputs, Runtime.init),
     );
     enforce!SystemException(rmin <= avail);
 
-    auto rmax = __traits(getMember, rr, prop~"Max_").match!(
+    auto rmax = __traits(getMember, req, prop~"Max_").match!(
         (None _) => rmin,
         (long l) => l,
         (string exp) => evaluator.eval!long(exp, inputs, Runtime.init),
@@ -264,7 +262,7 @@ auto reserved(string prop)(
         rmin <= rmax,
         new InvalidDocument(
             format!"Conflict requirements for `%s`: minimum (%s) and maximum (%s)"(prop, rmin, rmax),
-            rr.mark
+            req.mark
         )
     );
 

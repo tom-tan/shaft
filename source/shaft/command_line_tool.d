@@ -28,6 +28,7 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     import salad.type : match;
     import salad.util : dig;
     import shaft.exception : SystemException;
+    import shaft.requirement : getRequirement;
     import shaft.runtime : availableCores, availableDirSize, availableRam;
     import std.array : join;
     import std.exception : enforce, ifThrown;
@@ -55,14 +56,14 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     {
         // stage in (all process types)
         auto staged = stageIn(params, runtime,
-                              clt.dig!(["requirements", "InitialWorkDirRequirement"], InitialWorkDirRequirement),
+                              clt.getRequirement!InitialWorkDirRequirement(params.parameters),
                               evaluator);
         // path mapping
         Node mappedInputs;
         Runtime mappedRuntime;
     }
 
-    auto useShell = clt.dig!(["requirements", "ShellCommandRequirement"], ShellCommandRequirement) !is null;
+    auto useShell = clt.getRequirement!ShellCommandRequirement(params.parameters) !is null;
 
     auto args = buildCommandLine(clt, params, runtime, evaluator, useShell);
 
@@ -77,14 +78,7 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
         "PATH": environment["PATH"],
     ];
 
-    if (auto e = clt.dig!(["requirements", "EnvVarRequirement"], EnvVarRequirement))
-    {
-        foreach(def; e.envDef_)
-        {
-            env[def.envName_] = evaluator.eval!string(def.envValue_, params.parameters, runtime);
-        }
-    }
-    else if (auto e = clt.dig!(["hints", "EnvVarRequirement"], EnvVarRequirement))
+    if (auto e = clt.getRequirement!EnvVarRequirement(params.parameters))
     {
         foreach(def; e.envDef_)
         {

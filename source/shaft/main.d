@@ -39,6 +39,7 @@ int shaftMain(string[] args)
     import salad.util : dig, edig;
 
     import shaft.exception;
+    import shaft.requirement;
 
     import std;
 
@@ -255,7 +256,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
         sharedLog.trace("Set up evaluator");
         auto evaluator = Evaluator(
-            cmd.dig!(["requirements", "InlineJavascriptRequirement"], InlineJavascriptRequirement),
+            cmd.getRequirement!InlineJavascriptRequirement(inp),
             cwlVersion, compatOptions.canFind("extended-props"),
         );
         sharedLog.trace("Success setting up evaluator");
@@ -265,10 +266,11 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
         // TODO: pass evaluator (CommandInputRecordField may have an Expression)
         sharedLog.trace("Annotate input object");
-        auto typedParams = annotateInputParameters(inp, cmd.inputs_,
-                                                   cmd.dig!(["requirements", "SchemaDefRequirement"],
-                                                            SchemaDefRequirement),
-                                                   cmd.context);
+        auto typedParams = annotateInputParameters(
+            inp, cmd.inputs_,
+            cmd.getRequirement!SchemaDefRequirement(inp),
+            cmd.context
+        );
         sharedLog.trace("Success annotating input object");
 
         import shaft.staging : fetch;
@@ -299,10 +301,11 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         import shaft.runtime : Runtime;
 
         sharedLog.trace("Set up runtime information");
-        auto runtime = Runtime(fetched.parameters, routdir, rtmpdir,
-                               cmd.dig!(["requirements", "ResourceRequirement"], ResourceRequirement),
-                               cmd.dig!(["hints", "ResourceRequirement"], ResourceRequirement),
-                               evaluator);
+        auto runtime = Runtime(
+            fetched.parameters, routdir, rtmpdir,
+            cmd.getRequirement!ResourceRequirement(inp),
+            evaluator
+        );
 
         sharedLog.trace("Set up extra runtime information");
         runtime.setupInternalInfo(cmd, fetched.parameters, rlogdir, evaluator);
