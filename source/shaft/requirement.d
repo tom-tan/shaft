@@ -5,13 +5,12 @@
  */
 module shaft.requirement;
 
-import cwl : CommandLineTool, DocumentRootType;
 import dyaml : Node, NodeType;
 
 /**
  * See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Requirements_and_hints
  */
-Req getRequirement(alias Req)(DocumentRootType document, Node inputs)
+Req getRequirement(alias Req, DocType)(DocType document, Node inputs)
 in(inputs.type == NodeType.mapping)
 {
     import salad.context : LoadingContext;
@@ -75,8 +74,8 @@ in(inputs.type == NodeType.mapping)
 
 unittest
 {
-    import cwl : DockerRequirement;
-    import dyaml;
+    import cwl : CommandLineTool, DockerRequirement;
+    import dyaml : Loader;
 
     import salad.context : LoadingContext;
     import salad.meta.impl : as_;
@@ -101,7 +100,7 @@ EOS";
               dockerPull: debian:slim
 EOS";
 
-    DocumentRootType cmd = Loader
+    auto cmd = Loader
         .fromString(cmdStr)
         .load
         .as_!CommandLineTool(LoadingContext.init);
