@@ -14,9 +14,9 @@ import dyaml : Node, NodeType;
 Req getRequirement(alias Req)(DocumentRootType document, Node inputs)
 in(inputs.type == NodeType.mapping)
 {
-    import salad.exception : InputCannotBeLoaded;
     import salad.meta.impl : as_;
     import salad.util : dig;
+    import shaft.exception : InputCannotBeLoaded;
     import std.algorithm : find;
     import std.exception : enforce;
 
@@ -27,7 +27,7 @@ in(inputs.type == NodeType.mapping)
             reqs.type == NodeType.sequence,
             new InputCannotBeLoaded("`cwl:requirements` must be an array of process requirements", reqs.startMark)
         );
-        auto rng = reqs.find(r => r.dig!("class", string) == Req.stringof);
+        auto rng = reqs.sequence.find(r => r.dig!("class", string) == Req.stringof);
         if (!rng.empty)
         {
             return rng.front.as_!Req;
@@ -45,7 +45,7 @@ in(inputs.type == NodeType.mapping)
             reqs.type == NodeType.sequence,
             new InputCannotBeLoaded("`shaft:inherited-requirements` must be an array of process requirements", reqs.startMark)
         );
-        auto rng = reqs.find(r => r.dig!("class", string) == Req.stringof);
+        auto rng = reqs.sequence.find(r => r.dig!("class", string) == Req.stringof);
         if (!rng.empty)
         {
             return rng.front.as_!Req;
@@ -63,7 +63,7 @@ in(inputs.type == NodeType.mapping)
             hints.type == NodeType.sequence,
             new InputCannotBeLoaded("`shaft:inherited-hints` must be an array of process requirements", hints.startMark)
         );
-        auto rng = hints.find(r => r.dig!("class", string) == Req.stringof);
+        auto rng = hints.sequence.find(r => r.dig!("class", string) == Req.stringof);
         if (!rng.empty)
         {
             return rng.front.as_!Req;
@@ -77,6 +77,7 @@ unittest
     import cwl : DockerRequirement;
     import dyaml;
 
+    import salad.context : LoadingContext;
     import salad.meta.impl : as_;
     import salad.util : dig;
 
@@ -102,7 +103,7 @@ EOS";
     DocumentRootType cmd = Loader
         .fromString(cmdStr)
         .load
-        .as_!CommandLineTool;
+        .as_!CommandLineTool(LoadingContext.init);
 
     auto inp = Loader.fromString(inpStr).load;
 
