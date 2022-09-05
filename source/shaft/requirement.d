@@ -71,3 +71,40 @@ in(inputs.type == NodeType.mapping)
     }
     return null;
 }
+
+unittest
+{
+    import cwl : DockerRequirement;
+    import dyaml;
+
+    import salad.meta.impl : as_;
+    import salad.util : dig;
+
+    enum cmdStr = q"EOS
+        cwlVersion: v1.0
+        class: CommandLineTool
+        inputs:
+            in1: int
+        outputs: []
+
+        requirements:
+            class: DockerRequirement
+            dockerPull: alpine:latest
+EOS";
+
+    enum inpStr = q"EOS
+        in1: 3
+        cwl:requirements:
+            - class: DockerRequirement
+              dockerPull: debian:slim
+EOS";
+
+    DocumentRootType cmd = Loader
+        .fromString(cmdStr)
+        .load
+        .as_!CommandLineTool;
+
+    auto inp = Loader.fromString(inpStr).load;
+
+    assert(cmd.getRequirement!DockerRequirement(inp).edig!("dockerPull", string) == "debian:slim");
+}
