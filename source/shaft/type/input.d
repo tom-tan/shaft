@@ -176,7 +176,7 @@ in(params.type == NodeType.mapping)
         if (reqField in rest)
         {
             retNode.add(reqField, params[reqField]);
-            rest.removeKey(retField);
+            rest.removeKey(reqField);
         }
     }
 
