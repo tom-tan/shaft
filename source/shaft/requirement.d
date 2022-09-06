@@ -13,7 +13,7 @@ import std.traits : allSameType;
 /**
  * See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Requirements_and_hints
  */
-Req getRequirement(alias Req, DocType)(DocType document, Node inputs)
+Req getRequirement(alias Req, DocType)(DocType document, Node inputs, bool includeHints = true)
 in(anySatisfy!(ApplyLeft!(allSameType, DocType), DocumentRootType.Types))
 in(inputs.type == NodeType.mapping)
 {
@@ -37,12 +37,12 @@ in(inputs.type == NodeType.mapping)
             return rng.front.as_!Req(LoadingContext.init);
         }
     }
-    
+
     if (auto req = document.dig!(["requirements", Req.stringof], Req))
     {
         return req;
     }
-    
+
     if (auto reqs = "shaft:inherited-requirements" in inputs)
     {
         enforce(
@@ -55,12 +55,17 @@ in(inputs.type == NodeType.mapping)
             return rng.front.as_!Req(LoadingContext.init);
         }
     }
-    
+
+    if (!includeHints)
+    {
+        return null;
+    }
+
     if (auto hint = document.dig!(["hints", Req.stringof], Req))
     {
         return hint;
     }
-    
+
     if (auto hints = "shaft:inherited-hints" in inputs)
     {
         enforce(
