@@ -171,6 +171,15 @@ in(params.type == NodeType.mapping)
         rest.removeKey(id);
     }
 
+    foreach(reqField; ["cwl:requirements", "shaft:inherited-requirements", "shaft:inherited-hints"])
+    {
+        if (reqField in rest)
+        {
+            retNode.add(reqField, params[reqField]);
+            rest.removeKey(retField);
+        }
+    }
+
     if (!rest.empty)
     {
         import std.array : array;
