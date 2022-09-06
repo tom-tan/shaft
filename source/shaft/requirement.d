@@ -10,6 +10,13 @@ import dyaml : Node, NodeType;
 import std.meta : anySatisfy, ApplyLeft;
 import std.traits : allSameType;
 
+/// Process requirements for CommandLineTool
+static immutable SupportedRequirementsForCLT = [
+    "InlineJavascriptRequirement", "SchemaDefRequirement", "DockerRequirement", "SoftwareRequirement",
+    "InitialWorkDirRequirement", "EnvVarRequirement", "ShellCommandRequirement", "ResourceRequirement",
+    // "LoadListingRequirement", "WorkReuse", "NetworkAccess", "InplaceUpdateRequirement", "ToolTimeLimit" // since v1.1
+];
+
 /**
  * See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Requirements_and_hints
  */

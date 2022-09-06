@@ -204,6 +204,53 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             });
         enforce(inp.type == NodeType.mapping,
                 new InputCannotBeLoaded("Input should be a mapping but it is not", inp.startMark));
+        if (auto reqs = "cwl:requirements" in inp)
+        {
+            enforce(
+                reqs.type == NodeType.sequence,
+                new InputCannotBeLoaded("`cwl:requirements` must be an array of process requirements", reqs.startMark)
+            );
+            foreach(r; reqs.sequence)
+            {
+                auto name = "class" in r;
+                enforce(
+                    name !is null,
+                    new InputCannotBeLoaded(
+                        "`cwl:requirements` has process requirement without `class` field",
+                        reqs.startMark
+                    )
+                );
+                enforce!FeatureUnsupported(
+                    SupportedRequirementsForCLT.canFind(*name),
+                    format!"`%s` specified in `cwl:requirements` is not supported"(*name)
+                );
+            }
+        }
+        if (auto reqs = "shaft:inherited-requirements" in inp)
+        {
+            enforce(
+                reqs.type == NodeType.sequence,
+                new InputCannotBeLoaded(
+                    "`shaft:inherited-requirements` must be an array of process requirements",
+                    reqs.startMark
+                )
+            );
+            foreach(r; reqs.sequence)
+            {
+                auto name = "class" in r;
+                enforce(
+                    name !is null,
+                    new InputCannotBeLoaded(
+                        "`shaft:inherited-requirements` has process requirement without `class` field",
+                        reqs.startMark
+                    )
+                );
+                enforce!FeatureUnsupported(
+                    SupportedRequirementsForCLT.canFind(*name),
+                    format!"`%s` specified in `shaft:inherited-requirements` is not supported"(*name)
+                );
+            }
+        }
         sharedLog.info("Success loading input object");
 
         // TODO: handle `cwl:tool` (input object must start with shebang and marked as executable)
@@ -212,7 +259,6 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         //   - check cwl:tool
         //     - yes -> input object
         //     - no
-        // TODO: handle `cwl:requirements`
 
         // 2. Load, process and validate a CWL document, yielding one or more process objects. The $namespaces present in the CWL document are also used when validating and processing the input object.
         sharedLog.info("Load CWL document");
