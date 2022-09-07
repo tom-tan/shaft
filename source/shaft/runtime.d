@@ -251,7 +251,10 @@ auto reserved(string prop)(
         (long l) => l,
         (string exp) => evaluator.eval!long(exp, inputs, Runtime.init),
     );
-    enforce!SystemException(rmin <= avail);
+    enforce!SystemException(
+        rmin <= avail,
+        format!"`%1$sMin <= available %1$s` does not hold (%1$sMin: %2$s, available: %3$s)"(prop, rmin, avail)
+    );
 
     auto rmax = __traits(getMember, req, prop~"Max_").match!(
         (None _) => rmin,
@@ -261,7 +264,7 @@ auto reserved(string prop)(
     enforce(
         rmin <= rmax,
         new InvalidDocument(
-            format!"Conflict requirements for `%s`: minimum (%s) and maximum (%s)"(prop, rmin, rmax),
+            format!"`%1$sMin <= %1$sMax` does not hold (%1$sMin: %2$s, %1$sMax: %3$s)"(prop, rmin, rmax),
             req.mark
         )
     );
