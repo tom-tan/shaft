@@ -88,7 +88,8 @@ in(inputs.type == NodeType.mapping)
     return null;
 }
 
-/// cwl:requirements vs Process.requirements (platform dependent)
+/// cwl:requirements vs Process.requirements
+/// shaft uses cwl:requirements (platform dependent).
 unittest
 {
     import cwl : CommandLineTool, DockerRequirement;
@@ -128,6 +129,8 @@ EOS";
 }
 
 /// Process.requirements vs shaft:inherited-requirements
+/// shaft uses Process.requirements.
+/// > If the same process requirement appears at different levels of the workflow, the most specific instance of the requirement is used, ...
 unittest
 {
     import cwl : CommandLineTool, DockerRequirement;
@@ -167,6 +170,8 @@ EOS";
 }
 
 /// shaft:inherited-requirements vs hints
+/// shaft uses shaft:inherited-requirements.
+/// > Requirements override hints.
 unittest
 {
     import cwl : CommandLineTool, DockerRequirement;
@@ -206,6 +211,10 @@ EOS";
 }
 
 /// hints vs shaft:inherited-hints
+/// shaft uses hints.
+/// > If the same process requirement appears at different levels of the workflow, the most specific instance of the requirement is used, ...
+/// > ...
+/// > Entries in `hints`` are resolved the same way.
 unittest
 {
     import cwl : CommandLineTool, DockerRequirement;
