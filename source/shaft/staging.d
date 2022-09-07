@@ -46,12 +46,19 @@ in(destURI.scheme.empty || destURI.isDir)
     auto ret = Node((Node[string]).init);
     foreach(string k, Node v; params.parameters)
     {
-
-        auto p = stagingParam(
-            TypedValue(v, params.types[k]), destURI, keepStructure,
-            forceStaging, overwrite,
-        );
-        ret.add(k, p);
+        import std.algorithm : startsWith;
+        if (k.startsWith("cwl:") || k.startsWith("shaft:"))
+        {
+            ret.add(k, v);
+        }
+        else
+        {
+            auto p = stagingParam(
+                TypedValue(v, params.types[k]), destURI, keepStructure,
+                forceStaging, overwrite,
+            );
+            ret.add(k, p);
+        }
     }
     return TypedParameters(ret, params.types);
 }
