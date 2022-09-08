@@ -331,6 +331,7 @@ auto processParameters(Param[] params, Node inputs, Runtime runtime, Evaluator e
 unittest
 {
     import dyaml : Loader, Node;
+    import shaft.type.common : PrimitiveType;
     import std.file : mkdir, rmdir;
 
     enum inpDoc = q"EOS
@@ -352,7 +353,7 @@ EOS";
 
     auto params = TypedParameters(
         Loader.fromString(inpDoc).load,
-        ["inp1": DeterminedType(new CWLType("int"))],
+        ["inp1": DeterminedType(PrimitiveType(new CWLType("int")))],
     );
 
     auto clt = Loader.fromString(cwlDoc).load.as!CommandLineTool;
@@ -477,11 +478,11 @@ CmdElemType applyRules(
 )
 {
     import salad.type : match;
-    import shaft.type.common : ArrayType, EnumType, RecordType;
+    import shaft.type.common : ArrayType, EnumType, PrimitiveType, RecordType;
 
     return type.match!(
-        (CWLType t) {
-            final switch(t.value)
+        (PrimitiveType t) {
+            final switch(t.type.value)
             {
             case "null":
                 // Add nothing.

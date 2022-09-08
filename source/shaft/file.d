@@ -172,6 +172,11 @@ in(node.type == NodeType.null_ || node["class"] == "File")
         {
             ret.format_ = f.as!string;
         }
+
+        if (auto con = "contents" in node)
+        {
+            ret.contents_ = con.as!string;
+        }
     }
     return ret;
 }

@@ -9,7 +9,7 @@ import dyaml : Node;
 
 import cwl.v1_0.schema;
 import salad.context : LoadingContext;
-import salad.type : Either, None, Optional, This;
+import salad.type : Either, isSumType, None, Optional, This;
 
 import shaft.evaluator : Evaluator;
 import shaft.exception : CaptureFailed, NotYetImplemented, TypeException;
@@ -73,7 +73,25 @@ alias TypeConflicts = TC_!(DeclaredType, toStr);
  * See_Also: https://www.commonwl.org/v1.0/CommandLineTool.html#Output_binding
  * Note: have to consider SchemaDefRequirement?
  */
-TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime, Evaluator evaluator)
+auto captureOutputs(
+    ExpressionToolOutputParameter[] paramDefs,
+    Node inputs, Runtime runtime, Evaluator evaluator,
+    LoadingContext context)
+{
+    import std.algorithm : map;
+    import std.array : array;
+
+    return captureOutputs(
+        paramDefs.map!toCommandOutputParameter.array,
+        inputs, runtime, evaluator, context
+    );
+}
+
+/// ditto
+TypedParameters captureOutputs(
+    CommandOutputParameter[] paramDefs,
+    Node inputs, Runtime runtime, Evaluator evaluator,
+    LoadingContext context)
 {
     import dyaml : Loader, NodeType;
     import std.algorithm : filter, fold, map;
@@ -98,8 +116,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
 
         auto rest = redBlackTree(loaded.mappingKeys.map!(a => a.as!string));
 
-        ret = clt
-            .outputs_
+        ret = paramDefs
             .map!((o) {
                 import salad.type : tryMatch;
                 import std.typecons : tuple;
@@ -115,7 +132,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         collectOutputParameter(
                             Either!(Node, CommandOutputBinding)(*n),
                             o.type_.tryMatch!(t => DeclaredType(t)),
-                            inputs, runtime, clt.context, evaluator
+                            inputs, runtime, context, evaluator
                         )
                     );
                 }
@@ -127,7 +144,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         collectOutputParameter(
                             Either!(Node, CommandOutputBinding)(Node(YAMLNull())),
                             o.type_.tryMatch!(t => DeclaredType(t)),
-                            inputs, runtime, clt.context, evaluator
+                            inputs, runtime, context, evaluator
                         )
                     );
                 }
@@ -146,8 +163,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
     {
         import salad.type : orElse;
 
-        ret = clt
-            .outputs_
+        ret = paramDefs
             .map!((o) {
                 import salad.type : match, None, tryMatch;
                 import std.typecons : tuple;
@@ -199,7 +215,7 @@ TypedParameters captureOutputs(CommandLineTool clt, Node inputs, Runtime runtime
                         o.id_,
                         collectOutputParameter(
                             Either!(Node, CommandOutputBinding)(binding), type,
-                            inputs, runtime, clt.context, evaluator, streamable, o.format_, secondaryFiles
+                            inputs, runtime, context, evaluator, streamable, o.format_, secondaryFiles
                         )
                     );
                 }
@@ -246,6 +262,8 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
 
     return type.match!(
         (CWLType t) {
+            import shaft.type.common : PrimitiveType;
+
             auto node = nodeOrBinding.match!(
                 (Node n) => n,
                 (CommandOutputBinding binding) {
@@ -266,14 +284,14 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             case "null": {
                 if (node.type == NodeType.null_)
                 {
-                    return TypedValue(node, t);
+                    return TypedValue(node, PrimitiveType(t));
                 }
                 else if (node.type == NodeType.sequence)
                 {
                     import dyaml : YAMLNull;
                     // hidden spec in v1.0
                     enforce(node.length == 0, new TypeConflicts(type, node.guessedType));
-                    return TypedValue(Node(YAMLNull()), t);
+                    return TypedValue(Node(YAMLNull()), PrimitiveType(t));
                 }
                 else
                 {
@@ -282,19 +300,19 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             }
             case "boolean": {
                 enforce(node.type == NodeType.boolean, new TypeConflicts(type, node.guessedType));
-                return TypedValue(node, t);
+                return TypedValue(node, PrimitiveType(t));
             }
             case "int", "long": {
                 enforce(node.type == NodeType.integer, new TypeConflicts(type, node.guessedType));
-                return TypedValue(node, t);
+                return TypedValue(node, PrimitiveType(t));
             }
             case "float", "double": {
                 enforce(node.type == NodeType.decimal, new TypeConflicts(type, node.guessedType));
-                return TypedValue(node, t);
+                return TypedValue(node, PrimitiveType(t));
             }
             case "string": {
                 enforce(node.type == NodeType.string, new TypeConflicts(type, node.guessedType));
-                return TypedValue(node, t);
+                return TypedValue(node, PrimitiveType(t));
             }
             case "File": {
                 import salad.meta.impl : as_;
@@ -323,7 +341,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 );
                 // TODO: secondaryFiles
                 file.enforceValid;
-                return TypedValue(Node(file.toURIFile), t);
+                return TypedValue(Node(file.toURIFile), PrimitiveType(t));
             }
             case "Directory": {
                 import salad.meta.impl : as_;
@@ -360,7 +378,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     throw new TypeConflicts(type, node.guessedType);
                 }
                 dir.enforceValid; // TODO: more strict validation
-                return TypedValue(Node(dir.toURIDirectory), t);
+                return TypedValue(Node(dir.toURIDirectory), PrimitiveType(t));
             }
             }
         },
@@ -574,6 +592,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
 unittest
 {
     import salad.type : tryMatch;
+    import shaft.type.common : PrimitiveType;
 
     alias Type = Either!(
         CWLType,
@@ -590,7 +609,7 @@ unittest
     ];
 
     auto tv = collectOutputParameter(node, dt, Node(), Runtime.init, LoadingContext.init, Evaluator.init);
-    assert(tv.type.tryMatch!((CWLType type) => cast(string)type.value) == "boolean");
+    assert(tv.type.tryMatch!((PrimitiveType t) => t.type.value) == "boolean");
 }
 
 /**
@@ -690,4 +709,159 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
         (None _) => binding.glob_.match!((None _) => Node(YAMLNull()), others => Node(files)),
         (string exp) => evaluator.eval(exp, inputs, runtime, Node(files)),
     );
+}
+
+CommandOutputParameter toCommandOutputParameter(ExpressionToolOutputParameter param)
+{
+    auto retParam = new typeof(return);
+    with(retParam)
+    {
+        id_ = param.id_;
+        label_ = param.label_;
+        secondaryFiles_ = param.secondaryFiles_;
+        streamable_ = param.streamable_;
+        doc_ = param.doc_;
+        outputBinding_ = param.outputBinding_;
+        format_ = param.format_;
+        type_ = param.type_.toCommandOutputType;
+    }
+    return retParam;
+}
+
+auto toCommandOutputType(typeof(ExpressionToolOutputParameter.init.type_) type)
+{
+    import salad.type : match, None;
+    import std.algorithm : map;
+    import std.array : array;
+
+    alias RetType = typeof(CommandOutputParameter.init.type_);
+    RetType ret;
+
+    alias EType = Either!(
+        CWLType,
+        CommandOutputRecordSchema,
+        CommandOutputEnumSchema,
+        CommandOutputArraySchema,
+        string,
+    );
+
+    return type.match!(
+        (None none) => RetType(none),
+        (CWLType t) => RetType(t),
+        (string s) => RetType(s),
+        (Either!(
+            CWLType,
+            OutputRecordSchema,
+            OutputEnumSchema,
+            OutputArraySchema,
+            string,
+        )[] union_) => RetType(union_.map!(t => t.match!(
+            (OutputRecordSchema s) => EType(s.toCommandSchema),
+            (OutputEnumSchema s) => EType(s.toCommandSchema),
+            (OutputArraySchema s) => EType(s.toCommandSchema),
+            others => EType(others),
+        )).array),
+        (otherSchema) => RetType(otherSchema.toCommandSchema),
+    );
+}
+
+CommandOutputRecordSchema toCommandSchema(OutputRecordSchema schema)
+{
+    import salad.type : match, None;
+    import std.algorithm : map;
+    import std.array : array;
+
+    auto ret = new typeof(return);
+    ret.fields_ = schema.fields_.match!(
+        (None none) => typeof(ret.fields_)(none),
+        fs => typeof(ret.fields_)(fs.map!toCommandField.array),
+    );
+    ret.label_ = schema.label_;
+    return ret;
+}
+
+CommandOutputRecordField toCommandField(OutputRecordField field)
+{
+    import salad.type : match;
+    import std.algorithm : map;
+    import std.array : array;
+
+    alias EType = Either!(
+        CWLType,
+        CommandOutputRecordSchema,
+        CommandOutputEnumSchema,
+        CommandOutputArraySchema,
+        string,
+    );
+
+    auto ret = new typeof(return);
+    ret.name_ = field.name_;
+    ret.type_ = field.type_.match!(
+        (Either!(
+            CWLType,
+            OutputRecordSchema,
+            OutputEnumSchema,
+            OutputArraySchema,
+            string,
+        )[] union_) => typeof(ret.type_)(union_.map!(t => t.match!(
+            (OutputRecordSchema s) => EType(s.toCommandSchema),
+            (OutputEnumSchema s) => EType(s.toCommandSchema),
+            (OutputArraySchema s) => EType(s.toCommandSchema),
+            others => EType(others),
+        )).array),
+        (OutputRecordSchema s) => typeof(ret.type_)(s.toCommandSchema),
+        (OutputEnumSchema s) => typeof(ret.type_)(s.toCommandSchema),
+        (OutputArraySchema s) => typeof(ret.type_)(s.toCommandSchema),
+        others => typeof(ret.type_)(others),
+    );
+    ret.doc_ = field.doc_;
+    ret.outputBinding_ = field.outputBinding_;
+    return ret;
+}
+
+CommandOutputEnumSchema toCommandSchema(OutputEnumSchema schema)
+{
+    auto ret = new typeof(return);
+    ret.symbols_ = schema.symbols_;
+    ret.label_ = schema.label_;
+    ret.outputBinding_ = schema.outputBinding_;
+    return ret;
+}
+
+CommandOutputArraySchema toCommandSchema(OutputArraySchema schema)
+{
+    import salad.type : match;
+    import std.algorithm : map;
+    import std.array : array;
+
+    alias EType = Either!(
+        CWLType,
+        CommandOutputRecordSchema,
+        CommandOutputEnumSchema,
+        CommandOutputArraySchema,
+        string,
+    );
+
+    auto ret = new typeof(return);
+    ret.items_ = schema.items_.match!(
+        (Either!(
+            CWLType,
+            OutputRecordSchema,
+            OutputEnumSchema,
+            OutputArraySchema,
+            string,
+        )[] union_) => typeof(ret.items_)(union_.map!(t => t.match!(
+            (OutputRecordSchema s) => EType(s.toCommandSchema),
+            (OutputEnumSchema s) => EType(s.toCommandSchema),
+            (OutputArraySchema s) => EType(s.toCommandSchema),
+            others => EType(others),
+        )).array),
+        (OutputRecordSchema s) => typeof(ret.items_)(s.toCommandSchema),
+        (OutputEnumSchema s) => typeof(ret.items_)(s.toCommandSchema),
+        (OutputArraySchema s) => typeof(ret.items_)(s.toCommandSchema),
+        others => typeof(ret.items_)(others),
+    );
+    ret.label_ = schema.label_;
+    ret.outputBinding_ = schema.outputBinding_;
+    return ret;
 }

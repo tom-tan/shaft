@@ -76,6 +76,21 @@ alias TypeConflicts = TC_!(DeclaredType, toStr);
  *    - TypeConflicts if some input parameters conflict with their type declaration
  */
 TypedParameters annotateInputParameters(
+    ref Node params, InputParameter[] paramDefs,
+    SchemaDefRequirement defs, LoadingContext context)
+in(params.type == NodeType.mapping)
+{
+    import std.algorithm : map;
+    import std.array : array;
+
+    return annotateInputParameters(
+        params, paramDefs.map!toCommandInputParameter.array,
+        defs, context
+    );
+}
+
+/// ditto
+TypedParameters annotateInputParameters(
     ref Node params, CommandInputParameter[] paramDefs,
     SchemaDefRequirement defs, LoadingContext context)
 in(params.type == NodeType.mapping)
@@ -124,6 +139,7 @@ in(params.type == NodeType.mapping)
         import dyaml : ScalarStyle;
         import salad.type : match, None;
         import salad.util : dig;
+        import shaft.type.common : PrimitiveType;
         import std.exception : ifThrown;
 
         auto id = p.id_;
@@ -132,14 +148,18 @@ in(params.type == NodeType.mapping)
         {
             n = *val;
         }
-        else if (auto def = p.dig!("default", Any))
-        {
-            n = def.value;
-        }
         else
         {
             import dyaml : YAMLNull;
             n = Node(YAMLNull());
+        }
+
+        if (n.type == NodeType.null_)
+        {
+            if (auto def = p.dig!("default", Any))
+            {
+                n = def.value;
+            }
         }
 
         auto type = p.type_.match!(
@@ -166,6 +186,16 @@ in(params.type == NodeType.mapping)
                 enforce(false, new InputCannotBeLoaded(msg, n.startMark));
                 return TypedValue.init;
             });
+        v.type.match!(
+            (ref PrimitiveType t) {
+                // set StagingOption
+                if (t.type.value == "File")
+                {
+                    t.option.loadContents = p.dig!(["inputBinding", "loadContents"])(false);
+                }
+            },
+            (others) {}
+        );
         types[id] = v.type;
         retNode.add(id, v.value);
         rest.removeKey(id);
@@ -203,25 +233,26 @@ TypedValue bindType(
     return type.match!(
         (CWLType t) {
             import salad.type : None;
+            import shaft.type.common : PrimitiveType;
             sharedLog.tracef("type: %s", cast(string)t.value);
             final switch(t.value)
             {
             case "null":
                 enforce(n.type == NodeType.null_, new TypeConflicts(type, n.guessedType));
-                return TypedValue(n, t);
+                return TypedValue(n, PrimitiveType(t));
             case "boolean":
                 enforce(n.type == NodeType.boolean, new TypeConflicts(type, n.guessedType));
-                return TypedValue(n, t);
+                return TypedValue(n, PrimitiveType(t));
             case "int", "long":
                 enforce(n.type == NodeType.integer, new TypeConflicts(type, n.guessedType));
-                return TypedValue(n, t);
+                return TypedValue(n, PrimitiveType(t));
             case "float", "double":
                 enforce(n.type == NodeType.decimal, new TypeConflicts(type, n.guessedType));
-                return TypedValue(n, t);
+                return TypedValue(n, PrimitiveType(t));
             case "string":
                 enforce(n.type == NodeType.string, new TypeConflicts(type, n.guessedType));
-                return TypedValue(n, t);
-            case "File":
+                return TypedValue(n, PrimitiveType(t));
+            case "File": // loadContents?
                 import salad.meta.impl : as_;
                 import shaft.file : enforceValid, toURIFile;
                 import std.path : dirName;
@@ -230,7 +261,7 @@ TypedValue bindType(
                 auto file = n.as_!File(context);
                 file.enforceValid;
                 file = file.toURIFile;
-                return TypedValue(Node(file), t);
+                return TypedValue(Node(file), PrimitiveType(t));
             case "Directory":
                 import salad.meta.impl : as_;
                 import shaft.file : enforceValid, toURIDirectory;
@@ -240,7 +271,7 @@ TypedValue bindType(
                 auto dir = n.as_!Directory(context);
                 dir.enforceValid;
                 dir = dir.toURIDirectory;
-                return TypedValue(Node(dir), t);
+                return TypedValue(Node(dir), PrimitiveType(t));
             }
         },
         (CommandInputRecordSchema s) {
@@ -309,15 +340,15 @@ TypedValue bindType(
             if (s == "Any")
             {
                 import salad.type : tryMatch;
-                import shaft.type.common : ArrayType, RecordType;
+                import shaft.type.common : ArrayType, PrimitiveType, RecordType;
                 import std.typecons : No;
 
                 sharedLog.trace("type: Any");
                 return n.guessedType.tryMatch!(
-                    (CWLType t) {
-                        enforce(t.value != "null" || declared == No.declared,
+                    (PrimitiveType t) {
+                        enforce(t.type.value != "null" || declared == No.declared,
                                 new TypeConflicts(type, n.guessedType));
-                        return n.bindType(DeclaredType(t), defMap, context);
+                        return n.bindType(DeclaredType(t.type), defMap, context);
                     },
                     (ArrayType _) {
                         assert(n.type == NodeType.sequence);
@@ -388,11 +419,12 @@ TypedValue bindType(
 unittest
 {
     import salad.type : tryMatch;
+    import shaft.type.common : PrimitiveType;
 
     auto type = new CWLType("int");
     auto val = Node(10);
     auto bound = val.bindType(DeclaredType(type), (DeclaredType[string]).init, LoadingContext.init);
-    assert(bound.type.tryMatch!((CWLType t) => t.value == "int"));
+    assert(bound.type.tryMatch!((PrimitiveType t) => t.type.value == "int"));
 }
 
 /// only for v1.0
@@ -502,4 +534,59 @@ CommandInputArraySchema toCommandSchema(InputArraySchema schema)
     ret.label_ = schema.label_;
     ret.inputBinding_ = schema.inputBinding_;
     return ret;
+}
+
+auto toCommandInputParameter(InputParameter param)
+{
+    auto retParam = new CommandInputParameter;
+    with(retParam)
+    {
+        id_ = param.id_;
+        label_ = param.label_;
+        secondaryFiles_ = param.secondaryFiles_;
+        streamable_ = param.streamable_;
+        doc_ = param.doc_;
+        format_ = param.format_;
+        inputBinding_ = param.inputBinding_;
+        default_ = param.default_;
+        type_ = param.type_.toCommandInputType;
+    }
+    return retParam;
+}
+
+auto toCommandInputType(typeof(InputParameter.init.type_) type)
+{
+    import salad.type : match, None;
+    import std.algorithm : map;
+    import std.array : array;
+
+    alias RetType = typeof(CommandInputParameter.init.type_);
+    RetType ret;
+
+    alias EType = Either!(
+        CWLType,
+        CommandInputRecordSchema,
+        CommandInputEnumSchema,
+        CommandInputArraySchema,
+        string,
+    );
+
+    return type.match!(
+        (None none) => RetType(none),
+        (CWLType t) => RetType(t),
+        (string s) => RetType(s),
+        (Either!(
+            CWLType,
+            InputRecordSchema,
+            InputEnumSchema,
+            InputArraySchema,
+            string,
+        )[] union_) => RetType(union_.map!(t => t.match!(
+            (InputRecordSchema s) => EType(s.toCommandSchema),
+            (InputEnumSchema s) => EType(s.toCommandSchema),
+            (InputArraySchema s) => EType(s.toCommandSchema),
+            others => EType(others),
+        )).array),
+        (otherSchema) => RetType(otherSchema.toCommandSchema),
+    );
 }

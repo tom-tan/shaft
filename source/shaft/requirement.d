@@ -21,7 +21,6 @@ static immutable SupportedRequirementsForCLT = [
  * See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Requirements_and_hints
  */
 Req getRequirement(alias Req, DocType)(DocType document, Node inputs, bool includeHints = true)
-in(anySatisfy!(ApplyLeft!(allSameType, DocType), DocumentRootType.Types))
 in(inputs.type == NodeType.mapping)
 {
     import salad.context : LoadingContext;

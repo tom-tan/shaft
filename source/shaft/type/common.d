@@ -16,11 +16,25 @@ import std.range : isOutputRange;
 import std.typecons : Tuple;
 
 ///
+struct PrimitiveType
+{
+    CWLType type;
+    StagingOption option;
+}
+
+///
+struct StagingOption
+{
+    bool loadContents;
+    //LoadListingEnum loadListing; // since v1.1
+}
+
+///
 alias EnumType = Tuple!(string, "name", Optional!CommandLineBinding, "inputBinding");
 
 ///
 alias DeterminedType = Either!(
-    CWLType,
+    PrimitiveType,
     EnumType,
     Tuple!(This*[], "types", Optional!CommandLineBinding, "inputBinding"),
     Tuple!(string, "name", Tuple!(This*, Optional!CommandLineBinding)[string], "fields"),
@@ -41,7 +55,7 @@ string toStr(in DeterminedType dt) pure @safe
     import std.range : empty;
 
     return dt.match!(
-        (in CWLType t) => cast(string)t.value,
+        (in PrimitiveType t) => t.type.value,
         (in EnumType e) => e.name.empty ? "enum" : e.name,
         (in ArrayType a) => format!"[%-(%s, %)]"(a.types.map!(e => toStr(*e)).array),
         (in RecordType r) => format!"Record(%s, %-(%s, %))"(
@@ -114,15 +128,15 @@ auto guessedType(Node val) @safe
     switch(val.type)
     {
     case NodeType.null_:
-        return DeterminedType(new CWLType("null"));
+        return DeterminedType(PrimitiveType(new CWLType("null")));
     case NodeType.boolean:
-        return DeterminedType(new CWLType("boolean"));
+        return DeterminedType(PrimitiveType(new CWLType("boolean")));
     case NodeType.integer:
-        return DeterminedType(new CWLType("long"));
+        return DeterminedType(PrimitiveType(new CWLType("long")));
     case NodeType.decimal:
-        return DeterminedType(new CWLType("double"));
+        return DeterminedType(PrimitiveType(new CWLType("double")));
     case NodeType.string:
-        return DeterminedType(new CWLType("string"));
+        return DeterminedType(PrimitiveType(new CWLType("string")));
     case NodeType.mapping:
         import shaft.type.common : RecordType;
         import std.algorithm : fold;
@@ -131,7 +145,7 @@ auto guessedType(Node val) @safe
         {
             if (*class_ == "File" || *class_ == "Directory")
             {
-                return DeterminedType(new CWLType(*class_));
+                return DeterminedType(PrimitiveType(new CWLType(*class_)));
             }
         }
         auto ts = val.mapping

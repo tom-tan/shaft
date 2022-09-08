@@ -77,10 +77,10 @@ in(dest.isDir)
 {
     import cwl.v1_0.schema : CWLType;
     import salad.type : match;
-    import shaft.type.common : ArrayType, EnumType, RecordType;
+    import shaft.type.common : ArrayType, EnumType, PrimitiveType, RecordType;
 
     return tv.type.match!(
-        (CWLType t) {
+        (PrimitiveType t) {
             auto randomDir(string baseDir)
             {
                 import std.file : mkdirRecurse;
@@ -92,7 +92,7 @@ in(dest.isDir)
                 return base;
             }
 
-            switch(t.value) {
+            switch(t.type.value) {
             case "File": {
                 import shaft.file : toStagedFile;
                 import std.path : buildPath;
@@ -132,6 +132,7 @@ in(dest.isDir)
                 else
                 {
                     import salad.resolver : path;
+                    import std.file : exists;
                     import std.path : baseName;
 
                     auto bname = node["basename"].as!string;
@@ -139,7 +140,7 @@ in(dest.isDir)
                     if (loc.baseName != bname || shouldBeStaged_ || forceStaging)
                     {
                         import std.exception : enforce;
-                        import std.file : copy, exists;
+                        import std.file : copy;
                         import std.format : format;
 
                         auto dir = (keepStructure || !shouldBeStaged_) ? dest : randomDir(dest);
@@ -156,6 +157,14 @@ in(dest.isDir)
                         stagedPath = loc;
                         forceStaging_ |= No.forceStaging;
                     }
+
+                    assert(stagedPath.exists);
+
+                    if (t.option.loadContents)
+                    {
+                        import std.file : read;
+                        node.add("contents", cast(string)stagedPath.read(64*2^^10));
+                    }
                 }
 
                 Node sec;
@@ -166,7 +175,9 @@ in(dest.isDir)
 
                     sec = Node(
                         sec_.sequence.map!((e) {
-                            import shaft.type.common : DeterminedType;
+                            import cwl.v1_0.schema : CommandLineBinding;
+                            import salad.type : Optional;
+                            import shaft.type.common : DeterminedType, PrimitiveType;
                             import std.path : dirName;
 
                             assert("class" in e);
@@ -174,12 +185,22 @@ in(dest.isDir)
                             {
                             case "File":
                                 return stagingParam(
-                                    TypedValue(e, DeterminedType(new CWLType("File"))),
+                                    TypedValue(
+                                        e,
+                                        DeterminedType(
+                                            PrimitiveType(new CWLType("File"))
+                                        )
+                                    ),
                                     stagedPath.dirName, Yes.keepStructure, forceStaging_, No.overwrite,
                                 );
                             case "Directory":
                                 return stagingParam(
-                                    TypedValue(e, DeterminedType(new CWLType("Directory"))),
+                                    TypedValue(
+                                        e,
+                                        DeterminedType(
+                                            PrimitiveType(new CWLType("Directory"))
+                                        )
+                                    ),
                                     stagedPath.dirName, Yes.keepStructure, forceStaging_, No.overwrite,
                                 );
                             default: assert(false);
@@ -255,7 +276,9 @@ in(dest.isDir)
                     import std.file : mkdir;
                     if (auto lst_ = "listing" in node)
                     {
-                        import shaft.type.common : DeterminedType;
+                        import cwl.v1_0.schema : CommandLineBinding;
+                        import shaft.type.common : DeterminedType, PrimitiveType;
+                        import salad.type : Optional;
                         import std.algorithm : map;
                         import std.array : array;
                         import std.path : dirName;
@@ -264,8 +287,15 @@ in(dest.isDir)
                         mkdir(stagedPath);
                         auto lst = lst_
                             .sequence
-                            .map!(l => stagingParam(TypedValue(l, DeterminedType(new CWLType(l["class"]))),
-                                                    stagedPath, Yes.keepStructure, forceStaging, No.overwrite))
+                            .map!(l => stagingParam(
+                                TypedValue(
+                                    l,
+                                    DeterminedType(
+                                        PrimitiveType(new CWLType(l["class"]))
+                                    )
+                                ),
+                                stagedPath, Yes.keepStructure, forceStaging, No.overwrite
+                            ))
                             .array;
                         // set listing if LoadListingReq
                         listing = lst.empty ? Node(YAMLNull()) : Node(lst);

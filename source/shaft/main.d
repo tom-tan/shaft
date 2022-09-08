@@ -32,7 +32,7 @@ int shaftMain(string[] args)
     import dyaml : Loader, Mark, Node, NodeType, MarkedYAMLException, YAMLException;
 
     import cwl : CWLVersion, CommandLineTool, DocumentRootType, ExpressionTool,
-                 importFromURI, SchemaDefRequirement;
+                 importFromURI, SchemaDefRequirement, Workflow;
     import salad.exception : DocumentException;
     import salad.fetcher : Fetcher;
     import salad.type : tryMatch;
@@ -264,27 +264,24 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         sharedLog.info("Load CWL document");
         auto path = args[1];
         auto cwlfile = discoverDocumentURI(path);
-        CommandLineTool cmd = importFromURI(cwlfile, "main").tryMatch!(
+        auto process = importFromURI(cwlfile, "main").tryMatch!(
             (DocumentRootType doc) => doc.tryMatch!(
-                (CommandLineTool cmd) => cmd,
-                (ExpressionTool _) {
-                    enforce!NotYetImplemented(false, "Document class `ExpressionTool` is not implemented yet");
-                    return null;
-                },
+                (CommandLineTool _) => doc,
+                (ExpressionTool _) => doc,
                 (other) {
                     enforce!FeatureUnsupported(false, format!"Document class `%s` is not supported"(other.class_));
-                    return null;
+                    return doc;
                 }
             ),
         )
         .ifThrown!DocumentException((e) {
             enforce(false, new InvalidDocument(e.msg, e.mark));
-            return null;
+            return DocumentRootType.init;
         })
         .ifThrown!MarkedYAMLException((e) {
             import std.string : chomp;
             enforce(false, new InputCannotBeLoaded(e.msg.chomp, e.mark));
-            return null;
+            return DocumentRootType.init;
         });
         sharedLog.info("Success loading CWL document");
 
@@ -293,7 +290,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         // -> done by `importFromURI`
 
         // store current version of CWL for parameter references
-        auto cwlVersion = cmd.cwlVersion_.tryMatch!((CWLVersion ver) => ver.value);
+        auto cwlVersion = process.edig!("cwlVersion", CWLVersion).value;
         enforce!FeatureUnsupported(cwlVersion == "v1.0", format!"CWL %s is not supported yet"(cwlVersion));
         // TODO: upgrade document to the latest version
 
@@ -302,7 +299,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
         sharedLog.trace("Set up evaluator");
         auto evaluator = Evaluator(
-            cmd.getRequirement!InlineJavascriptRequirement(inp),
+            process.getRequirement!InlineJavascriptRequirement(inp),
             cwlVersion, compatOptions.canFind("extended-props"),
         );
         sharedLog.trace("Success setting up evaluator");
@@ -311,11 +308,12 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         import shaft.type.input : annotateInputParameters;
 
         // TODO: pass evaluator (CommandInputRecordField may have an Expression)
-        sharedLog.trace("Annotate input object");
-        auto typedParams = annotateInputParameters(
-            inp, cmd.inputs_,
-            cmd.getRequirement!SchemaDefRequirement(inp),
-            cmd.context
+        auto typedParams = process.tryMatch!(
+            c => annotateInputParameters(
+                    inp, c.inputs_,
+                    c.getRequirement!SchemaDefRequirement(inp),
+                    c.context
+                )
         );
         sharedLog.trace("Success annotating input object");
 
@@ -338,7 +336,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         static foreach(req; UnsupportedRequirements)
         {
             enforce!FeatureUnsupported(
-                cmd.dig!(["requirements", req.stringof], req) is null,
+                process.dig!(["requirements", req.stringof], req) is null,
                 format!"%s is not supported"(req.stringof),
             );
         }
@@ -349,21 +347,33 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         sharedLog.trace("Set up runtime information");
         auto runtime = Runtime(
             fetched.parameters, routdir, rtmpdir,
-            cmd.getRequirement!ResourceRequirement(inp),
+            process.getRequirement!ResourceRequirement(inp),
             evaluator
         );
 
-        sharedLog.trace("Set up extra runtime information");
-        runtime.setupInternalInfo(cmd, fetched.parameters, rlogdir, evaluator);
-        sharedLog.trace("Succuss setting up runtime information");
+        process.match!(
+            (CommandLineTool c) {
+                sharedLog.trace("Set up extra runtime information");
+                runtime.setupInternalInfo(c, fetched.parameters, rlogdir, evaluator);
+                sharedLog.trace("Succuss setting up runtime information");
+            },
+            (others) {}
+        );
 
         // 6. Perform any further setup required by the specific process type.
         // 7. Execute the process.
-        import shaft.command_line_tool : execute;
-
-        sharedLog.info("Execute CommandLineTool");
-        auto ret = execute(cmd, fetched, runtime, evaluator);
-        sharedLog.info("Success executing CommandLineTool");
+        sharedLog.info("Execute Process");
+        auto ret = process.tryMatch!(
+            (CommandLineTool cmd) {
+                import shaft.command_line_tool : execute;
+                return execute(cmd, fetched, runtime, evaluator);
+            },
+            (ExpressionTool exp) {
+                import shaft.expression_tool : execute;
+                return execute(exp, fetched, runtime, evaluator);
+            },
+        );
+        sharedLog.info("Success executing Process");
 
         // runtime.exitCode = ret; // v1.1 and later
 
@@ -371,7 +381,12 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         // 9. Validate the output object against the outputs schema for the process.
         import shaft.type.output : captureOutputs;
         sharedLog.trace("Capture output object");
-        auto outs = captureOutputs(cmd, fetched.parameters, runtime, evaluator);
+        auto outs = process.tryMatch!(
+            c => captureOutputs(
+                c.outputs_, fetched.parameters,
+                runtime, evaluator, c.context
+            )
+        );
         sharedLog.trace("Success capturing output objct");
 
         import shaft.staging : stageOut;
