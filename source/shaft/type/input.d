@@ -73,7 +73,7 @@ alias TypeConflicts = TC_!(DeclaredType, toStr);
  *    - `params`: a node as an input parameters (`default` is considered)
  *    - `types`: a mapping from an input parameter ID to its determined type
  * Throws:
- *    - TypeConflict if some input parameters conflict with their type declaration
+ *    - TypeConflicts if some input parameters conflict with their type declaration
  */
 TypedParameters annotateInputParameters(
     ref Node params, CommandInputParameter[] paramDefs,
