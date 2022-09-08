@@ -81,6 +81,11 @@ struct Evaluator
         auto evaluate = isJS ? &evalJSExpression : &evalParameterReference;
 
         auto exp = expression.chomp;
+        // workaround: See exprtool_directory_literal
+        if (exp[$-1] == '\0')
+        {
+            exp = exp[0..$-1];
+        }
 
         Either!(string, Node)[] evaled;
         while (auto c = matchFirst(exp))
