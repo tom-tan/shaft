@@ -150,15 +150,7 @@ in(node.type == NodeType.null_ || node["class"] == "File")
     ret.basename_ = path.baseName;
     ret.dirname_ = path.dirName;
     ret.nameroot_ = path.baseName.stripExtension;
-    if (auto ext = path.extension)
-    {
-        ret.nameext_ = path.extension;
-    }
-    else
-    {
-        // workaround for https://github.com/dlang-community/D-YAML/issues/286
-        ret.nameext_ = "";
-    }
+    ret.nameext_ = path.extension;
 
     ret.checksum_ = path.digestFile!SHA1;
     ret.size_ = path.getSize.to!long;
