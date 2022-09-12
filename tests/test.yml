@@ -1,0 +1,21 @@
+- job: jobs/env-job.yml
+  tool: tools/env-tool1-noenv.cwl
+  output: 
+    out:
+      class: File
+      basename: out
+      checksum: sha1$cdc1e84968261d6a7575b5305945471f8be199b6
+      size: 9
+  id: inherit_requirement
+  doc: Example of inheriting process requirement via `shaft:inherited-requirements`
+
+- job: jobs/env-job.yml
+  tool: tools/env-tool1.cwl
+  output: 
+    out:
+      class: File
+      basename: out
+      checksum: sha1$b3ec4ed1749c207e52b3a6d08c59f31d83bff519
+      size: 15
+  id: inherit_but_not_used_requirement
+  doc: Example of inheriting but not used process requirement via `shaft:inherited-requirements`

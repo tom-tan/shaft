@@ -1,0 +1,5 @@
+in: "hello test env"
+shaft:inherited-requirements:
+  - class: EnvVarRequirement
+    envDef:
+      TEST_ENV: override

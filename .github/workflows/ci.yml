@@ -167,6 +167,13 @@ jobs:
         with:
           name: shaft-linux-${{ runner.arch }}-master
       - run: chmod +x shaft
+      - name: Test shaft-specific features
+        uses: common-workflow-lab/run-tests@v1
+        with:
+          test-list: tests/test.yml
+          runner: ${{ github.workspace }}/shaft
+          timeout: 30
+          result-title: Results of shaft-specific features          
       - name: Run conformance tests
         id: run-conformance
         uses: common-workflow-lab/run-conformance-tests@v1
@@ -176,6 +183,7 @@ jobs:
           timeout: 30
           tags: command_line_tool,expression_tool
           extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
+          skip-python-install: true
       - name: Save badges
         if: success() && github.event_name == 'push'
         uses: common-workflow-lab/upload-conformance-badges@v1
