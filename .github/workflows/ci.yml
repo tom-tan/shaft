@@ -84,54 +84,38 @@ jobs:
   build-linux:
     needs: [info]
     runs-on: ubuntu-latest
-    container:
-      image: alpine:3.16
-      env:
-        NJS_BASE: /opt/njs
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 1
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - uses: actions/cache@v2
+        with:
+          path: |
+            /tmp/.buildx-cache
+            ${{ github.workspace }}/.dub
+          key: ${{ runner.os }}-buildx
+      - name: Build container to build single binary
+        id: dev_container
+        uses: docker/build-push-action@v2
+        with:
+          file: Dockerfile.build
+          load: true
+          tags: shaft-dev
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
       - run: |
-          apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static pcre2-dev make clang-libs clang binutils-gold
-          ln -s /usr/lib/libclang.so.13 /usr/lib/libclang.so
-          echo "========="
-          pwd
-          echo "========="
-          ls -la
-          echo "========="
-          .devcontainer/setup-njs.sh 0.7.6 $NJS_BASE
-      - run: |
-          dub build -b release-static
-          strip bin/shaft
-      # - name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v1
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v1
-      # - uses: actions/cache@v2
-      #   with:
-      #     path: |
-      #       /tmp/.buildx-cache
-      #       ${{ github.workspace }}/.dub
-      #     key: ${{ runner.os }}-buildx
-      # - name: Build container to build single binary
-      #   id: dev_container
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     file: Dockerfile.build
-      #     load: true
-      #     tags: shaft-dev
-      #     cache-from: type=local,src=/tmp/.buildx-cache
-      #     cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-      # - run: |
-      #     touch source/shaft/evaluator/engine/embedded.d
-      #     docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
-      #       sh -c "dub --cache=local build -b release-static && strip bin/shaft"
-      # - name: Setup cache
-      #   run: |
-      #     rm -rf /tmp/.buildx-cache
-      #     mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-      #     sudo chown -R $UID:$UID .dub
+          touch source/shaft/evaluator/engine/embedded.d
+          docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
+            sh -c "dub --cache=local build -b release-static && strip bin/shaft"
+      - name: Setup cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          sudo chown -R $UID:$UID .dub
       - name: Test shaft-specific features
         uses: common-workflow-lab/run-tests@v1
         with:
