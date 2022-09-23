@@ -95,7 +95,7 @@ jobs:
       - run: |
           apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static pcre2-dev make clang-libs clang binutils-gold
           ln -s /usr/lib/libclang.so.13 /usr/lib/libclang.so
-          ./.devcontainer/setup-njs.sh 0.7.6
+          ${{ github.workspace }}./.devcontainer/setup-njs.sh 0.7.6
       - run: |
           dub build -b release-static
           strip bin/shaft
