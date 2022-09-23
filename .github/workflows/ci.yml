@@ -98,9 +98,9 @@ jobs:
           echo "========="
           pwd
           echo "========="
-          ls -l
+          ls -la
           echo "========="
-          ${{ github.workspace }}./.devcontainer/setup-njs.sh 0.7.6
+          .devcontainer/setup-njs.sh 0.7.6 $NJS_BASE
       - run: |
           dub build -b release-static
           strip bin/shaft
