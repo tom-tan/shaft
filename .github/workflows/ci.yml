@@ -37,11 +37,13 @@ jobs:
     needs: [info]
     strategy:
       matrix:
-        dc: [dmd-2.100.0, ldc-1.28.1]
+        dc: [dmd-2.100.2, ldc-1.28.1]
         experimental: [false]
         include:
           - dc: dmd-master
             experimental: true
+          - dc: ldc-latest
+            experimnetal: true
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental }}
 
