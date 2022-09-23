@@ -43,7 +43,7 @@ jobs:
           - dc: dmd-master
             experimental: true
           - dc: ldc-latest
-            experimnetal: true
+            experimental: true
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental }}
 
