@@ -15,7 +15,7 @@ import shaft.type.common : DeterminedType, TypedParameters, TypedValue;
 import shaft.type.common : TC_ = TypeConflicts;
 
 import std.typecons : Flag, Tuple, Yes;
-import std.experimental.logger : sharedLog;
+import std.experimental.logger : stdThreadLocalLog;
 
 ///
 alias DeclaredType = Either!(
@@ -215,7 +215,7 @@ in(params.type == NodeType.mapping)
         import std.array : array;
         // must not be permanent failure
         // See_Also: conformance test #2
-        sharedLog.warningf("Input object contains undeclared parameters: %s", rest.array);
+        stdThreadLocalLog.warningf("Input object contains undeclared parameters: %s", rest.array);
     }
     return typeof(return)(retNode, types);
 }
@@ -234,7 +234,7 @@ TypedValue bindType(
         (CWLType t) {
             import salad.type : None;
             import shaft.type.common : PrimitiveType;
-            sharedLog.tracef("type: %s", cast(string)t.value);
+            stdThreadLocalLog.tracef("type: %s", cast(string)t.value);
             final switch(t.value)
             {
             case "null":
@@ -279,7 +279,7 @@ TypedValue bindType(
             import shaft.type.common : RecordType;
             import std.algorithm : fold, map;
             enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
-            sharedLog.trace("type: record");
+            stdThreadLocalLog.trace("type: record");
 
             auto tv = s.fields_
                        .orElse([])
@@ -309,7 +309,7 @@ TypedValue bindType(
             return TypedValue(tv[0], RecordType(s.name_.orElse(""), tv[1]));
         },
         (CommandInputEnumSchema s) {
-            sharedLog.trace("type: enum");
+            stdThreadLocalLog.trace("type: enum");
             import salad.type : orElse;
             import shaft.type.common : EnumType;
             import std.algorithm : canFind;
@@ -318,7 +318,7 @@ TypedValue bindType(
             return TypedValue(n, EnumType(s.name_.orElse(""), s.inputBinding_));
         },
         (CommandInputArraySchema s) {
-            sharedLog.trace("type: array");
+            stdThreadLocalLog.trace("type: array");
             import shaft.type.common : ArrayType;
             import std.algorithm : fold, map;
             enforce(n.type == NodeType.sequence, new TypeConflicts(type, n.guessedType));
@@ -343,7 +343,7 @@ TypedValue bindType(
                 import shaft.type.common : ArrayType, PrimitiveType, RecordType;
                 import std.typecons : No;
 
-                sharedLog.trace("type: Any");
+                stdThreadLocalLog.trace("type: Any");
                 return n.guessedType.tryMatch!(
                     (PrimitiveType t) {
                         enforce(t.type.value != "null" || declared == No.declared,
@@ -377,7 +377,7 @@ TypedValue bindType(
                 import salad.resolver : resolveIdentifier;
 
                 auto id = s.resolveIdentifier(context);
-                sharedLog.tracef("type: %s", id);
+                stdThreadLocalLog.tracef("type: %s", id);
                 auto def = *enforce(id in defMap, new TypeConflicts(type, n.guessedType));
                 return n.bindType(def, defMap, context);
             }
@@ -391,25 +391,25 @@ TypedValue bindType(
         )[] union_) {
             import salad.type : tryMatch;
             import std.algorithm : find, map;
-            sharedLog.tracef("type: union");
+            stdThreadLocalLog.tracef("type: union");
             auto rng = union_.map!((t) {
                 import salad.type : Optional;
                 import std.exception : ifThrown;
 
-                sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
-                scope(success) sharedLog.tracef("type: union -> try: %s -> success",
+                stdThreadLocalLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
+                scope(success) stdThreadLocalLog.tracef("type: union -> try: %s -> success",
                                                 t.match!(a => DeclaredType(a)).toStr);
-                scope(failure) sharedLog.tracef("type: union -> try: %s -> fail",
+                scope(failure) stdThreadLocalLog.tracef("type: union -> try: %s -> fail",
                                                 t.match!(a => DeclaredType(a)).toStr);
                 return Optional!TypedValue(n.bindType(t.match!(a => DeclaredType(a)), defMap, context))
                     .ifThrown!TypeException((e) {
-                        sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
+                        stdThreadLocalLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
                         return Optional!TypedValue.init;
                     });
             }).find!(t => t.match!((TypedValue _) => true, none => false));
             enforce(!rng.empty, new TypeConflicts(type, n.guessedType));
             import shaft.type.common : toS = toStr;
-            sharedLog.tracef("type: union -> determined: %s", rng.front.tryMatch!((TypedValue v) => v.type.toS));
+            stdThreadLocalLog.tracef("type: union -> determined: %s", rng.front.tryMatch!((TypedValue v) => v.type.toS));
             return rng.front.tryMatch!((TypedValue v) => v);
         },
     );

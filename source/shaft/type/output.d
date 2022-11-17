@@ -17,7 +17,7 @@ import shaft.type.common : DeterminedType, guessedType, TypedParameters, TypedVa
 import shaft.type.common : TC_ = TypeConflicts;
 import shaft.runtime : Runtime;
 
-import std.experimental.logger : sharedLog;
+import std.experimental.logger : stdThreadLocalLog;
 
 ///
 alias DeclaredType = Either!(
@@ -123,7 +123,7 @@ TypedParameters captureOutputs(
 
                 auto id = o.id_;
                 rest.removeKey(id);
-                sharedLog.trace("Capture: "~id);
+                stdThreadLocalLog.trace("Capture: "~id);
 
                 if (auto n = id in loaded)
                 {
@@ -149,7 +149,7 @@ TypedParameters captureOutputs(
                     );
                 }
             })
-            .tee!(kv => sharedLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
+            .tee!(kv => stdThreadLocalLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
             .array
             .filter!(kv => kv[1].value.type != NodeType.null_)
             .fold!(
@@ -210,7 +210,7 @@ TypedParameters captureOutputs(
 
                 try
                 {
-                    sharedLog.trace("Capture: "~o.id_);
+                    stdThreadLocalLog.trace("Capture: "~o.id_);
                     return tuple(
                         o.id_,
                         collectOutputParameter(
@@ -225,21 +225,21 @@ TypedParameters captureOutputs(
                     throw new CaptureFailed(msg);
                 }
             })
-            .tee!(kv => sharedLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
+            .tee!(kv => stdThreadLocalLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
             .array
             .filter!(kv => kv[1].value.type != NodeType.null_)
             .fold!(
                 (acc, e) {
-                    sharedLog.tracef("acc value: %s = %s", e[0], e[1].value.toJSON);
-                    scope(success) sharedLog.tracef("acc value: %s = %s -> done", e[0], e[1].value.toJSON);
-                    scope(failure) sharedLog.tracef("acc value: %s = %s -> fail", e[0], e[1].value.toJSON);
+                    stdThreadLocalLog.tracef("acc value: %s = %s", e[0], e[1].value.toJSON);
+                    scope(success) stdThreadLocalLog.tracef("acc value: %s = %s -> done", e[0], e[1].value.toJSON);
+                    scope(failure) stdThreadLocalLog.tracef("acc value: %s = %s -> fail", e[0], e[1].value.toJSON);
                     acc.add(e[0], e[1].value); return acc;
                 },
                 (acc, e) {
                     import shaft.type.common : toS = toStr;
-                    sharedLog.tracef("acc type: %s = %s", e[0], e[1].type.toS);
-                    scope(success) sharedLog.tracef("acc value: %s = %s -> done", e[0], e[1].type.toS);
-                    scope(failure) sharedLog.tracef("acc value: %s = %s -> fail", e[0], e[1].type.toS);
+                    stdThreadLocalLog.tracef("acc type: %s = %s", e[0], e[1].type.toS);
+                    scope(success) stdThreadLocalLog.tracef("acc value: %s = %s -> done", e[0], e[1].type.toS);
+                    scope(failure) stdThreadLocalLog.tracef("acc value: %s = %s -> fail", e[0], e[1].type.toS);
                     acc[e[0]] = e[1].type; return acc;
                 },
             )(Node((Node[string]).init), (DeterminedType[string]).init);
@@ -278,7 +278,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     }
                 }
             );
-            sharedLog.trace("type: ", cast(string)t.value);
+            stdThreadLocalLog.trace("type: ", cast(string)t.value);
             final switch(t.value)
             {
             case "null": {
@@ -390,7 +390,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
 
             alias FieldTypes = typeof(RecordType.init[1]);
 
-            sharedLog.trace("type: record");
+            stdThreadLocalLog.trace("type: record");
 
             return nodeOrBinding.match!(
                 (Node node) {
@@ -459,7 +459,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             );
         },
         (CommandOutputEnumSchema s) {
-            sharedLog.trace("type: enum");
+            stdThreadLocalLog.trace("type: enum");
             return nodeOrBinding.match!(
                 (Node node) {
                     import shaft.type.common : EnumType;
@@ -483,7 +483,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             );
         },
         (CommandOutputArraySchema s) {
-            sharedLog.trace("type: array");
+            stdThreadLocalLog.trace("type: array");
             return nodeOrBinding.match!(
                 (Node node) {
                     import shaft.type.common : ArrayType;
@@ -526,7 +526,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             import std.format : format;
 
             enforce(s == "Any", new TypeException(format!"Unknown output type: `%s`"(s)));
-            sharedLog.trace("type: Any");
+            stdThreadLocalLog.trace("type: Any");
 
             auto node = nodeOrBinding.match!(
                 (Node n) => n,
@@ -547,7 +547,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
          )[] union_) {
             import salad.type : tryMatch;
             import std.algorithm : find, map;
-            sharedLog.tracef("type: union");
+            stdThreadLocalLog.tracef("type: union");
 
             auto node = nodeOrBinding.match!(
                 (Node n) => n,
@@ -567,23 +567,23 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             auto rng = union_.map!((t) {
                 import salad.type : Optional;
                 import std.exception : ifThrown;
-                sharedLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
-                scope(success) sharedLog.tracef("type: union -> try: %s -> success",
+                stdThreadLocalLog.tracef("type: union -> try: %s", t.match!(a => DeclaredType(a)).toStr);
+                scope(success) stdThreadLocalLog.tracef("type: union -> try: %s -> success",
                                                 t.match!(a => DeclaredType(a)).toStr);
-                scope(failure) sharedLog.tracef("type: union -> try: %s -> fail",
+                scope(failure) stdThreadLocalLog.tracef("type: union -> try: %s -> fail",
                                                 t.match!(a => DeclaredType(a)).toStr);
                 return Optional!TypedValue(collectOutputParameter(
                         Either!(Node, CommandOutputBinding)(node), t.match!(tt => DeclaredType(tt)),
                         inputs, runtime, context, evaluator)
                     )
                     .ifThrown!TypeException((e) {
-                        sharedLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
+                        stdThreadLocalLog.tracef("type: union -> try: %s -> fail", t.match!(a => DeclaredType(a)).toStr);
                         return Optional!TypedValue.init;
                     });
             }).find!(t => t.match!((TypedValue _) => true, none => false));
             enforce(!rng.empty, new TypeConflicts(type, node.guessedType));
             import shaft.type.common : toS = toStr;
-            sharedLog.tracef("type: union -> determined: %s", rng.front.tryMatch!((TypedValue v) => v.type.toS));
+            stdThreadLocalLog.tracef("type: union -> determined: %s", rng.front.tryMatch!((TypedValue v) => v.type.toS));
             return rng.front.tryMatch!((TypedValue v) => v);
         },
     );
@@ -626,7 +626,7 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
     import std.array : array;
     import std.path : isAbsolute;
 
-    sharedLog.trace("process binding");
+    stdThreadLocalLog.trace("process binding");
 
     if (binding is null)
     {
@@ -676,7 +676,7 @@ auto processBinding(CommandOutputBinding binding, Node inputs, Runtime runtime, 
     // See_Also: outputbinding_glob_sorted in conformance tests
     paths.sort;
     assert(paths.all!isAbsolute);
-    sharedLog.tracef("paths: %s", paths);
+    stdThreadLocalLog.tracef("paths: %s", paths);
 
     auto files = paths
         .map!((path) {

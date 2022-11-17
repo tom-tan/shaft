@@ -46,7 +46,7 @@ abstract class ExternalEngine : JSEngine
 
 protected:
     string[] generateArgs(return string exp) const;
-    string toJSCode(string exp, Node inputs, Runtime runtime, Node self, in string[] libs) const;
+    string toJSCode(scope string exp, Node inputs, Runtime runtime, Node self, in string[] libs) const;
 
 private:
     string bin;
@@ -63,10 +63,10 @@ class ExternalNodeEngine : ExternalEngine
 protected:
     override string[] generateArgs(return string exp) const
     {
-        return [bin, "--eval", exp];
+        return [bin, "--eval", exp.idup];
     }
 
-    override string toJSCode(string exp, Node inputs, Runtime runtime, Node self,
+    override string toJSCode(scope string exp, Node inputs, Runtime runtime, Node self,
         in string[] libs) const
     {
         import shaft.type.common : toJSON;
@@ -116,10 +116,10 @@ class ExternalNJSEngine : ExternalEngine
 protected:
     override string[] generateArgs(return string exp) const
     {
-        return [bin, "-s", "-c", exp];
+        return [bin, "-s", "-c", exp.idup];
     }
 
-    override string toJSCode(string exp, Node inputs, Runtime runtime, Node self,
+    override string toJSCode(scope string exp, Node inputs, Runtime runtime, Node self,
         in string[] libs) const
     {
         import shaft.type.common : toJSON;

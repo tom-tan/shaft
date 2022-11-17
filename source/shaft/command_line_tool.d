@@ -16,7 +16,7 @@ import shaft.runtime : Runtime;
 import shaft.type.argstr : EscapedString, NonEscapedString;
 import shaft.type.common : DeterminedType, TypedParameters;
 
-import std.experimental.logger : sharedLog;
+import std.experimental.logger : stdThreadLocalLog;
 import std.typecons : Tuple;
 
 /**
@@ -118,7 +118,7 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     }
 
     // 7. Execute the process.
-    sharedLog.infof("CMD: %s", args);
+    stdThreadLocalLog.infof("CMD: %s", args);
     auto pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir)
         .ifThrown!ProcessException((e) {
             import std.process : Pid;

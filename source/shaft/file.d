@@ -16,7 +16,7 @@ import std.exception : assertNotThrown;
 import std.file : isFile, isDir;
 import std.path : isAbsolute;
 
-import std.experimental.logger : sharedLog;
+import std.experimental.logger : stdThreadLocalLog;
 
 /**
  * A subset of File that represents canonicalized internal File representation.
@@ -327,7 +327,7 @@ void enforceValid(File file) @safe
 
     file.checksum_.match!(
         (string checksum) {
-            sharedLog.warningf(!checksum.startsWith("sha1$") || !checksum[5..$].all!isHexDigit,
+            stdThreadLocalLog.warningf(!checksum.startsWith("sha1$") || !checksum[5..$].all!isHexDigit,
                               "Invalid checksum for `%s`: `%s`", location, checksum);
             return true;
         },
@@ -336,7 +336,7 @@ void enforceValid(File file) @safe
 
     file.size_.match!(
         (long s) {
-            sharedLog.warningf(s < 0, "file size for `%s` must be zero or positive: `%s`", location, s);
+            stdThreadLocalLog.warningf(s < 0, "file size for `%s` must be zero or positive: `%s`", location, s);
             return true;
         },
         _ => true,
