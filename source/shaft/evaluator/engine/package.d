@@ -7,4 +7,3 @@ module shaft.evaluator.engine;
 
 public import shaft.evaluator.engine.interface_;
 public import shaft.evaluator.engine.embedded : EmbeddedNJSEngine;
-public import shaft.evaluator.engine.external;

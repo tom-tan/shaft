@@ -5,7 +5,7 @@
  */
 module shaft.evaluator;
 
-import shaft.evaluator.engine : JSEngine, ExternalNodeEngine, ExternalNJSEngine, EmbeddedNJSEngine;
+import shaft.evaluator.engine : JSEngine, EmbeddedNJSEngine;
 import shaft.exception : ExpressionFailed, FeatureUnsupported;
 import shaft.runtime : Runtime;
 
