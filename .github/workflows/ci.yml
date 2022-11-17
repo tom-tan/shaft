@@ -15,7 +15,7 @@ jobs:
       has_tag: ${{ steps.get_info.outputs.has_tag }}
       tag: ${{ steps.get_info.outputs.tag }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
       - id: get_info
@@ -48,10 +48,10 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ${{ github.workspace }}/.dub
@@ -85,14 +85,14 @@ jobs:
     needs: [info]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             /tmp/.buildx-cache
@@ -123,7 +123,7 @@ jobs:
           runner: ${{ github.workspace }}/bin/shaft
           timeout: 30
           result-title: Results of shaft-specific features          
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: shaft-linux-${{ runner.arch }}-master
           path: ${{ github.workspace }}/bin/shaft
@@ -132,16 +132,16 @@ jobs:
     needs: [info]
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-dub
       - id: njs_cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ${{ github.workspace }}/.njs
@@ -163,7 +163,7 @@ jobs:
           dub --cache=local build -b release
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: shaft-osx-${{ runner.arch }}-master
           path: ${{ github.workspace }}/bin/shaft
