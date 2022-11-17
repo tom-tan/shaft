@@ -149,10 +149,10 @@ jobs:
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
-      - name: Setup for dpp
-        run: |
-          brew uninstall llvm
-          sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
+      # - name: Setup for dpp
+      #   run: |
+      #     brew uninstall llvm
+      #     sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
