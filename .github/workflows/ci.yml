@@ -57,7 +57,7 @@ jobs:
             ${{ github.workspace }}/.dub
           key: ${{ runner.os }}-${{ runner.arch }}-glibc-dub-${{ matrix.dc }}-${{ hashFiles('dub.selections.json') }}
       - id: njs_cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ${{ github.workspace }}/.njs
