@@ -34,13 +34,12 @@
 		}
 	},
 
-  "postCreateCommand": [
-    "./.devcontainer/cloneCWL.sh"
-  ],
+  "postCreateCommand": "pip install cwltest && ./.devcontainer/cloneCWL.sh",
 
 	"remoteUser": "vscode",
 	"features": {
-		"docker-in-docker": "latest",
-		"git": "os-provided"
+    "ghcr.io/devcontainers/features/python:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:1": {},
+    "ghcr.io/devcontainers/features/git:1": {}
 	}
 }
