@@ -14,7 +14,7 @@ import shaft.runtime : Runtime;
 
 //
 // workaround for dpp
-// 
+//
 private alias u_char = ubyte;
 
 ///
