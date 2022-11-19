@@ -156,10 +156,12 @@ in(params.type == NodeType.mapping)
 
         if (n.type == NodeType.null_)
         {
-            if (auto def = p.dig!("default", Any))
-            {
-                n = def.value;
-            }
+            // schema-salad-tool extract the type of `default` to (None | File | Directory | Any)
+            p.default_.match!(
+                (Any any) => n = any.value,
+                (None _) {},
+                others => n = Node(others),
+            );
         }
 
         auto type = p.type_.match!(
