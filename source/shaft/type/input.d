@@ -7,7 +7,7 @@ module shaft.type.input;
 
 import dyaml : Node, NodeType;
 
-import cwl.v1_0.schema;
+import cwl_d_auto.v1_0;
 import salad.context : LoadingContext;
 import salad.type : Either, Optional, This;
 import shaft.exception : TypeException, InputCannotBeLoaded;
@@ -135,7 +135,7 @@ in(params.type == NodeType.mapping)
     DeterminedType[string] types;
     foreach(p; paramDefs)
     {
-        import cwl : Any;
+        import cwl_d_auto.v1_0 : Any;
         import dyaml : ScalarStyle;
         import salad.type : match, None;
         import salad.util : dig;

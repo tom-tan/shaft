@@ -31,7 +31,7 @@ int shaftMain(string[] args)
 {
     import dyaml : Loader, Mark, Node, NodeType, MarkedYAMLException, YAMLException;
 
-    import cwl : CWLVersion, CommandLineTool, DocumentRootType, ExpressionTool,
+    import cwl_d_auto.v1_0 : CWLVersion, CommandLineTool, DocumentRootType, ExpressionTool,
                  importFromURI, SchemaDefRequirement, Workflow;
     import salad.exception : DocumentException;
     import salad.fetcher : Fetcher;
@@ -294,7 +294,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         enforce!FeatureUnsupported(cwlVersion == "v1.0", format!"CWL %s is not supported yet"(cwlVersion));
         // TODO: upgrade document to the latest version
 
-        import cwl.v1_0.schema : InlineJavascriptRequirement;
+        import cwl_d_auto.v1_0 : InlineJavascriptRequirement;
         import shaft.evaluator : Evaluator;
 
         stdThreadLocalLog.trace("Set up evaluator");
@@ -325,7 +325,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         // 5. Validate process requirements are met.
         // DockerRequirement, SoftwareRequirement, ResourceRequirement can be hints
         // others -> should be requirements (warning if exists in reqs)
-        import cwl.v1_0.schema : DockerRequirement, SoftwareRequirement, InitialWorkDirRequirement,
+        import cwl_d_auto.v1_0 : DockerRequirement, SoftwareRequirement, InitialWorkDirRequirement,
                                  ResourceRequirement;
 
         alias UnsupportedRequirements = AliasSeq!(
@@ -341,7 +341,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             );
         }
 
-        import cwl.v1_0.schema : ResourceRequirement;
+        import cwl_d_auto.v1_0 : ResourceRequirement;
         import shaft.runtime : Runtime;
 
         stdThreadLocalLog.trace("Set up runtime information");
