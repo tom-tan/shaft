@@ -5,7 +5,7 @@
  */
 module shaft.requirement;
 
-import cwl : DocumentRootType;
+import cwl_d_auto.v1_0 : DocumentRootType;
 import dyaml : Node, NodeType;
 import std.meta : anySatisfy, ApplyLeft;
 import std.traits : allSameType;
@@ -91,7 +91,7 @@ in(inputs.type == NodeType.mapping)
 /// shaft uses cwl:requirements (platform dependent).
 unittest
 {
-    import cwl : CommandLineTool, DockerRequirement;
+    import cwl_d_auto.v1_0 : CommandLineTool, DockerRequirement;
     import dyaml : Loader;
 
     import salad.context : LoadingContext;
@@ -132,7 +132,7 @@ EOS";
 /// > If the same process requirement appears at different levels of the workflow, the most specific instance of the requirement is used, ...
 unittest
 {
-    import cwl : CommandLineTool, DockerRequirement;
+    import cwl_d_auto.v1_0 : CommandLineTool, DockerRequirement;
     import dyaml : Loader;
 
     import salad.context : LoadingContext;
@@ -173,7 +173,7 @@ EOS";
 /// > Requirements override hints.
 unittest
 {
-    import cwl : CommandLineTool, DockerRequirement;
+    import cwl_d_auto.v1_0 : CommandLineTool, DockerRequirement;
     import dyaml : Loader;
 
     import salad.context : LoadingContext;
@@ -216,7 +216,7 @@ EOS";
 /// > Entries in `hints`` are resolved the same way.
 unittest
 {
-    import cwl : CommandLineTool, DockerRequirement;
+    import cwl_d_auto.v1_0 : CommandLineTool, DockerRequirement;
     import dyaml : Loader;
 
     import salad.context : LoadingContext;

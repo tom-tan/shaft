@@ -5,7 +5,7 @@
  */
 module shaft.file;
 
-import cwl.v1_0.schema : Directory, File;
+import cwl_d_auto.v1_0 : Directory, File;
 
 import dyaml : Node, NodeType, YAMLNull;
 

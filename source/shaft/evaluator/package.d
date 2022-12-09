@@ -28,7 +28,7 @@ import dyaml : Node, YAMLNull;
  */
 struct Evaluator
 {
-    private import cwl.v1_0.schema : InlineJavascriptRequirement;
+    private import cwl_d_auto.v1_0 : InlineJavascriptRequirement;
 
     /**
      * Params: 

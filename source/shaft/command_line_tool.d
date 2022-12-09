@@ -5,7 +5,7 @@
  */
 module shaft.command_line_tool;
 
-import cwl.v1_0.schema;
+import cwl_d_auto.v1_0;
 
 import dyaml : Node;
 
