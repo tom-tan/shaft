@@ -44,7 +44,7 @@ jobs:
             experimental: true
           - dc: ldc-latest
             experimental: true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     continue-on-error: ${{ matrix.experimental }}
 
     steps:
@@ -65,9 +65,11 @@ jobs:
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
-      - uses: aminya/setup-cpp@v1
-        with:
-          llvm: 12.0.0
+      - name: Install dependencies for dpp
+        run: |
+          sudo apt-get install -y libclang-dev clang
+          cd /usr/lib/x86_64-linux-gnu/
+          sudo ln -s libclang-10.so libclang.so
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
@@ -78,7 +80,6 @@ jobs:
           dub --cache=local test
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
-          LIBRARY_PATH: "${{ env.LLVM_PATH }}/lib"
 
   build-linux:
     needs: [info]
