@@ -48,7 +48,7 @@ string toStr(DeclaredType dt) pure @safe
             s.name_.orElse(format!"Record(%-(%s, %))"(s.fields_
                                                       .orElse([])
                                                       .map!(f => f.name_~": "~toStr(f.type_)).array)),
-        (CommandInputEnumSchema s) => s.name_.orElse("enum"),
+        (CommandInputEnumSchema s) => s.name_.orElse(format!"Enum(%(%s, %))"(s.symbols_)),
         (CommandInputArraySchema s) => "array",
         (string s) => s,
     );
@@ -281,7 +281,7 @@ TypedValue bindType(
             import shaft.type.common : RecordType;
             import std.algorithm : fold, map;
             enforce(n.type == NodeType.mapping, new TypeConflicts(type, n.guessedType));
-            stdThreadLocalLog.trace("type: record");
+            stdThreadLocalLog.tracef("type: record (%s)", s.name_.orElse("anonymous"));
 
             auto tv = s.fields_
                        .orElse([])
@@ -311,12 +311,17 @@ TypedValue bindType(
             return TypedValue(tv[0], RecordType(s.name_.orElse(""), tv[1]));
         },
         (CommandInputEnumSchema s) {
-            stdThreadLocalLog.trace("type: enum");
+            import salad.resolver : resolveIdentifier;
             import salad.type : orElse;
             import shaft.type.common : EnumType;
             import std.algorithm : canFind;
+
+            stdThreadLocalLog.tracef("type: enum (%s: %(%s, %))", s.name_.orElse("anonymous"), s.symbols_);
             enforce(n.type == NodeType.string, new TypeConflicts(type, n.guessedType));
-            enforce(s.symbols_.canFind(n.as!string), new TypeConflicts(type, n.guessedType));
+
+            auto sym = n.as!string.resolveIdentifier(s.context);
+            stdThreadLocalLog.tracef("compared value: %s", sym);
+            enforce(s.symbols_.canFind(sym), new TypeConflicts(type, n.guessedType));
             return TypedValue(n, EnumType(s.name_.orElse(""), s.inputBinding_));
         },
         (CommandInputArraySchema s) {
@@ -444,6 +449,8 @@ CommandInputRecordSchema toCommandSchema(InputRecordSchema schema)
     ret.label_ = schema.label_;
     ret.name_ = schema.name_;
     ret.identifier = schema.identifier;
+    ret.context = schema.context;
+    ret.mark = schema.mark;
     return ret;
 }
 
@@ -484,6 +491,8 @@ CommandInputRecordField toCommandField(InputRecordField field)
     ret.doc_ = field.doc_;
     ret.inputBinding_ = field.inputBinding_;
     ret.label_ = field.label_;
+    ret.context = field.context;
+    ret.mark = field.mark;
     return ret;
 }
 
@@ -496,6 +505,8 @@ CommandInputEnumSchema toCommandSchema(InputEnumSchema schema) nothrow pure
     ret.name_ = schema.name_;
     ret.identifier = schema.identifier;
     ret.inputBinding_ = schema.inputBinding_;
+    ret.context = schema.context;
+    ret.mark = schema.mark;
     return ret;
 }
 
@@ -535,6 +546,8 @@ CommandInputArraySchema toCommandSchema(InputArraySchema schema)
     );
     ret.label_ = schema.label_;
     ret.inputBinding_ = schema.inputBinding_;
+    ret.context = schema.context;
+    ret.mark = schema.mark;
     return ret;
 }
 
@@ -552,6 +565,8 @@ auto toCommandInputParameter(InputParameter param)
         inputBinding_ = param.inputBinding_;
         default_ = param.default_;
         type_ = param.type_.toCommandInputType;
+        context = param.context;
+        mark = param.mark;
     }
     return retParam;
 }
