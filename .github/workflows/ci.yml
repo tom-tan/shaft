@@ -65,11 +65,14 @@ jobs:
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
-      - name: Install dependencies for dpp
-        run: |
-          sudo apt-get install -y libclang-11-dev clang-11
-          cd /usr/lib/x86_64-linux-gnu/
-          sudo ln -s libclang-11.so libclang.so
+      - usees: aminya/setup-cpp@v1
+        with:
+          llvm: 11.0.0
+      # - name: Install dependencies for dpp
+      #   run: |
+      #     sudo apt-get install -y libclang-11-dev clang-11
+      #     cd /usr/lib/x86_64-linux-gnu/
+      #     sudo ln -s libclang-11.so libclang.so
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
@@ -80,6 +83,7 @@ jobs:
           dub --cache=local test
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
+          LIBRARY_PATH: "${{ env.LLVM_PATH }}/lib"
 
   build-linux:
     needs: [info]
