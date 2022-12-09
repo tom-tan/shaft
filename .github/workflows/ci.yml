@@ -67,9 +67,9 @@ jobs:
           compiler: ${{ matrix.dc }}
       - name: Install dependencies for dpp
         run: |
-          sudo apt-get install -y libclang-dev clang
+          sudo apt-get install -y libclang-11-dev clang
           cd /usr/lib/x86_64-linux-gnu/
-          sudo ln -s libclang-10.so libclang.so
+          sudo ln -s libclang-11.so libclang.so
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
