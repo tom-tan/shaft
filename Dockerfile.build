@@ -4,9 +4,8 @@ ARG NJS_VERSION=0.7.6
 
 COPY .devcontainer/setup-njs.sh /tmp
 
-RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static pcre2-dev make clang15-libs clang binutils-gold && \
-    git config --global --add safe.directory /workdir && \
-    ln -s /usr/lib/libclang.so.15 /usr/lib/libclang.so
+RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static pcre2-dev make clang15-dev clang binutils-gold && \
+    git config --global --add safe.directory /workdir
 
 RUN /tmp/setup-njs.sh ${NJS_VERSION} /opt/njs && rm /tmp/setup-njs.sh
 
