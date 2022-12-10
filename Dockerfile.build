@@ -1,12 +1,14 @@
 FROM alpine:3.16
 
+ARG NJS_VERSION=0.7.6
+
 COPY .devcontainer/setup-njs.sh /tmp
 
 RUN apk --no-cache add dub ldc gcc musl-dev git llvm-libunwind-static pcre2-dev make clang-libs clang binutils-gold && \
     git config --global --add safe.directory /workdir && \
     ln -s /usr/lib/libclang.so.13 /usr/lib/libclang.so
 
-RUN /tmp/setup-njs.sh 0.7.6 /opt/njs && rm /tmp/setup-njs.sh
+RUN /tmp/setup-njs.sh ${NJS_VERSION} /opt/njs && rm /tmp/setup-njs.sh
 
 WORKDIR /workdir
 
