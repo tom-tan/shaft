@@ -24,7 +24,7 @@
           "/dlang/dc/import"
         ],
         "files.associations": {
-          ".dpp": "D"
+          "*.dpp": "d"
         }
       },
       // Add the IDs of extensions you want installed when the container is created.
