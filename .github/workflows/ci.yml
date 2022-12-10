@@ -9,7 +9,7 @@ on:
   pull_request: {}
 
 env:
-  NJS_VERSION: 0.7.6
+  NJS_VERSION: 0.7.8
 
 jobs:
   info:
@@ -40,7 +40,7 @@ jobs:
     needs: [info]
     strategy:
       matrix:
-        dc: [dmd-2.100.2, ldc-1.28.1 ]
+        dc: [dmd-2.100.2, ldc-1.29.0 ]
         experimental: [false]
         include:
           - dc: dmd-master
@@ -153,7 +153,7 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-${{ env.NJS_VERSION }}
       - uses: dlang-community/setup-dlang@v1
         with:
-          compiler: ldc-1.28.1
+          compiler: ldc-1.29.0
       - name: Setup for dpp
         run: |
           sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
