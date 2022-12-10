@@ -20,6 +20,7 @@ make -j libnjs
 cd ..
 
 install -d $dest/include $dest/lib $dest/doc
+echo "$version" > $dest/version
 install -m 644 njs-repo/build/libnjs.a $dest/lib
 install -m 644 njs-repo/src/*.h $dest/include
 install -m 644 njs-repo/build/njs_auto_config.h $dest/include
