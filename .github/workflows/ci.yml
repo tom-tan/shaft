@@ -41,7 +41,7 @@ jobs:
     needs: [info]
     strategy:
       matrix:
-        dc: [dmd-2.100.2, ${{ env.BUILD_LDC }} ]
+        dc: [dmd-2.100.2, "${{ env.BUILD_LDC }}" ]
         experimental: [false]
         include:
           - dc: dmd-master
