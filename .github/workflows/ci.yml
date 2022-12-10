@@ -72,7 +72,6 @@ jobs:
         run: |
           sudo apt-get install -y libclang-dev clang
           cd /usr/lib/x86_64-linux-gnu/
-          ls libclang*
           sudo ln -s libclang-10.so libclang.so
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
@@ -113,6 +112,11 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
           build-args: |
             NJS_VERSION=${{ env.NJS_VERSION }}
+      - name: Show libclang
+        run: |
+          touch source/shaft/evaluator/engine/embedded.d
+          docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
+            sh -c "ls -l /usr/lib/libclang*"
       - run: |
           touch source/shaft/evaluator/engine/embedded.d
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
