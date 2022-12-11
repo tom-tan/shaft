@@ -5,7 +5,7 @@
  */
 module shaft.runtime;
 
-import cwl_d_auto.v1_0 : CommandLineTool, ResourceRequirement;
+import cwl.v1_0 : CommandLineTool, ResourceRequirement;
 import dyaml : Node;
 import salad.type : Optional;
 import shaft.evaluator : Evaluator;
@@ -67,7 +67,7 @@ struct Runtime
                 return Optional!string(ret);
             },
             (_) {
-                import cwl_d_auto.v1_0 : stdout;
+                import cwl.v1_0 : stdout;
                 import std.algorithm : any;
 
                 auto needStdout = cmd
@@ -98,7 +98,7 @@ struct Runtime
                 return Optional!string(ret);
             },
             (_) {
-                import cwl_d_auto.v1_0 : stderr;
+                import cwl.v1_0 : stderr;
                 import std.algorithm : any;
 
                 auto needStderr = cmd

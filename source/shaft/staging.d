@@ -5,7 +5,7 @@
  */
 module shaft.staging;
 
-import cwl_d_auto.v1_0 : Directory, File;
+import cwl.v1_0 : Directory, File;
 
 import dyaml : Node, NodeType;
 
@@ -75,7 +75,7 @@ Node stagingParam(
 )
 in(dest.isDir)
 {
-    import cwl_d_auto.v1_0 : CWLType;
+    import cwl.v1_0 : CWLType;
     import salad.type : match;
     import shaft.type.common : ArrayType, EnumType, PrimitiveType, RecordType;
 
@@ -175,7 +175,7 @@ in(dest.isDir)
 
                     sec = Node(
                         sec_.sequence.map!((e) {
-                            import cwl_d_auto.v1_0 : CommandLineBinding;
+                            import cwl.v1_0 : CommandLineBinding;
                             import salad.type : Optional;
                             import shaft.type.common : DeterminedType, PrimitiveType;
                             import std.path : dirName;
@@ -276,7 +276,7 @@ in(dest.isDir)
                     import std.file : mkdir;
                     if (auto lst_ = "listing" in node)
                     {
-                        import cwl_d_auto.v1_0 : CommandLineBinding;
+                        import cwl.v1_0 : CommandLineBinding;
                         import shaft.type.common : DeterminedType, PrimitiveType;
                         import salad.type : Optional;
                         import std.algorithm : map;

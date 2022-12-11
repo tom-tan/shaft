@@ -7,7 +7,7 @@ module shaft.type.output;
 
 import dyaml : Node;
 
-import cwl_d_auto.v1_0;
+import cwl.v1_0;
 import salad.context : LoadingContext;
 import salad.type : Either, isSumType, None, Optional, This;
 

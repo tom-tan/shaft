@@ -5,7 +5,7 @@
  */
 module shaft.expression_tool;
 
-import cwl_d_auto.v1_0 : ExpressionTool;
+import cwl.v1_0 : ExpressionTool;
 
 import shaft.evaluator : Evaluator;
 import shaft.runtime : Runtime;
