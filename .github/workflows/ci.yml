@@ -222,14 +222,6 @@ jobs:
         env:
           cwlVersion: v1.0
           tag: ${{ needs.info.outputs.tag }}
-      - uses: actions/create-release@v1
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ needs.info.outputs.tag }}
-          release_name: ${{ needs.info.outputs.tag }}
-          body_path: ${{ github.workspace }}/release.md
       - uses: actions/download-artifact@v3
         with:
           name: shaft-linux-X64-master
@@ -237,15 +229,6 @@ jobs:
           chmod +x shaft
           tar cf ${GITHUB_WORKSPACE}/shaft-linux-x86_64.tar.gz shaft
           rm shaft
-      - name: Upload shaft for linux x86_64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/shaft-linux-x86_64.tar.gz
-          asset_name: shaft-linux-x86_64.tar.gz
-          asset_content_type: application/tar+gzip
       - uses: actions/download-artifact@v3
         with:
           name: shaft-osx-X64-master
@@ -253,12 +236,10 @@ jobs:
           chmod +x shaft
           tar cf ${GITHUB_WORKSPACE}/shaft-osx-x86_64.tar.gz shaft
           rm shaft
-      - name: Upload shaft for macOS x86_64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: softprops/action-gh-release@v1
+        id: create_release
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/shaft-osx-x86_64.tar.gz
-          asset_name: shaft-osx-x86_64.tar.gz
-          asset_content_type: application/tar+gzip
+          body_path: ${{ github.workspace }}/release.md
+          files: |
+            shaft-linux-x86_64.tar.gz
+            shaft-osx-x86_64.tar.gz
