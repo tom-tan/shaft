@@ -127,7 +127,7 @@ jobs:
           test-list: ${{ github.workspace }}/tests/test.yml
           runner: ${{ github.workspace }}/bin/shaft
           timeout: 30
-          result-title: Results of shaft-specific features          
+          result-title: Results of shaft-specific features
       - uses: actions/upload-artifact@v3
         with:
           name: shaft-linux-${{ runner.arch }}-master
