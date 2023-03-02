@@ -158,6 +158,7 @@ jobs:
       - name: Setup for dpp
         run: |
           brew install llvm@12
+          echo "/opt/homebrew/opt/llvm@12/bin" >> $GITHUB_PATH
       #   sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
@@ -169,7 +170,6 @@ jobs:
           dub --cache=local build -b release
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
-          PATH: /opt/homebrew/opt/llvm@12/bin:${{ env.PATH }}
           LDFLAGS: -L/opt/homebrew/opt/llvm@12/lib
           CPPFLAGS: -I/opt/homebrew/opt/llvm@12/include
       - uses: actions/upload-artifact@v3
