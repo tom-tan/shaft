@@ -165,10 +165,13 @@ jobs:
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
           ./.devcontainer/setup-njs.sh ${{ env.NJS_VERSION }} .njs
+        env:
+          CC: /usr/local/opt/llvm@12/bin/clang
+          LDFLAGS: -L/usr/local/opt/llvm@12/lib
+          CPPFLAGS: -I/usr/local/opt/llvm@12/include
       - name: Build a binary
         run: |
           export PATH=/usr/local/opt/llvm@12/bin:$PATH
-          clang --version
           touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local build -b release
         env:
