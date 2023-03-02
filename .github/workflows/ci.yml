@@ -136,7 +136,7 @@ jobs:
 
   build-mac:
     needs: [info]
-    runs-on: macos-11
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
         with:
@@ -157,7 +157,8 @@ jobs:
           compiler: ldc-1.28.1
       - name: Setup for dpp
         run: |
-          sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
+          brew install llvm@12
+      #   sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
@@ -168,6 +169,9 @@ jobs:
           dub --cache=local build -b release
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
+          PATH: /opt/homebrew/opt/llvm@12/bin:$PATH
+          LDFLAGS: -L/opt/homebrew/opt/llvm@12/lib
+          CPPFLAGS: -I/opt/homebrew/opt/llvm@12/include
       - uses: actions/upload-artifact@v3
         with:
           name: shaft-osx-${{ runner.arch }}-master
