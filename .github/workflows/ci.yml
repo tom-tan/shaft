@@ -168,7 +168,7 @@ jobs:
       - name: Build a binary
         run: |
           export PATH=/usr/local/opt/llvm@12/bin:$PATH
-          type -a clang
+          clang --version
           touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local build -b release
         env:
