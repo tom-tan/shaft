@@ -169,7 +169,7 @@ jobs:
           dub --cache=local build -b release
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
-          PATH: /opt/homebrew/opt/llvm@12/bin:$PATH
+          PATH: /opt/homebrew/opt/llvm@12/bin:${{ env.PATH }}
           LDFLAGS: -L/opt/homebrew/opt/llvm@12/lib
           CPPFLAGS: -I/opt/homebrew/opt/llvm@12/include
       - uses: actions/upload-artifact@v3
