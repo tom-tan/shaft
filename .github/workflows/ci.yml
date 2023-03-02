@@ -165,7 +165,7 @@ jobs:
           ./.devcontainer/setup-njs.sh ${{ env.NJS_VERSION }} .njs
       - name: Build a binary
         run: |
-          export PATH=/opt/homebrew/opt/llvm@12/bin:${{ envGITHUB_PATH }}
+          export PATH=/opt/homebrew/opt/llvm@12/bin:${{ env.GITHUB_PATH }}
           touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local build -b release
         env:
