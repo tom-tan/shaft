@@ -28,7 +28,7 @@ struct Runtime
     ///
     this(Node inputs, string outdir, string tmpdir,
          ResourceRequirement req,
-         Evaluator evaluator) @safe
+         Evaluator evaluator) @trusted
     in(outdir.isDir)
     in(tmpdir.isDir)
     {
