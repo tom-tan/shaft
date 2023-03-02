@@ -167,15 +167,14 @@ jobs:
           ./.devcontainer/setup-njs.sh ${{ env.NJS_VERSION }} .njs
       - name: Build a binary
         run: |
-          echo "PATH: ${{ env.GITHUB_PATH }}, ${{ env.PATH }}, $PATH"
-          export PATH=/opt/homebrew/opt/llvm@12/bin:$PATH
+          export PATH=/usr/local/opt/llvm@12/bin:$PATH
           type -a clang
           touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local build -b release
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
-          LDFLAGS: -L/opt/homebrew/opt/llvm@12/lib
-          CPPFLAGS: -I/opt/homebrew/opt/llvm@12/include
+          LDFLAGS: -L/usr/local/opt/llvm@12/lib
+          CPPFLAGS: -I/usr/local/opt/llvm@12/include
       - uses: actions/upload-artifact@v3
         with:
           name: shaft-osx-${{ runner.arch }}-master
