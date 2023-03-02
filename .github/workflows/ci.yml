@@ -169,7 +169,7 @@ jobs:
         run: |
           echo "PATH: ${{ env.GITHUB_PATH }}, ${{ env.PATH }}, $PATH"
           export PATH=/opt/homebrew/opt/llvm@12/bin:$PATH
-          which clang
+          where clang
           touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local build -b release
         env:
