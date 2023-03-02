@@ -158,7 +158,6 @@ jobs:
       - name: Setup for dpp
         run: |
           brew install llvm@12
-          echo "/opt/homebrew/opt/llvm@12/bin" >> $GITHUB_PATH
       #   sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
@@ -166,6 +165,7 @@ jobs:
           ./.devcontainer/setup-njs.sh ${{ env.NJS_VERSION }} .njs
       - name: Build a binary
         run: |
+          export PATH=/opt/homebrew/opt/llvm@12/bin:${{ envGITHUB_PATH }}
           touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local build -b release
         env:
