@@ -43,7 +43,7 @@ jobs:
         dc: [dmd-2.100.2, ldc-1.28.1 ]
         experimental: [false]
         include:
-          - dc: dmd-master
+          - dc: dmd-latest
             experimental: true
           - dc: ldc-latest
             experimental: true
