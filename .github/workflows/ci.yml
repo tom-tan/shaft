@@ -37,7 +37,6 @@ jobs:
           fi
 
   test:
-    if: false
     needs: [info]
     strategy:
       matrix:
@@ -87,7 +86,6 @@ jobs:
           NJS_BASE: ${{ github.workspace }}/.njs
 
   build-linux:
-    if: false
     needs: [info]
     runs-on: ubuntu-latest
     steps:
