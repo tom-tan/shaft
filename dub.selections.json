@@ -8,7 +8,7 @@
 		"requests": "2.0.9",
 		"schema-salad-d": "1.0.2",
 		"sumtype": "1.1.4",
-		"test_allocator": "0.3.3",
+		"test_allocator": "0.3.4",
 		"tinyendian": "0.2.0",
 		"unit-threaded": "0.10.8"
 	}
