@@ -21,7 +21,6 @@
 		}
 	},
 	"preBuildCommands": [
-		"dub run -y dpp@0.4.14 -- --ignore-system-paths --include-path=$NJS_BASE/include --preprocess-only source/shaft/evaluator/engine/embedded.dpp",
 		"./gen-version.sh > resources/version",
 		"cp LICENSE resources/license-shaft.txt",
 		"cp $NJS_BASE/doc/LICENSE resources/license-njs.txt",
