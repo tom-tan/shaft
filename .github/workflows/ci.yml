@@ -167,6 +167,14 @@ jobs:
           CC: /usr/local/opt/llvm@12/bin/clang
           LDFLAGS: -L/usr/local/opt/llvm@12/lib
           CPPFLAGS: -I/usr/local/opt/llvm@12/include
+      - name: Run tests
+        run: |
+          touch source/shaft/evaluator/engine/embedded.d
+          dub --cache=local test
+        env:
+          NJS_BASE: ${{ github.workspace }}/.njs
+          LDFLAGS: -L/usr/local/opt/llvm@12/lib
+          CPPFLAGS: -I/usr/local/opt/llvm@12/include
       - name: Build a binary
         run: |
           export PATH=/usr/local/opt/llvm@12/bin:$PATH
