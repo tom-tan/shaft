@@ -159,7 +159,6 @@ jobs:
           NJS_BASE: ${{ github.workspace }}/.njs
       - name: Build a binary
         run: |
-          export PATH=/usr/local/opt/llvm@12/bin:$PATH
           dub --cache=local build -b release
         env:
           NJS_BASE: ${{ github.workspace }}/.njs

@@ -1,7 +1,7 @@
 ARG DC=ldc
-ARG LDC_VERSION=1.28.1
+ARG DC_VERSION=1.28.1
 
-FROM ghcr.io/tom-tan/${DC}:${LDC_VERSION} as NJS
+FROM ghcr.io/tom-tan/${DC}:${DC_VERSION} as NJS
 
 ARG NJS_VERSION=0.7.6
 
@@ -12,7 +12,7 @@ RUN echo "njs version: '${NJS_VERSION}'"
 RUN /tmp/setup-njs.sh ${NJS_VERSION} /opt/njs
 
 
-FROM ghcr.io/tom-tan/${DC}:${LDC_VERSION}
+FROM ghcr.io/tom-tan/${DC}:${DC_VERSION}
 
 ENV NJS_BASE /opt/njs
 COPY --from=NJS /opt/njs /opt/njs
