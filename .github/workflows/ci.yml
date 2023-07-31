@@ -68,12 +68,6 @@ jobs:
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ${{ matrix.dc }}
-      - name: Install dependencies for dpp
-        run: |
-          sudo apt-get install -y libclang-dev clang
-          cd /usr/lib/x86_64-linux-gnu/
-          ls -l libclang*
-          sudo ln -s libclang-10.so libclang.so
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
@@ -114,7 +108,6 @@ jobs:
           build-args: |
             NJS_VERSION=${{ env.NJS_VERSION }}
       - run: |
-          touch source/shaft/evaluator/engine/embedded.d
           docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
             sh -c "dub --cache=local build -b release-static && strip bin/shaft"
       - name: Setup cache
@@ -155,35 +148,21 @@ jobs:
       - uses: dlang-community/setup-dlang@v1
         with:
           compiler: ldc-1.28.1
-      - name: Setup for dpp
-        run: |
-          brew install llvm@12
-      #   sudo ln -s /Library/Developer/CommandLineTools/usr/lib/libclang.dylib /usr/local/lib/libclang.dylib
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
           ./.devcontainer/setup-njs.sh ${{ env.NJS_VERSION }} .njs
-        env:
-          CC: /usr/local/opt/llvm@12/bin/clang
-          LDFLAGS: -L/usr/local/opt/llvm@12/lib
-          CPPFLAGS: -I/usr/local/opt/llvm@12/include
       - name: Run tests
         run: |
-          touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local test
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
-          LDFLAGS: -L/usr/local/opt/llvm@12/lib
-          CPPFLAGS: -I/usr/local/opt/llvm@12/include
       - name: Build a binary
         run: |
           export PATH=/usr/local/opt/llvm@12/bin:$PATH
-          touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local build -b release
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
-          LDFLAGS: -L/usr/local/opt/llvm@12/lib
-          CPPFLAGS: -I/usr/local/opt/llvm@12/include
       - uses: actions/upload-artifact@v3
         with:
           name: shaft-osx-${{ runner.arch }}-master
