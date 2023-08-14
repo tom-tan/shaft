@@ -25,14 +25,16 @@ struct EscapedString // @suppress(dscanner.suspicious.incomplete_operator_overlo
     EscapedString opBinary(string op: "~")(EscapedString rhs) const nothrow pure @safe
     {
         typeof(return) ret;
-        ret.arg_ = arg_[0..$-1]~rhs.arg_[1..$];
+        ret.arg_ = concat(arg_, rhs.arg_);
         return ret;
     }
 
     EscapedString opBinary(string op: "~")(NonEscapedString rhs) const nothrow pure @safe
     {
+        import std.process : escapeShellFileName;
+
         typeof(return) ret;
-        ret.arg_ = arg_[0..$-1]~rhs~"'";
+        ret.arg_ = concat(arg_, rhs.escapeShellFileName);
         return ret;
     }
 
@@ -52,11 +54,7 @@ struct EscapedString // @suppress(dscanner.suspicious.incomplete_operator_overlo
         return arg_;
     }
 
-    invariant(arg_.startsWith("'"));
-    invariant(arg_.endsWith("'"));
-
 private:
-    import std.algorithm : endsWith, startsWith;
     string arg_;
 }
 
@@ -70,4 +68,48 @@ nothrow pure @safe unittest
 
     assert("-p"~es == "'-pfoo bar.txt'");
     assert(es~".bak" == "'foo bar.txt.bak'");
+}
+
+private:
+
+auto concat(string lhs, string rhs) nothrow pure @safe
+{
+    if (lhs == "''")
+    {
+        return rhs;
+    }
+    else if (rhs == "''")
+    {
+        return lhs;
+    }
+    else
+    {
+        import std.algorithm : endsWith, startsWith;
+        if (!lhs.startsWith("'"))
+        {
+            lhs = "'"~lhs~"'";
+        }
+        if (!rhs.startsWith("'"))
+        {
+            rhs = "'"~rhs~"'";
+        }
+
+        if (lhs.endsWith("''"))
+        {
+            lhs = lhs[0..$-2];
+        }
+        if (rhs.startsWith("''"))
+        {
+            rhs = rhs[2..$];
+        }
+
+        if (lhs.endsWith("'") && rhs.startsWith("'"))
+        {
+            return lhs[0..$-1] ~ rhs[1..$];
+        }
+        else
+        {
+            return lhs~rhs;
+        }
+    }
 }
