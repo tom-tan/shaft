@@ -74,10 +74,11 @@ jobs:
           ./.devcontainer/setup-njs.sh ${{ env.NJS_VERSION }} .njs
       - name: Run tests
         run: |
-          touch source/shaft/evaluator/engine/embedded.d
           dub --cache=local test
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
+          CPATH: ${{ github.workspace }}/.njs/include
+          LIBRARY_PATH: ${{ github.workspace }}/.njs/lib
 
   build-linux:
     needs: [info]
@@ -162,6 +163,8 @@ jobs:
           dub --cache=local build -b release
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
+          CPATH: ${{ github.workspace }}/.njs/include
+          LIBRARY_PATH: ${{ github.workspace }}/.njs/lib
       - uses: actions/upload-artifact@v4
         with:
           name: shaft-osx-${{ runner.arch }}-master
