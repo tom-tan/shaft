@@ -19,3 +19,5 @@ RUN /tmp/setup-njs.sh ${NJS_VERSION} /opt/njs && rm /tmp/setup-njs.sh
 WORKDIR /workdir
 
 ENV NJS_BASE=/opt/njs
+ENV CPATH $CPATH:$NJS_BASE/include
+ENV LIBRARY_PATH $LIBRARY_PATH:$NJS_BASE/lib

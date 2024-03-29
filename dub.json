@@ -20,17 +20,16 @@
 			]
 		}
 	},
+	"sourceFiles": [
+		"source/shaft/evaluator/engine/njs_d.c"
+	],
 	"preBuildCommands": [
 		"./gen-version.sh > resources/version",
 		"cp LICENSE resources/license-shaft.txt",
 		"cp $NJS_BASE/doc/LICENSE resources/license-njs.txt",
 		"touch resources/license-musl.txt"
 	],
-	"extraDependencyFiles": [
-		"source/shaft/evaluator/engine/embedded.dpp",
-		"source/shaft/evaluator/engine/embedded.d"
-	],
-	"lflags": ["-L$NJS_BASE/lib", "-lnjs", "-lpcre2-8"],
+	"lflags": ["-lnjs", "-lpcre2-8"],
 	"stringImportPaths": [
 		"resources"
 	],

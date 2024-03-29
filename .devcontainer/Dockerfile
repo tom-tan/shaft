@@ -15,6 +15,9 @@ RUN /tmp/setup-njs.sh ${NJS_VERSION} /opt/njs
 FROM ghcr.io/tom-tan/${DC}:${DC_VERSION}
 
 ENV NJS_BASE /opt/njs
+ENV CPATH $CPATH:$NJS_BASE/include
+ENV LIBRARY_PATH $LIBRARY_PATH:$NJS_BASE/lib
+
 COPY --from=NJS /opt/njs /opt/njs
 
 RUN apt-get update && apt-get install -y --no-install-recommends libclang-dev libpcre2-dev clang

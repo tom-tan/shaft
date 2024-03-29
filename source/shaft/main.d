@@ -396,7 +396,8 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
         // 10. Report the output object to the process caller.
         import shaft.type.common : toJSON;
-        stdout.writeln(staged.parameters.toJSON);
+        import std.array : replace;
+        stdout.writeln(staged.parameters.toJSON.toString.replace("\\\\", "\\"));
 
         return 0;
     }
