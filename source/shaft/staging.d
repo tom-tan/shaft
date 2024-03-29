@@ -347,7 +347,7 @@ in(dest.isDir)
             assert(node.type == NodeType.sequence);
 
             auto staged = zip(StoppingPolicy.requireSameLength, at.types, node.sequence).map!((tpl) {
-                return stagingParam(TypedValue(tpl[1], *tpl[0]), dest, keepStructure);
+                return stagingParam(TypedValue(tpl[1], *tpl[0]), dest, keepStructure, forceStaging, overwrite);
             }).array;
             return Node(staged);
         },
