@@ -158,6 +158,8 @@ jobs:
           dub --cache=local test
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
+          C_INCLUDE_PATH: ${{ github.workspace }}/.njs/include
+          LIBRARY_PATH: ${{ github.workspace }}/.njs/lib
       - name: Build a binary
         run: |
           dub --cache=local build -b release
