@@ -4,7 +4,7 @@
     "dockerfile": "Dockerfile",
     "args": {
       "DC": "ldc",
-      "DC_VERSION": "1.29.0",
+      "DC_VERSION": "1.37.0",
       "NJS_VERSION": "0.7.8"
     }
   },

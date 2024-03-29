@@ -40,7 +40,7 @@ jobs:
     needs: [info]
     strategy:
       matrix:
-        dc: [dmd-2.100.2, ldc-1.28.1 ]
+        dc: [dmd-2.107.1, ldc-1.37.0 ]
         experimental: [false]
         include:
           - dc: dmd-latest
@@ -147,7 +147,7 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-${{ env.NJS_VERSION }}
       - uses: dlang-community/setup-dlang@v1
         with:
-          compiler: ldc-1.28.1
+          compiler: ldc-1.37.0
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
