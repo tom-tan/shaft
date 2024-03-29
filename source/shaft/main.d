@@ -387,7 +387,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                 runtime, evaluator, c.context
             )
         );
-        stdThreadLocalLog.trace("Success capturing output objct");
+        stdThreadLocalLog.trace("Success capturing output object");
 
         import shaft.staging : stageOut;
         stdThreadLocalLog.trace("Stage out output object");
