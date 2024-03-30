@@ -10,44 +10,19 @@ import shaft.exception : ExpressionFailed, FeatureUnsupported;
 import dyaml : Node;
 import shaft.runtime : Runtime;
 
-import njs_d : NJS_OK, njs_vm_compile, njs_vm_create, njs_vm_destroy,
-       njs_vm_opt_init, njs_vm_opt_t, njs_vm_exception_string, njs_str_t,
-       njs_value_t, njs_vm_start, njs_vm_t, njs_vm_value_dump, u_char;
+import njs_d : njs_vm_t;
 
 ///
 class EmbeddedNJSEngine : JSEngine
 {
     this() @trusted
     {
-        import std.exception : enforce;
-        import std.string : toStringz;
+        import njs_d : njs_vm_destroy;
 
-        njs_vm_opt_t vm_options;
+        vm = create_vm();
+        scope(failure) njs_vm_destroy(vm);
 
-        njs_vm_opt_init(&vm_options);
-
-        enum Mode
-        {
-            command = "string",
-            shell = "shell",
-        }
-        auto mode = Mode.command;
-
-        vm_options.file.start = cast(u_char*)mode.toStringz;
-        vm_options.file.length = mode.length;
-
-        vm_options.init = 1;
-        vm_options.interactive = 0;
-        vm_options.backtrace = 1;
-        vm_options.quiet = 0;
-        vm_options.sandbox = 1;
-
-        vm = enforce!FeatureUnsupported(
-            njs_vm_create(&vm_options),
-            "Failed to initialize JavaScript engine"
-        );
-
-        vm.eval_(
+        vm.eval(
             q"EOS
             "use strict";
             this.global = {};
@@ -60,6 +35,7 @@ EOS"
 
     ~this() @trusted
     {
+        import njs_d : njs_vm_destroy;
         njs_vm_destroy(vm);
     }
 
@@ -71,11 +47,12 @@ EOS"
         auto to(T: string)(njs_str_t chars)
         {
             import std.conv : castFrom;
+            import njs_d : u_char;
             return castFrom!(u_char[]).to!string(chars.start[0..chars.length]);
         }
 
         auto code = toJSCode(exp, inputs, runtime, self, libs);
-        return vm.eval_(code);
+        return vm.eval(code);
     }
 
 private:
@@ -115,11 +92,47 @@ EOS"(Node(runtime).toJSON, inputs.toJSON, self.toJSON, toBeEvaled);
 
 private:
 
-auto eval_(scope njs_vm_t* vm, scope string code)
+auto create_vm()
+{
+        import std.exception : enforce;
+        import std.string : toStringz;
+
+        import njs_d : njs_vm_create, njs_vm_opt_init, njs_vm_opt_t, u_char;
+
+        njs_vm_opt_t vm_options;
+
+        njs_vm_opt_init(&vm_options);
+
+        enum Mode
+        {
+            command = "string",
+            shell = "shell",
+        }
+        auto mode = Mode.command;
+
+        vm_options.file.start = cast(u_char*)mode.toStringz;
+        vm_options.file.length = mode.length;
+
+        vm_options.init = 1;
+        vm_options.interactive = 0;
+        vm_options.backtrace = 1;
+        vm_options.quiet = 0;
+        vm_options.sandbox = 1;
+
+        return enforce!FeatureUnsupported(
+            njs_vm_create(&vm_options),
+            "Failed to initialize JavaScript engine"
+        );
+}
+
+auto eval(scope njs_vm_t* vm, scope string code)
 {
     import std.exception : enforce;
     import std.format : format;
     import std.string : toStringz;
+
+    import njs_d : NJS_OK, njs_vm_compile, njs_vm_exception_string, njs_str_t,
+        njs_value_t, njs_vm_start, njs_vm_value_dump, u_char;
 
     auto to(T: string)(njs_str_t chars)
     {
@@ -155,4 +168,18 @@ auto eval_(scope njs_vm_t* vm, scope string code)
         "Failed to get return value from JavaScript engine"
     );
     return to!string(result);
+}
+
+unittest
+{
+    auto vm = create_vm();
+    auto ret = vm.eval("1+1");
+    assert(ret == "2");
+}
+
+unittest
+{
+    auto vm = create_vm();
+    auto ret = vm.eval("'foo'+'bar'");
+    assert(ret == "'foobar'");
 }
