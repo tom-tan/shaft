@@ -49,9 +49,11 @@ immutable(TimeZone) getTimeZone() @safe
     if ("/etc/localtime".exists)
     {
         // Note: /etc/timezone is not available on macOS
-        import std : PosixTimeZone, readLink, stripLeft;
+        import std : findSplitAfter, PosixTimeZone, readLink, stripLeft;
 
-        auto zone = "/etc/localtime".readLink["/usr/share/zoneinfo/".length..$].stripLeft("/");
+        // A linked file difers in platforms
+        // e.g., Ubuntu 22.04: /usr/share/zoneinfo/, macOS 14.4.1: /var/db/timezone/zoneinfo/
+        auto zone = "/etc/localtime".readLink.findSplitAfter("zoneinfo/")[1].stripLeft("/");
         return zone == "UTC" ? UTC() : PosixTimeZone.getTimeZone(zone);
     }
     else
