@@ -46,6 +46,7 @@ int shaftMain(string[] args)
     try
     {
         import std.logger : sharedLog;
+        import shaft.logger : JSONLogger;
 
     	string baseTmpdir;
     	string outdir = getcwd;
@@ -58,6 +59,7 @@ int shaftMain(string[] args)
         bool showSupportedVersions;
         bool showLicense;
 
+        sharedLog = cast(shared)(new JSONLogger(stderr, LogLevel.all));
         (cast()sharedLog).logLevel = LogLevel.all;
         stdThreadLocalLog.logLevel = LogLevel.info;
 
@@ -134,6 +136,25 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             return 0;
         }
 
+        stdThreadLocalLog.info(() {
+            import std : chomp, getcwd, thisProcessID;
+            return JSONValue([
+                "message": JSONValue("Start executor"),
+                "executor": JSONValue(["name": "shaft", "version": import("version").chomp]),
+                "args": JSONValue(args),
+                "pwd": JSONValue(getcwd),
+                "pid": JSONValue(thisProcessID)
+            ]);
+        }());
+        scope(success)
+        {
+            stdThreadLocalLog.info(JSONValue(["message": "Finish executor", "result": "success"]));
+        }
+        scope(failure)
+        {
+            stdThreadLocalLog.info(JSONValue(["message": "Finish executor", "result": "failure"]));
+        }
+
         stdThreadLocalLog.trace("Setup fetcher");
 
         Fetcher.instance.removeSchemeFetcher("http");
@@ -158,7 +179,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         auto routdir = buildPath(baseTmpdir, "output");
         mkdirRecurse(routdir);
         // designated temporary directory
-        auto rtmpdir = buildPath(baseTmpdir, "temporary");
+        auto rtmpdir = buildPath(baseTmpdir, "tmp");
         mkdirRecurse(rtmpdir);
         // directory to store non-captured stdout and stderr
         auto rlogdir = buildPath(baseTmpdir, "log");
@@ -190,7 +211,6 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
         // See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Generic_execution_process
         // 1. Load input object.
-        stdThreadLocalLog.trace("Load input object");
         auto loader = args.length == 3 ? Loader.fromFile(args[2].absolutePath)
                                                .ifThrown!YAMLException((e) {
                                                    enforce!SystemException(
@@ -207,6 +227,21 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             });
         enforce(inp.type == NodeType.mapping,
                 new InputCannotBeLoaded("Input should be a mapping but it is not", inp.startMark));
+
+        stdThreadLocalLog.info((){
+            import std.json;
+            import shaft.type.common : toJSON;
+            auto j = JSONValue([
+                "message": JSONValue("Input object is loaded"),
+                "input": inp.toJSON
+            ]);
+            if (args.length == 3)
+            {
+                j["path"] = args[2].absolutePath;
+            }
+            return j;
+        }());
+
         if (auto reqs = "cwl:requirements" in inp)
         {
             enforce(
@@ -254,7 +289,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                 );
             }
         }
-        stdThreadLocalLog.info("Success loading input object");
+        stdThreadLocalLog.trace("Success verifying input object");
 
         // TODO: handle `cwl:tool` (input object must start with shebang and marked as executable)
         // - load as YAMl
@@ -264,7 +299,6 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         //     - no
 
         // 2. Load, process and validate a CWL document, yielding one or more process objects. The $namespaces present in the CWL document are also used when validating and processing the input object.
-        stdThreadLocalLog.info("Load CWL document");
         auto path = args[1];
         auto cwlfile = discoverDocumentURI(path);
         auto process = importFromURI(cwlfile, "main").tryMatch!(
@@ -286,7 +320,22 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             enforce(false, new InputCannotBeLoaded(e.msg.chomp, e.mark));
             return DocumentRootType.init;
         });
-        stdThreadLocalLog.info("Success loading CWL document");
+
+        stdThreadLocalLog.info((){
+            import std.json;
+            import salad.resolver : path_ = path;
+            import shaft.type.common : toJSON;
+
+            auto n = process.tryMatch!(
+                (CommandLineTool c) => Node(c),
+                (ExpressionTool e) => Node(e),
+            );
+            return JSONValue([
+                "message": JSONValue("Success loading CWL document"),
+                "document": n.toJSON,
+                "path": JSONValue(cwlfile.path_)
+            ]);
+        }());
 
         // 3. If there are multiple process objects (due to $graph) and which process object to start with is not specified in the input object (via a cwl:tool entry)
         // or by any other means (like a URL fragment) then choose the process with the id of "#main" or "main".
@@ -365,7 +414,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
 
         // 6. Perform any further setup required by the specific process type.
         // 7. Execute the process.
-        stdThreadLocalLog.info("Execute Process");
+        stdThreadLocalLog.trace("Execute Process");
         auto ret = process.tryMatch!(
             (CommandLineTool cmd) {
                 import shaft.command_line_tool : execute;
@@ -376,7 +425,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                 return execute(exp, fetched, runtime, evaluator);
             },
         );
-        stdThreadLocalLog.info("Success executing Process");
+        stdThreadLocalLog.trace("Success executing Process");
 
         // runtime.exitCode = ret; // v1.1 and later
 
@@ -398,15 +447,14 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         auto staged = stageOut(outs, outdir, forceOverwrite);
 
         // 10. Report the output object to the process caller.
-        import shaft.type.common : toJSON;
-        import std.array : replace;
-        stdout.writeln(staged.parameters.toJSON.toString.replace("\\\\", "\\"));
+        import shaft.type.common : toJSONString;
+        stdout.writeln(staged.parameters.toJSONString);
 
         return 0;
     }
     catch(TypeException e)
     {
-        stdThreadLocalLog.error("Uncaught TypeException: "~e.msg);
+        stdThreadLocalLog.error(JSONValue(["message": "Uncaught TypeException", "detail": e.msg]));
         return 1;
     }
     catch(ShaftException e)

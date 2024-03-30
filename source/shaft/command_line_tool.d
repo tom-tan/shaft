@@ -118,13 +118,26 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     }
 
     // 7. Execute the process.
-    stdThreadLocalLog.infof("CMD: %s", args);
     auto pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir)
         .ifThrown!ProcessException((e) {
             import std.process : Pid;
             enforce!SystemException(false, e.msg);
             return Pid.init;
         });
+    stdThreadLocalLog.info(() {
+        import std : JSONValue, escapeShellCommand;
+        return JSONValue([
+            "message": JSONValue("Start execution"),
+            "command": JSONValue(escapeShellCommand(args)),
+            "args": JSONValue(args),
+            "env": JSONValue(env),
+            "stdin": JSONValue(stdin.name),
+            "stdout": JSONValue(stdout.name),
+            "stderr": JSONValue(stderr.name),
+            "outdir": JSONValue(runtime.outdir),
+            "pid": JSONValue(pid.processID),
+        ]);
+    }());
     scope(failure)
     {
         import std.process : kill;
@@ -138,6 +151,17 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     }
 
     auto code = wait(pid);
+
+    stdThreadLocalLog.info(() {
+        import std : JSONValue;
+        return JSONValue([
+            "message": JSONValue("Success execution"),
+            "code": JSONValue(code),
+            "outdir": JSONValue(runtime.outdir),
+            "stdout": JSONValue(stdout.name),
+            "stderr": JSONValue(stderr.name),
+        ]);
+    }());
 
     return code;
 }

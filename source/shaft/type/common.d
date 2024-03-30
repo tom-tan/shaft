@@ -207,3 +207,9 @@ JSONValue toJSON(Node node) @safe
     default: assert(false, format!"Invalid node type: %s"(node.type));
     }
 }
+
+string toJSONString(Node node) @safe
+{
+    import std.array : replace;
+    return node.toJSON.toString.replace("\\\\", "\\");
+}
