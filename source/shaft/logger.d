@@ -52,7 +52,8 @@ immutable(TimeZone) getTimeZone() @safe
         import std : findSplitAfter, PosixTimeZone, readLink, stripLeft;
 
         // A linked file difers in platforms
-        // e.g., Ubuntu 22.04: /usr/share/zoneinfo/, macOS 14.4.1: /var/db/timezone/zoneinfo/
+        // e.g., Ubuntu 22.04: /usr/share/zoneinfo/, macOS 14.4.1: /var/db/timezone/zoneinfo/,
+        //       Ubuntu 22.04 in mcr.microsoft.com/vscode/devcontainers/base:ubuntu-22.04: /usr/share/zoneinfo//UTC
         auto zone = "/etc/localtime".readLink.findSplitAfter("zoneinfo/")[1].stripLeft("/");
         return zone == "UTC" ? UTC() : PosixTimeZone.getTimeZone(zone);
     }
