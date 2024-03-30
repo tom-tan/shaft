@@ -5,7 +5,7 @@
  */
 module shaft.main;
 
-import std.experimental.logger : LogLevel, stdThreadLocalLog;
+import std.logger : LogLevel, stdThreadLocalLog;
 
 version(unittest)
 {
@@ -45,6 +45,8 @@ int shaftMain(string[] args)
 
     try
     {
+        import std.logger : sharedLog;
+
     	string baseTmpdir;
     	string outdir = getcwd;
 	    LeaveTmpdir ltopt = LeaveTmpdir.onErrors;
@@ -56,6 +58,7 @@ int shaftMain(string[] args)
         bool showSupportedVersions;
         bool showLicense;
 
+        (cast()sharedLog).logLevel = LogLevel.all;
         stdThreadLocalLog.logLevel = LogLevel.info;
 
 	    auto opts = args.getopt(

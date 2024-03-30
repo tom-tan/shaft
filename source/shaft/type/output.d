@@ -17,7 +17,7 @@ import shaft.type.common : DeterminedType, guessedType, TypedParameters, TypedVa
 import shaft.type.common : TC_ = TypeConflicts;
 import shaft.runtime : Runtime;
 
-import std.experimental.logger : stdThreadLocalLog;
+import std.logger : stdThreadLocalLog;
 
 ///
 alias DeclaredType = Either!(

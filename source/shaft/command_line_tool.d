@@ -16,7 +16,7 @@ import shaft.runtime : Runtime;
 import shaft.type.argstr : EscapedString, NonEscapedString;
 import shaft.type.common : DeterminedType, TypedParameters;
 
-import std.experimental.logger : stdThreadLocalLog;
+import std.logger : stdThreadLocalLog;
 import std.typecons : Tuple;
 
 /**

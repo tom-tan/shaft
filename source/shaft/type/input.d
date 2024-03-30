@@ -15,7 +15,7 @@ import shaft.type.common : DeterminedType, TypedParameters, TypedValue;
 import shaft.type.common : TC_ = TypeConflicts;
 
 import std.typecons : Flag, Tuple, Yes;
-import std.experimental.logger : stdThreadLocalLog;
+import std.logger : stdThreadLocalLog;
 
 ///
 alias DeclaredType = Either!(

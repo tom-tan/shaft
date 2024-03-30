@@ -16,7 +16,7 @@ import std.exception : assertNotThrown;
 import std.file : isFile, isDir;
 import std.path : isAbsolute;
 
-import std.experimental.logger : stdThreadLocalLog;
+import std.logger : stdThreadLocalLog;
 
 /**
  * A subset of File that represents canonicalized internal File representation.
