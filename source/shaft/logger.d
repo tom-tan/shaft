@@ -52,7 +52,7 @@ immutable(TimeZone) getTimeZone() @safe
         import std : findSplitAfter, PosixTimeZone, readLink, stripLeft;
 
         // A linked file difers in platforms
-        // e.g., Ubuntu 22.04: /usr/share/zoneinfo/, macOS 14.4.1: /var/db/timezone/zoneinfo/,
+        // e.g., Ubuntu 22.04: /usr/share/zoneinfo/Asia/Tokyo, macOS 14.4.1: /var/db/timezone/zoneinfo/Asia/Tokyo,
         //       Ubuntu 22.04 in mcr.microsoft.com/vscode/devcontainers/base:ubuntu-22.04: /usr/share/zoneinfo//UTC
         auto zone = "/etc/localtime".readLink.findSplitAfter("zoneinfo/")[1].stripLeft("/");
         return zone == "UTC" ? UTC() : PosixTimeZone.getTimeZone(zone);
@@ -69,7 +69,7 @@ auto toJSONLogEntry(LogEntry)(in LogEntry payload, immutable TimeZone tz) @safe
     import std.conv : to;
     import std.json : JSONException, JSONValue, JSONType, parseJSON;
 
-    JSONValue log;
+    auto log = JSONValue.emptyObject;
     log["time"] = payload.timestamp.toOtherTZ(tz).toISOExtString;
     log["level"] = payload.logLevel.to!string;
     try
