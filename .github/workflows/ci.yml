@@ -83,7 +83,6 @@ jobs:
 
   build-linux:
     needs: [info]
-    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
