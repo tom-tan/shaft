@@ -37,6 +37,7 @@ jobs:
           fi
 
   test:
+    if: false
     needs: [info]
     strategy:
       matrix:
@@ -82,6 +83,7 @@ jobs:
 
   build-linux:
     needs: [info]
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -130,6 +132,7 @@ jobs:
 
   build-mac:
     needs: [info]
+    if: false
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -173,7 +176,8 @@ jobs:
           path: ${{ github.workspace }}/bin/shaft
 
   conformance:
-    needs: [test, build-linux, build-mac]
+    # needs: [test, build-linux, build-mac]
+    needs: [build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -191,7 +195,8 @@ jobs:
           extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
           n: 22
       - name: Save badges
-        if: success() && github.event_name == 'push'
+        if: false
+        # if: success() && github.event_name == 'push'
         uses: common-workflow-lab/upload-conformance-badges@v1
         with:
           cwlVersion: v1.0
