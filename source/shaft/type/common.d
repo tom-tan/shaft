@@ -201,7 +201,7 @@ JSONValue toJSON(Node node) @safe
         return node.mapping.fold!((acc, e) {
             acc[e.key.as!string] = e.value.toJSON;
             return acc;
-        })(JSONValue(JSONValue.emptyObject));
+        })(JSONValue.emptyObject);
     case NodeType.sequence:
         return JSONValue(node.sequence.map!(e => e.toJSON).array);
     default: assert(false, format!"Invalid node type: %s"(node.type));
