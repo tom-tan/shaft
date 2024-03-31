@@ -330,6 +330,7 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                 (CommandLineTool c) => Node(c),
                 (ExpressionTool e) => Node(e),
             );
+            auto j = n.toJSON;
             return JSONValue([
                 "message": JSONValue("Success loading CWL document"),
                 // "document": n.toJSON,
