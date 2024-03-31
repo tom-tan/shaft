@@ -9,7 +9,7 @@ import dyaml : Node;
 
 import cwl.v1_0;
 import salad.context : LoadingContext;
-import salad.type : Either, isSumType, None, Optional, This;
+import salad.type : Union, isSumType, None, Optional, This;
 
 import shaft.evaluator : Evaluator;
 import shaft.exception : CaptureFailed, NotYetImplemented, TypeException;
@@ -20,13 +20,13 @@ import shaft.runtime : Runtime;
 import std.logger : stdThreadLocalLog;
 
 ///
-alias DeclaredType = Either!(
+alias DeclaredType = Union!(
     CWLType,
     CommandOutputRecordSchema,
     CommandOutputEnumSchema,
     CommandOutputArraySchema,
     string,
-    Either!(
+    Union!(
         CWLType,
         CommandOutputRecordSchema,
         CommandOutputEnumSchema,
@@ -57,7 +57,7 @@ string toStr(DeclaredType dt) pure @safe
 
     return dt.match!(
         funs,
-        (Either!(
+        (Union!(
             CWLType,
             CommandOutputRecordSchema,
             CommandOutputEnumSchema,
@@ -130,7 +130,7 @@ TypedParameters captureOutputs(
                     return tuple(
                         id,
                         collectOutputParameter(
-                            Either!(Node, CommandOutputBinding)(*n),
+                            Union!(Node, CommandOutputBinding)(*n),
                             o.type_.tryMatch!(t => DeclaredType(t)),
                             inputs, runtime, context, evaluator
                         )
@@ -142,7 +142,7 @@ TypedParameters captureOutputs(
                     return tuple(
                         id,
                         collectOutputParameter(
-                            Either!(Node, CommandOutputBinding)(Node(YAMLNull())),
+                            Union!(Node, CommandOutputBinding)(Node(YAMLNull())),
                             o.type_.tryMatch!(t => DeclaredType(t)),
                             inputs, runtime, context, evaluator
                         )
@@ -214,7 +214,7 @@ TypedParameters captureOutputs(
                     return tuple(
                         o.id_,
                         collectOutputParameter(
-                            Either!(Node, CommandOutputBinding)(binding), type,
+                            Union!(Node, CommandOutputBinding)(binding), type,
                             inputs, runtime, context, evaluator, streamable, o.format_, secondaryFiles
                         )
                     );
@@ -252,7 +252,7 @@ TypedParameters captureOutputs(
  *
  * Note: It assumes that the parent `outputBinding` takes precedence over children's `outputBinding`s
  */
-TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBinding, DeclaredType type,
+TypedValue collectOutputParameter(Union!(Node, CommandOutputBinding) nodeOrBinding, DeclaredType type,
                             Node inputs, Runtime runtime, LoadingContext context, Evaluator evaluator,
                             bool streamable = false, Optional!string format = None(), string[] secondaryFiles = [])
 {
@@ -355,7 +355,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 else if (node.type == NodeType.sequence)
                 {
                     auto listingSchema = new CommandOutputArraySchema;
-                    alias ItemType = Either!(
+                    alias ItemType = Union!(
                         CWLType,
                         CommandOutputRecordSchema,
                         CommandOutputEnumSchema,
@@ -365,12 +365,12 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     listingSchema.items_ = [ItemType(new CWLType("File")), ItemType(new CWLType("Directory"))];
 
                     auto listing = collectOutputParameter(
-                        Either!(Node, CommandOutputBinding)(node), DeclaredType(listingSchema),
+                        Union!(Node, CommandOutputBinding)(node), DeclaredType(listingSchema),
                         inputs, runtime, context, evaluator
                     );
                     dir = new Directory;
                     dir.listing_ = listing.value.as_!(Optional!(
-                        Either!(File, Directory)[]
+                        Union!(File, Directory)[]
                     ))(context);
                 }
                 else
@@ -403,7 +403,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                             // validate types for each fields with a given node element
                             auto fnode = *enforce(f.name_ in node, new TypeConflicts(type, node.guessedType));
                             auto collected = collectOutputParameter(
-                                Either!(Node, CommandOutputBinding)(fnode), f.type_,
+                                Union!(Node, CommandOutputBinding)(fnode), f.type_,
                                 inputs, runtime, context, evaluator
                             );
                             return tuple(f.name_, collected.type, collected.value);
@@ -430,7 +430,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                             .map!((f) {
                                 // collect and validate for each fields with f.outputBinding_
                                 auto collected = collectOutputParameter(
-                                    Either!(Node, CommandOutputBinding)(f.outputBinding_.orElse(null)), f.type_,
+                                    Union!(Node, CommandOutputBinding)(f.outputBinding_.orElse(null)), f.type_,
                                     inputs, runtime, context, evaluator
                                 );
                                 return tuple(f.name_, collected.type, collected.value);
@@ -451,7 +451,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     else
                     {
                         return collectOutputParameter(
-                            Either!(Node, CommandOutputBinding)(processBinding(binding, inputs, runtime, evaluator)),
+                            Union!(Node, CommandOutputBinding)(processBinding(binding, inputs, runtime, evaluator)),
                             type, inputs, runtime, context, evaluator
                         );
                     }
@@ -476,7 +476,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                         binding = s.outputBinding_.tryMatch!((CommandOutputBinding b) => b);
                     }
                     return collectOutputParameter(
-                        Either!(Node, CommandOutputBinding)(processBinding(binding, inputs, runtime, evaluator)),
+                        Union!(Node, CommandOutputBinding)(processBinding(binding, inputs, runtime, evaluator)),
                         type, inputs, runtime, context, evaluator
                     );
                 },
@@ -494,7 +494,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                     auto tvals = node
                         .sequence
                         .map!(e => collectOutputParameter(
-                            Either!(Node, CommandOutputBinding)(e), s.items_, inputs, runtime, context, evaluator)
+                            Union!(Node, CommandOutputBinding)(e), s.items_, inputs, runtime, context, evaluator)
                         )
                         .fold!(
                             (acc, e) { acc.add(e.value); return acc; },
@@ -515,7 +515,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                         binding = s.outputBinding_.tryMatch!((CommandOutputBinding b) => b);
                     }
                     return collectOutputParameter(
-                        Either!(Node, CommandOutputBinding)(processBinding(binding, inputs, runtime, evaluator)),
+                        Union!(Node, CommandOutputBinding)(processBinding(binding, inputs, runtime, evaluator)),
                         type, inputs, runtime, context, evaluator
                     );
                 },
@@ -538,7 +538,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
             enforce(node.type != NodeType.null_, new TypeConflicts(type, node.guessedType));
             return TypedValue(node, node.guessedType);
         },
-        (Either!(
+        (Union!(
             CWLType,
             CommandOutputRecordSchema,
             CommandOutputEnumSchema,
@@ -573,7 +573,7 @@ TypedValue collectOutputParameter(Either!(Node, CommandOutputBinding) nodeOrBind
                 scope(failure) stdThreadLocalLog.tracef("type: union -> try: %s -> fail",
                                                 t.match!(a => DeclaredType(a)).toStr);
                 return Optional!TypedValue(collectOutputParameter(
-                        Either!(Node, CommandOutputBinding)(node), t.match!(tt => DeclaredType(tt)),
+                        Union!(Node, CommandOutputBinding)(node), t.match!(tt => DeclaredType(tt)),
                         inputs, runtime, context, evaluator)
                     )
                     .ifThrown!TypeException((e) {
@@ -594,7 +594,7 @@ unittest
     import salad.type : tryMatch;
     import shaft.type.common : PrimitiveType;
 
-    alias Type = Either!(
+    alias Type = Union!(
         CWLType,
         CommandOutputRecordSchema,
         CommandOutputEnumSchema,
@@ -602,7 +602,7 @@ unittest
         string
     );
 
-    Either!(Node, CommandOutputBinding) node = Node(true);
+    Union!(Node, CommandOutputBinding) node = Node(true);
     DeclaredType dt = [
         Type(new CWLType("null")),
         Type(new CWLType("boolean")),
@@ -737,7 +737,7 @@ auto toCommandOutputType(typeof(ExpressionToolOutputParameter.init.type_) type)
     alias RetType = typeof(CommandOutputParameter.init.type_);
     RetType ret;
 
-    alias EType = Either!(
+    alias EType = Union!(
         CWLType,
         CommandOutputRecordSchema,
         CommandOutputEnumSchema,
@@ -749,7 +749,7 @@ auto toCommandOutputType(typeof(ExpressionToolOutputParameter.init.type_) type)
         (None none) => RetType(none),
         (CWLType t) => RetType(t),
         (string s) => RetType(s),
-        (Either!(
+        (Union!(
             CWLType,
             OutputRecordSchema,
             OutputEnumSchema,
@@ -786,7 +786,7 @@ CommandOutputRecordField toCommandField(OutputRecordField field)
     import std.algorithm : map;
     import std.array : array;
 
-    alias EType = Either!(
+    alias EType = Union!(
         CWLType,
         CommandOutputRecordSchema,
         CommandOutputEnumSchema,
@@ -797,7 +797,7 @@ CommandOutputRecordField toCommandField(OutputRecordField field)
     auto ret = new typeof(return);
     ret.name_ = field.name_;
     ret.type_ = field.type_.match!(
-        (Either!(
+        (Union!(
             CWLType,
             OutputRecordSchema,
             OutputEnumSchema,
@@ -834,7 +834,7 @@ CommandOutputArraySchema toCommandSchema(OutputArraySchema schema)
     import std.algorithm : map;
     import std.array : array;
 
-    alias EType = Either!(
+    alias EType = Union!(
         CWLType,
         CommandOutputRecordSchema,
         CommandOutputEnumSchema,
@@ -844,7 +844,7 @@ CommandOutputArraySchema toCommandSchema(OutputArraySchema schema)
 
     auto ret = new typeof(return);
     ret.items_ = schema.items_.match!(
-        (Either!(
+        (Union!(
             CWLType,
             OutputRecordSchema,
             OutputEnumSchema,

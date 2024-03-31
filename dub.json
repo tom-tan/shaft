@@ -35,7 +35,7 @@
 	],
 	"copyright": "Copyright © 2022, Tomoya Tanjo",
 	"dependencies": {
-		"cwl-d": "~>0.2.1"
+		"cwl-d": "~>0.3.0"
 	},
 	"description": "A workflow engine for CommandLineTool in local machine",
 	"homepage": "https://github.com/tom-tan/shaft",

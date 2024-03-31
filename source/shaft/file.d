@@ -9,7 +9,7 @@ import cwl.v1_0 : Directory, File;
 
 import dyaml : Node, NodeType, YAMLNull;
 
-import salad.type : Either, None;
+import salad.type : Union, None;
 
 import std.digest : isDigest;
 import std.exception : assertNotThrown;
@@ -109,9 +109,9 @@ do
     // ret.size_ = file.size_; // TODO
 
     ret.secondaryFiles_ = file.secondaryFiles_.match!(
-        (Either!(File, Directory)[] ff) => typeof(ret.secondaryFiles_)(ff.map!(f => f.match!(
-            (File f) => Either!(File, Directory)(f.toURIFile),
-            (Directory dir) => Either!(File, Directory)(dir.toURIDirectory),
+        (Union!(File, Directory)[] ff) => typeof(ret.secondaryFiles_)(ff.map!(f => f.match!(
+            (File f) => Union!(File, Directory)(f.toURIFile),
+            (Directory dir) => Union!(File, Directory)(dir.toURIDirectory),
         )).array),
         _ => typeof(ret.secondaryFiles_).init,
     );
@@ -214,9 +214,9 @@ do
     );
 
     ret.listing_ = dir.listing_.match!(
-        (Either!(File, Directory)[] ff) => typeof(ret.listing_)(ff.map!(f => f.match!(
-            (File f) => Either!(File, Directory)(f.toURIFile),
-            (Directory d) => Either!(File, Directory)(d.toURIDirectory),
+        (Union!(File, Directory)[] ff) => typeof(ret.listing_)(ff.map!(f => f.match!(
+            (File f) => Union!(File, Directory)(f.toURIFile),
+            (Directory d) => Union!(File, Directory)(d.toURIDirectory),
         )).array),
         _ => typeof(ret.listing_).init,
     );
@@ -343,7 +343,7 @@ void enforceValid(File file) @safe
     );
 
     file.secondaryFiles_.match!(
-        (Either!(File, Directory)[] files) => files.each!(
+        (Union!(File, Directory)[] files) => files.each!(
             ff => ff.match!(
                 (File f) => f.enforceValid,
                 (Directory d) => d.enforceValid,
@@ -367,7 +367,7 @@ void enforceValid(Directory dir) @safe
 
     match!(
         (None _1, None _2) => dir.listing_.match!(
-            (Either!(File, Directory)[] ls) => true,
+            (Union!(File, Directory)[] ls) => true,
             none => enforce(false, new InvalidDocument("`listing`, `location` or `path` is required", dir.mark)),
         ),
         (None _, string loc) {
@@ -409,7 +409,7 @@ void enforceValid(Directory dir) @safe
     );
 
     dir.listing_.match!(
-        (Either!(File, Directory)[] listing) => listing.each!(
+        (Union!(File, Directory)[] listing) => listing.each!(
             ff => ff.match!(
                 (File f) => f.enforceValid,
                 (Directory d) => d.enforceValid,

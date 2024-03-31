@@ -9,7 +9,7 @@ import cwl.v1_0;
 
 import dyaml : Node;
 
-import salad.type : Either, Optional, orElse;
+import salad.type : Union, Optional, orElse;
 
 import shaft.evaluator : Evaluator;
 import shaft.runtime : Runtime;
@@ -177,7 +177,7 @@ alias Param = Tuple!(
 /**
  * See_Also: 3 in https://www.commonwl.org/v1.1/CommandLineTool.html#CommandLineBinding
  */
-alias TieBreaker = Either!(size_t, string);
+alias TieBreaker = Union!(size_t, string);
 
 /**
  * See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Input_binding
@@ -403,8 +403,8 @@ EOS";
     assert(args == ["echo", "10"]);
 }
 
-alias Str = Either!(NonEscapedString, EscapedString);
-alias CmdElemType = Either!(Str, Str[]);
+alias Str = Union!(NonEscapedString, EscapedString);
+alias CmdElemType = Union!(Str, Str[]);
 
 ///
 auto toCmdElems(CmdElemType val, CommandLineBinding clb, bool useShell)

@@ -9,7 +9,7 @@ import dyaml : Node, NodeType;
 
 import cwl.v1_0;
 import salad.context : LoadingContext;
-import salad.type : Either, Optional, This;
+import salad.type : Union, Optional, This;
 import shaft.exception : TypeException, InputCannotBeLoaded;
 import shaft.type.common : DeterminedType, TypedParameters, TypedValue;
 import shaft.type.common : TC_ = TypeConflicts;
@@ -18,13 +18,13 @@ import std.typecons : Flag, Tuple, Yes;
 import std.logger : stdThreadLocalLog;
 
 ///
-alias DeclaredType = Either!(
+alias DeclaredType = Union!(
     CWLType,
     CommandInputRecordSchema,
     CommandInputEnumSchema,
     CommandInputArraySchema,
     string,
-    Either!(
+    Union!(
         CWLType,
         CommandInputRecordSchema,
         CommandInputEnumSchema,
@@ -55,7 +55,7 @@ string toStr(DeclaredType dt) pure @safe
 
     return dt.match!(
         funs,
-        (Either!(
+        (Union!(
             CWLType,
             CommandInputRecordSchema,
             CommandInputEnumSchema,
@@ -389,7 +389,7 @@ TypedValue bindType(
                 return n.bindType(def, defMap, context);
             }
         },
-        (Either!(
+        (Union!(
             CWLType,
             CommandInputRecordSchema,
             CommandInputEnumSchema,
@@ -460,7 +460,7 @@ CommandInputRecordField toCommandField(InputRecordField field)
     import std.algorithm : map;
     import std.array : array;
 
-    alias EType = Either!(
+    alias EType = Union!(
         CWLType,
         CommandInputRecordSchema,
         CommandInputEnumSchema,
@@ -471,7 +471,7 @@ CommandInputRecordField toCommandField(InputRecordField field)
     auto ret = new typeof(return);
     ret.name_ = field.name_;
     ret.type_ = field.type_.match!(
-        (Either!(
+        (Union!(
             CWLType,
             InputRecordSchema,
             InputEnumSchema,
@@ -517,7 +517,7 @@ CommandInputArraySchema toCommandSchema(InputArraySchema schema)
     import std.algorithm : map;
     import std.array : array;
 
-    alias EType = Either!(
+    alias EType = Union!(
         CWLType,
         CommandInputRecordSchema,
         CommandInputEnumSchema,
@@ -527,7 +527,7 @@ CommandInputArraySchema toCommandSchema(InputArraySchema schema)
 
     auto ret = new typeof(return);
     ret.items_ = schema.items_.match!(
-        (Either!(
+        (Union!(
             CWLType,
             InputRecordSchema,
             InputEnumSchema,
@@ -580,7 +580,7 @@ auto toCommandInputType(typeof(InputParameter.init.type_) type)
     alias RetType = typeof(CommandInputParameter.init.type_);
     RetType ret;
 
-    alias EType = Either!(
+    alias EType = Union!(
         CWLType,
         CommandInputRecordSchema,
         CommandInputEnumSchema,
@@ -592,7 +592,7 @@ auto toCommandInputType(typeof(InputParameter.init.type_) type)
         (None none) => RetType(none),
         (CWLType t) => RetType(t),
         (string s) => RetType(s),
-        (Either!(
+        (Union!(
             CWLType,
             InputRecordSchema,
             InputEnumSchema,

@@ -9,7 +9,7 @@ import cwl.v1_0;
 
 import dyaml : Node;
 
-import salad.type : Either, Optional, This;
+import salad.type : Union, Optional, This;
 import shaft.exception : TypeException;
 import std.json : JSONValue;
 import std.range : isOutputRange;
@@ -33,7 +33,7 @@ struct StagingOption
 alias EnumType = Tuple!(string, "name", Optional!CommandLineBinding, "inputBinding");
 
 ///
-alias DeterminedType = Either!(
+alias DeterminedType = Union!(
     PrimitiveType,
     EnumType,
     Tuple!(This*[], "types", Optional!CommandLineBinding, "inputBinding"),

@@ -71,7 +71,7 @@ struct Evaluator
      */
     Node eval(string expression, Node inputs, Runtime runtime, Node self = YAMLNull()) /+ pure +/ @safe
     {
-        import salad.type : Either, match;
+        import salad.type : Union, match;
         import std.algorithm : map;
         import std.array : join;
         import std.range : empty;
@@ -87,16 +87,16 @@ struct Evaluator
             exp = exp[0..$-1];
         }
 
-        Either!(string, Node)[] evaled;
+        Union!(string, Node)[] evaled;
         while (auto c = matchFirst(exp))
         {
             if (!c.pre.empty)
             {
-                evaled ~= Either!(string, Node)(c.pre);
+                evaled ~= Union!(string, Node)(c.pre);
             }
 
             auto result = evaluate(c.hit, inputs, runtime, self, expressionLibs, enableExtProps, engine);
-            evaled ~= Either!(string, Node)(result);
+            evaled ~= Union!(string, Node)(result);
 
             exp = c.post;
             if (exp.empty)
@@ -107,7 +107,7 @@ struct Evaluator
 
         if (!exp.empty)
         {
-            evaled ~= Either!(string, Node)(exp);
+            evaled ~= Union!(string, Node)(exp);
         }
 
         if (evaled.length == 1)
