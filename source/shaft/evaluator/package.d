@@ -421,10 +421,7 @@ Node evalJSExpression(
 
     auto evaled = engine
         .evaluate(exp, inputs, runtime, self, libs)
-        .ifThrown!ExpressionFailed((_) {
-            enforce!ExpressionFailed(false, format!"Evaluation failed: `%s`"(exp));
-            return "";
-        });
+        .ifThrown!ExpressionFailed(_ => throw new ExpressionFailed(format!"Evaluation failed: `%s`"(exp)));
     auto retNode = Loader.fromString(evaled).load;
     
     

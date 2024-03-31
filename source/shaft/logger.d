@@ -67,9 +67,7 @@ immutable(TimeZone) getTimeZone() @safe
 auto toJSONLogEntry(LogEntry)(in LogEntry payload, immutable TimeZone tz) @safe
 {
     import std.conv : to;
-    import std.exception : ifThrown;
     import std.json : JSONException, JSONValue, JSONType, parseJSON;
-    import std.datetime.timezone : LocalTime;
 
     JSONValue log;
     log["time"] = payload.timestamp.toOtherTZ(tz).toISOExtString;

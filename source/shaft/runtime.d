@@ -173,10 +173,7 @@ auto availableRamImpl() @trusted
     rlimit lim; // in bytes
     errnoEnforce(
         getrlimit(RLIMIT_AS, &lim) == 0
-    ).ifThrown!ErrnoException((e) {
-        enforce!SystemException(false, e.msg);
-        return false;
-    });
+    ).ifThrown!ErrnoException(e => throw new SystemException(e.msg));
 
     version(linux)
     {

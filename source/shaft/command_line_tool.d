@@ -119,11 +119,7 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
 
     // 7. Execute the process.
     auto pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir)
-        .ifThrown!ProcessException((e) {
-            import std.process : Pid;
-            enforce!SystemException(false, e.msg);
-            return Pid.init;
-        });
+        .ifThrown!ProcessException(e => throw new SystemException(e.msg));
     stdThreadLocalLog.info(() {
         import std : JSONValue, escapeShellCommand;
         return JSONValue([
@@ -337,10 +333,7 @@ auto processParameters(Param[] params, Node inputs, Runtime runtime, Evaluator e
     return params
         .map!(p => 
             applyRules(p.tupleof[1..$], inputs, runtime, evaluator, useShell)
-                .ifThrown!InvalidDocument((e) {
-                    enforce(false, new InvalidDocument(format!"%s in `%s`"(e.msg, p.key[1]), e.mark));
-                    return CmdElemType.init;
-                })
+                .ifThrown!InvalidDocument(e => throw new InvalidDocument(format!"%s in `%s`"(e.msg, p.key[1]), e.mark))
                 .match!(
                     (Str s) => [s],
                     ss => ss,
@@ -439,13 +432,10 @@ auto toCmdElems(CmdElemType val, CommandLineBinding clb, bool useShell)
         (Str _) {
             clb.itemSeparator_
                .tryMatch!((None _) => true)
-               .ifThrown!MatchException((e) {
-                   enforce(false, new InvalidDocument(
-                       "`itemSeparator` is supported only for array types",
-                       clb.mark,
-                   ));
-                   return true;
-               });
+               .ifThrown!MatchException(e => throw new InvalidDocument(
+                    "`itemSeparator` is supported only for array types",
+                    clb.mark,
+                ));
             return val;
         },
         (Str[] vs) => clb.itemSeparator_.match!(

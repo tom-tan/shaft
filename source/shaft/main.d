@@ -80,10 +80,7 @@ int shaftMain(string[] args)
     		"show-supported-versions", "show supported CWL specs", &showSupportedVersions,
             "license", "show license information", &showLicense,
 		    "version", "show version information", &showVersion,
-    	).ifThrown!GetOptException((e) {
-            enforce!SystemException(false, e.msg);
-            return GetoptResult.init;
-        });
+    	).ifThrown!GetOptException(e => throw new SystemException(e.msg));
 
         if (!compatOptions.empty)
         {
@@ -212,19 +209,12 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         // See_Also: https://www.commonwl.org/v1.2/CommandLineTool.html#Generic_execution_process
         // 1. Load input object.
         auto loader = args.length == 3 ? Loader.fromFile(args[2].absolutePath)
-                                               .ifThrown!YAMLException((e) {
-                                                   enforce!SystemException(
-                                                       false,
-                                                       "Input parameter file not found: "~args[2].absolutePath,
-                                                   );
-                                                   return Loader.init;
-                                               })
+                                               .ifThrown!YAMLException(e => throw new SystemException(
+                                                    "Input parameter file not found: "~args[2].absolutePath
+                                                ))
                                        : Loader.fromString("{}");
         auto inp = loader.load
-            .ifThrown!MarkedYAMLException((e) {
-                enforce(false, new InputCannotBeLoaded(e.msg.chomp, e.mark));
-                return Node.init;
-            });
+            .ifThrown!MarkedYAMLException(e => throw new InputCannotBeLoaded(e.msg.chomp, e.mark));
         enforce(inp.type == NodeType.mapping,
                 new InputCannotBeLoaded("Input should be a mapping but it is not", inp.startMark));
 
@@ -299,27 +289,19 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         //     - no
 
         // 2. Load, process and validate a CWL document, yielding one or more process objects. The $namespaces present in the CWL document are also used when validating and processing the input object.
+        import std.string : chomp;
+
         auto path = args[1];
         auto cwlfile = discoverDocumentURI(path);
         auto process = importFromURI(cwlfile, "main").tryMatch!(
             (DocumentRootType doc) => doc.tryMatch!(
                 (CommandLineTool _) => doc,
                 (ExpressionTool _) => doc,
-                (other) {
-                    enforce!FeatureUnsupported(false, format!"Document class `%s` is not supported"(other.class_));
-                    return doc;
-                }
+                other => throw new FeatureUnsupported(format!"Document class `%s` is not supported"(other.class_)),
             ),
         )
-        .ifThrown!DocumentException((e) {
-            enforce(false, new InvalidDocument(e.msg, e.mark));
-            return DocumentRootType.init;
-        })
-        .ifThrown!MarkedYAMLException((e) {
-            import std.string : chomp;
-            enforce(false, new InputCannotBeLoaded(e.msg.chomp, e.mark));
-            return DocumentRootType.init;
-        });
+        .ifThrown!DocumentException(e => throw new InvalidDocument(e.msg, e.mark))
+        .ifThrown!MarkedYAMLException(e => throw new InputCannotBeLoaded(e.msg.chomp, e.mark));
 
         stdThreadLocalLog.info((){
             import std.json;

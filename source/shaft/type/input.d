@@ -183,11 +183,9 @@ in(params.type == NodeType.mapping)
 
         TypedValue v = n
             .bindType(type, defMap, context)
-            .ifThrown!TypeConflicts((e) {
-                auto msg = new TypeConflicts(e.expected_, e.actual_, id).msg;
-                enforce(false, new InputCannotBeLoaded(msg, n.startMark));
-                return TypedValue.init;
-            });
+            .ifThrown!TypeConflicts(e => throw new InputCannotBeLoaded(
+                new TypeConflicts(e.expected_, e.actual_, id).msg, n.startMark)
+            );
         v.type.match!(
             (ref PrimitiveType t) {
                 // set StagingOption
