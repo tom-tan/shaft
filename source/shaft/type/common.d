@@ -203,7 +203,7 @@ JSONValue toJSON(Node node) @safe
             return acc;
         })(JSONValue.emptyObject);
     case NodeType.sequence:
-        return JSONValue(node.sequence.map!(e => e.toJSON).array);
+        return JSONValue(node.sequence.map!toJSON.array);
     default: assert(false, format!"Invalid node type: %s"(node.type));
     }
 }

@@ -3,10 +3,10 @@
 	"versions": {
 		"automem": "0.6.9",
 		"cachetools": "0.4.1",
-		"cwl-d": "0.3.0",
+		"cwl-d": "0.3.1",
 		"dyaml": "0.9.2",
-		"requests": "2.0.9",
-		"schema-salad-d": "1.1.0",
+		"requests": "2.1.3",
+		"schema-salad-d": "1.1.1",
 		"sumtype": "1.1.4",
 		"test_allocator": "0.3.4",
 		"tinyendian": "0.2.0",
