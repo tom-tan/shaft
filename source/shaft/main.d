@@ -326,13 +326,13 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             import salad.resolver : path_ = path;
             import shaft.type.common : toJSON;
 
-            auto n = process.tryMatch!(
-                (CommandLineTool c) => Node(c),
-                (ExpressionTool e) => Node(e),
-            );
+            // auto n = process.tryMatch!(
+            //     (CommandLineTool c) => Node(c),
+            //     (ExpressionTool e) => Node(e),
+            // );
             return JSONValue([
                 "message": JSONValue("Success loading CWL document"),
-                "document": n.toJSON,
+                // "document": n.toJSON,
                 "path": JSONValue(cwlfile.path_)
             ]);
         }());
