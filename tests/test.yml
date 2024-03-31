@@ -19,3 +19,10 @@
       size: 15
   id: inherit_but_not_used_requirement
   doc: Example of inheriting but not used process requirement via `shaft:inherited-requirements`
+
+- job: jobs/wc-job.json
+  output: {output: 16}
+  tool: tools/wc2-tool.cwl
+  id: expression_outputEval
+  doc: Test outputEval to transform output
+  tags: [ inline_javascript, command_line_tool ]

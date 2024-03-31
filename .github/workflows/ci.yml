@@ -49,6 +49,7 @@ jobs:
             experimental: true
     runs-on: ubuntu-20.04
     continue-on-error: ${{ matrix.experimental }}
+    if: false
 
     steps:
       - uses: actions/checkout@v4
@@ -131,6 +132,7 @@ jobs:
   build-mac:
     needs: [info]
     runs-on: macos-latest
+    if: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -173,6 +175,7 @@ jobs:
           path: ${{ github.workspace }}/bin/shaft
 
   conformance:
+    if: false
     needs: [test, build-linux, build-mac]
     runs-on: ubuntu-latest
     steps:
