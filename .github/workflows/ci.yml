@@ -47,9 +47,8 @@ jobs:
             experimental: true
           - dc: ldc-latest
             experimental: true
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental }}
-    if: false
 
     steps:
       - uses: actions/checkout@v4
@@ -132,7 +131,6 @@ jobs:
   build-mac:
     needs: [info]
     runs-on: macos-latest
-    if: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -175,8 +173,7 @@ jobs:
           path: ${{ github.workspace }}/bin/shaft
 
   conformance:
-    # needs: [test, build-linux, build-mac]
-    needs: [build-linux]
+    needs: [test, build-linux, build-mac]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -194,8 +191,7 @@ jobs:
           extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
           n: 22
       - name: Save badges
-        if: false
-        # if: success() && github.event_name == 'push'
+        if: success() && github.event_name == 'push'
         uses: common-workflow-lab/upload-conformance-badges@v1
         with:
           cwlVersion: v1.0
