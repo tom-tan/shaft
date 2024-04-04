@@ -25,6 +25,7 @@ docs/
 
 bin/
 resources/
-#source/shaft/evaluator/engine/embedded.d
 
 cwl-v1.0
+cwl-v1.1
+cwl-v1.2
