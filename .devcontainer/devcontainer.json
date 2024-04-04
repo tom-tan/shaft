@@ -37,10 +37,9 @@
 
   "postCreateCommand": "pip install cwltest && ./.devcontainer/cloneCWL.sh",
 
-	"remoteUser": "vscode",
+	"containerUser": "vscode",
 	"features": {
     "ghcr.io/devcontainers/features/python:1": {},
-    // "ghcr.io/devcontainers/features/docker-in-docker:1": {},
-    "ghcr.io/devcontainers/features/git:1": {}
+    // "ghcr.io/devcontainers/features/docker-in-docker:1": {}
 	}
 }
