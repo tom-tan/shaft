@@ -5,7 +5,7 @@
  */
 module shaft.staging;
 
-import cwl.v1_0 : Directory, File;
+import cwl.v1_0 : Directory, File, InitialWorkDirRequirement;
 
 import dyaml : Node, NodeType;
 
@@ -462,4 +462,119 @@ in(dst.isAbsolute && !dst.exists, dst)
             assert(false);
         }
     }
+}
+
+version(none):
+
+struct PathMap
+{
+    string src;
+    string dst;
+    bool writable;
+}
+
+// v1.0 only
+alias ListingElementType = Union!(File, Directory, Dirent, string, Expression);
+
+
+/// TODO: handling InplaceUpdateRequirement in v1.1 and later
+auto processInitialWorkDirRequirement(
+    InitialWorkDirRequirement req, Node inputs, Runtime runtime, Evaluator evaluator
+)
+in{
+    // all the input files and directories are fetched and instantiated to a local directories
+}
+do
+{
+    return req.listing.match!(
+        (Expression exp) => processListing([ListingElementType(exp)], inputs, runtime, evaluator),
+        others => processListing(others, inputs, runtime, evaluator),
+    );
+}
+
+auto processListing(
+    ListingElementType[] listing,
+    Node inputs, Runtime runtime, Evaluator evaluator
+)
+{
+    foreach(lst; listing)
+    {
+        processListingElement(lst, runtime.outdir, inputs, runtime, evaluator);
+    }
+    return;
+}
+
+auto processListingElement(
+    ListingElementType elem, string outdir,
+    Node inputs, Runtime runtime, Evaluator evaluator, bool writable = false
+)
+{
+    return elem.match!(
+        (File file) {
+            auto type = DeterminedType(PrimitiveType(new CWLType("File")));
+            auto ret = stagingParam(TypedValue(Node(file), type), outdir);
+            auto path = ret["path"].as!string;
+            if (!writable)
+            {
+                path.setAttributes(path.getAttributes & octal!707);
+            }
+            // in inputs -> modify input object
+            // path map
+        },
+        (Directory dir) {
+            auto type = DeterminedType(PrimitiveType(new CWLType("Directory")));
+            auto ret = stagingParam(TypedValue(Node(dir), type), outdir);
+            auto path = ret["path"].as!string;
+            if (!writable)
+            {
+                path.setAttributes(path.getAttributes & octal!707);
+            }
+            // in inputs -> modify input object
+            // path map
+        },
+        (Dirent ent) {
+            auto entry = evaluator.eval!(Union!(string, File, Dirent))(ent.entry_, inputs, runtime);
+            entry.match!(
+                (string contents) {
+                    import std.stdio : StdFile = File;
+                    // v1.0 and v1.1: no description in the case of file literal w/o entryname
+                    // -> shaft behaves as same as v1.2 and later
+                    // v1.2 and later: Required when `entry` evaluates to file contents only
+                    auto name = evaluator.eval!string(ent.edig!("entryname", string), inputs, runtime);
+                    auto path = name; // TODO: must be outdir/name
+                    auto f = StdFile(path, "w");
+                    f.write(contents);
+                    if (!ent.writable_.orElse(false))
+                    {
+                        path.setAttributes(path.getAttributes & octal!707);
+                    }
+                    return path.toStagedFile(); // TODO: process pathmap
+                },
+                (other) {
+                    string nextOutdir = outdir;
+                    ent.entryname_.match!(
+                        (Expression exp) {
+                            auto name = evaluator.eval!string(exp, inputs, runtime);
+                            // v1.2 and later: it may be a relative or an absolute path
+                            // -> may modify nextOutdir
+                            other.basename_ = name;
+                        }
+                    );
+                    auto writable = ent.writable_.orElse(false);
+                    return processListingElement(
+                        ListingElementType(other), nextOutdir, inputs, runtime, evaluator, writable
+                    );
+                },
+            );
+        },
+        (Expression exp) {
+            auto evaled = evaluator.eval!(Union!(File, Directory)[])(exp, inputs, runtime);
+            return evaled.match!(e => processListingElement(ListingElementType(e), inputs, runtime, evaluator));
+        },
+    );
+}
+
+
+auto eq(URIFile rhs, StagedFile lhs)
+{
 }

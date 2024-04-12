@@ -127,9 +127,9 @@ struct Evaluator
                         switch (n.type)
                         {
                         case NodeType.mapping, NodeType.sequence:
-                            import shaft.type.common : toJSON;
+                            import shaft.type.common : toJSONString;
                     
-                            return n.toJSON.toString;
+                            return n.toJSONString;
                         default:
                             return n.as!string;
                         }

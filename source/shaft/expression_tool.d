@@ -13,12 +13,12 @@ import shaft.type.common : TypedParameters;
 
 int execute(ExpressionTool exp, TypedParameters params, Runtime runtime, Evaluator evaluator)
 {
-    import shaft.type.common : toJSON;
+    import shaft.type.common : toJSONString;
     import std.file : write;
     import std.path : buildPath;
 
     auto evaled = evaluator.eval(exp.expression_, params.parameters, runtime);
-    buildPath(runtime.outdir, "cwl.output.json").write(evaled.toJSON.toString);
+    buildPath(runtime.outdir, "cwl.output.json").write(evaled.toJSONString);
 
     return 0;
 }

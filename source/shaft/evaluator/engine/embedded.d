@@ -59,7 +59,7 @@ private:
     string toJSCode(string exp, Node inputs, Runtime runtime, Node self,
         in string[] libs) const
     {
-        import shaft.type.common : toJSON;
+        import shaft.type.common : toJSONString;
         import std.array : join;
         import std.format : format;
         import std.range : chain;
@@ -84,7 +84,7 @@ private:
                     return { 'class': 'exception', 'message': `${e.name}: ${e.message}`};
                 }
             })();
-EOS"(Node(runtime).toJSON, inputs.toJSON, self.toJSON, toBeEvaled);
+EOS"(Node(runtime).toJSONString, inputs.toJSONString, self.toJSONString, toBeEvaled);
     }
 
     njs_vm_t* vm;

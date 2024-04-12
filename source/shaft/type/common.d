@@ -11,7 +11,6 @@ import dyaml : Node;
 
 import salad.type : Union, Optional, This;
 import shaft.exception : TypeException;
-import std.json : JSONValue;
 import std.range : isOutputRange;
 import std.typecons : Tuple;
 
@@ -93,7 +92,7 @@ struct TypedValue
     string toString() const @safe
     {
         import std.format : format;
-        return format!"TypedValue(type: %s, value: %s)"(type.toStr, value.toJSON);
+        return format!"TypedValue(type: %s, value: %s)"(type.toStr, value.toJSONString);
     }
 }
 
@@ -183,33 +182,56 @@ auto guessedType(Node val) @safe
     }
 }
 
-JSONValue toJSON(Node node) @safe
+///
+Node toJSONNode(Node node) @safe
 {
-    import dyaml : NodeType;
-    import std.algorithm : fold, map;
-    import std.array : array;
+    import dyaml : CollectionStyle, NodeType, ScalarStyle;
     import std.format : format;
 
     switch(node.type)
     {
-    case NodeType.null_: return JSONValue(null);
-    case NodeType.boolean: return JSONValue(node.as!bool);
-    case NodeType.integer: return JSONValue(node.as!long);
-    case NodeType.decimal: return JSONValue(node.as!real);
-    case NodeType.string: return JSONValue(node.as!string);
-    case NodeType.mapping:
-        return node.mapping.fold!((acc, e) {
-            acc[e.key.as!string] = e.value.toJSON;
-            return acc;
-        })(JSONValue.emptyObject);
-    case NodeType.sequence:
-        return JSONValue(node.sequence.map!toJSON.array);
+    case NodeType.null_:
+    case NodeType.boolean:
+    case NodeType.integer:
+    case NodeType.decimal:
+        return Node(node);
+    case NodeType.string: {
+        auto ret = Node(node);
+        ret.setStyle(ScalarStyle.doubleQuoted);
+        return ret;
+    }
+    case NodeType.mapping: {
+        auto ret = Node((Node[Node]).init);
+        ret.setStyle(CollectionStyle.flow);
+        foreach(e; node.mapping)
+        {
+            auto key = Node(e.key);
+            key.setStyle(ScalarStyle.doubleQuoted);
+            auto val = e.value.toJSONNode;
+            ret.add(key, val);
+        }
+        return ret;
+    }
+    case NodeType.sequence: {
+        auto ret = Node((Node[]).init);
+        ret.setStyle(CollectionStyle.flow);
+        foreach(e; node.sequence)
+        {
+            auto val = e.toJSONNode;
+            ret.add(val);
+        }
+        return ret;
+    }
     default: assert(false, format!"Invalid node type: %s"(node.type));
     }
 }
 
+///
 string toJSONString(Node node) @safe
 {
-    import std.array : replace;
-    return node.toJSON.toString.replace("\\\\", "\\");
+    import std : appender;
+    import dyaml;
+    auto app = appender!string;
+    dumper.dump(app, node.toJSONNode);
+    return app[];
 }

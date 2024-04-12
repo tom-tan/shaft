@@ -219,17 +219,16 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                 new InputCannotBeLoaded("Input should be a mapping but it is not", inp.startMark));
 
         stdThreadLocalLog.info((){
-            import std.json;
-            import shaft.type.common : toJSON;
-            auto j = JSONValue([
-                "message": JSONValue("Input object is loaded"),
-                "input": inp.toJSON
+            import shaft.type.common : toJSONString;
+            auto j = Node([
+                "message": Node("Input object is loaded"),
+                "input": inp
             ]);
             if (args.length == 3)
             {
                 j["path"] = args[2].absolutePath;
             }
-            return j;
+            return j.toJSONString;
         }());
 
         if (auto reqs = "cwl:requirements" in inp)
@@ -304,20 +303,19 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         .ifThrown!MarkedYAMLException(e => throw new InputCannotBeLoaded(e.msg.chomp, e.mark));
 
         stdThreadLocalLog.info((){
-            import std.json;
             import salad.resolver : path_ = path;
-            import shaft.type.common : toJSON;
+            import shaft.type.common : toJSONNode;
 
             auto n = process.tryMatch!(
                 (CommandLineTool c) => Node(c),
                 (ExpressionTool e) => Node(e),
             );
 
-            return JSONValue([
-                "message": JSONValue("Success loading CWL document"),
-                "document": n.toJSON,
-                "path": JSONValue(cwlfile.path_)
-            ]);
+            return Node([
+                "message": Node("Success loading CWL document"),
+                "document": n,
+                "path": Node(cwlfile.path_)
+            ]).toJSONNode;
         }());
 
         // 3. If there are multiple process objects (due to $graph) and which process object to start with is not specified in the input object (via a cwl:tool entry)
