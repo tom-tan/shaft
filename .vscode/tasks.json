@@ -1,39 +1,39 @@
 {
 	"version": "2.0.0",
 	"tasks": [
-		// {
-		// 	"type": "dub",
-		// 	"run": false,
-		// 	"cwd": "${workspaceFolder}",
-		// 	"compiler": "$current",
-		// 	"archType": "$current",
-		// 	"buildType": "$current",
-		// 	"configuration": "$current",
-		// 	"problemMatcher": [
-		// 		"$dmd"
-		// 	],
-		// 	"group": "build",
-		// 	"label": "dub: Build shaft",
-		// 	"detail": "dub build -b=debug",
-		// 	"dependsOn": [
-        //         "dub: Test shaft"
-        //     ]
-		// },
-		// {
-		// 	"type": "dub",
-		// 	"test": true,
-		// 	"cwd": "${workspaceFolder}",
-		// 	"compiler": "$current",
-		// 	"archType": "$current",
-		// 	"buildType": "$current",
-		// 	"configuration": "$current",
-		// 	"problemMatcher": [
-		// 		"$dmd"
-		// 	],
-		// 	"group": "test",
-		// 	"label": "dub: Test shaft",
-		// 	"detail": "dub test -b=debug"
-		// },
+		{
+			"type": "dub",
+			"run": false,
+			"cwd": "${workspaceFolder}",
+			"compiler": "$current",
+			"archType": "$current",
+			"buildType": "$current",
+			"configuration": "$current",
+			"problemMatcher": [
+				"$dmd"
+			],
+			"group": "build",
+			"label": "dub: Build shaft",
+			"detail": "dub build -b=debug",
+			"dependsOn": [
+                "dub: Test shaft"
+            ]
+		},
+		{
+			"type": "dub",
+			"test": true,
+			"cwd": "${workspaceFolder}",
+			"compiler": "$current",
+			"archType": "$current",
+			"buildType": "$current",
+			"configuration": "$current",
+			"problemMatcher": [
+				"$dmd"
+			],
+			"group": "test",
+			"label": "dub: Test shaft",
+			"detail": "dub test -b=debug"
+		},
 		{
 			"type": "shell",
 			"command": "./run_test.sh",
@@ -48,9 +48,45 @@
 			"group": "test",
 			"label": "Run conformance test for cwl-v1.0",
 			"detail": "./run_test.sh in cwl-v1.0",
-			// "dependsOn": [
-            //     "dub: Build shaft"
-            // ]
+			"dependsOn": [
+                "dub: Build shaft"
+            ]
+		},
+		{
+			"type": "shell",
+			"command": "./run_test.sh",
+			"args": [
+				"RUNNER=${workspaceFolder}/bin/shaft",
+				"EXTRA='--remove-tmpdir --enable-compat=extended-props'",
+				"--tags=command_line_tool,expression_tool"
+			],
+			"options": {
+                "cwd": "${workspaceFolder}/cwl-v1.1"
+            },
+			"group": "test",
+			"label": "Run conformance test for cwl-v1.1",
+			"detail": "./run_test.sh in cwl-v1.1",
+			"dependsOn": [
+                "dub: Build shaft"
+            ]
+		},
+		{
+			"type": "shell",
+			"command": "./run_test.sh",
+			"args": [
+				"RUNNER=${workspaceFolder}/bin/shaft",
+				"EXTRA='--remove-tmpdir --enable-compat=extended-props'",
+				"--tags=command_line_tool,expression_tool"
+			],
+			"options": {
+                "cwd": "${workspaceFolder}/cwl-v1.2"
+            },
+			"group": "test",
+			"label": "Run conformance test for cwl-v1.2",
+			"detail": "./run_test.sh in cwl-v1.2",
+			"dependsOn": [
+                "dub: Build shaft"
+            ]
 		}
 	]
 }
