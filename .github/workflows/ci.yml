@@ -122,7 +122,6 @@ jobs:
           test-list: ${{ github.workspace }}/tests/test.yml
           runner: ${{ github.workspace }}/bin/shaft
           timeout: 30
-          extra: --remove-tmpdir --veryverbose --enable-compat=extended-props
           result-title: Results of shaft-specific features
       - uses: actions/upload-artifact@v4
         with:
