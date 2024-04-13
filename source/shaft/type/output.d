@@ -103,7 +103,7 @@ TypedParameters captureOutputs(
     import std.path : buildPath;
     import std.typecons : Tuple;
 
-    import shaft.type.common : toJSONString;
+    import shaft.type.common : toJSON;
 
     auto outJSON = runtime.outdir.buildPath("cwl.output.json");
     Tuple!(Node, DeterminedType[string]) ret;
@@ -149,7 +149,7 @@ TypedParameters captureOutputs(
                     );
                 }
             })
-            .tee!(kv => stdThreadLocalLog.tracef("%s: %s", kv[0], kv[1].value.toJSONString))
+            .tee!(kv => stdThreadLocalLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
             .array
             .filter!(kv => kv[1].value.type != NodeType.null_)
             .fold!(
@@ -225,14 +225,14 @@ TypedParameters captureOutputs(
                     throw new CaptureFailed(msg);
                 }
             })
-            .tee!(kv => stdThreadLocalLog.tracef("%s: %s", kv[0], kv[1].value.toJSONString))
+            .tee!(kv => stdThreadLocalLog.tracef("%s: %s", kv[0], kv[1].value.toJSON))
             .array
             .filter!(kv => kv[1].value.type != NodeType.null_)
             .fold!(
                 (acc, e) {
-                    stdThreadLocalLog.tracef("acc value: %s = %s", e[0], e[1].value.toJSONString);
-                    scope(success) stdThreadLocalLog.tracef("acc value: %s = %s -> done", e[0], e[1].value.toJSONString);
-                    scope(failure) stdThreadLocalLog.tracef("acc value: %s = %s -> fail", e[0], e[1].value.toJSONString);
+                    stdThreadLocalLog.tracef("acc value: %s = %s", e[0], e[1].value.toJSON);
+                    scope(success) stdThreadLocalLog.tracef("acc value: %s = %s -> done", e[0], e[1].value.toJSON);
+                    scope(failure) stdThreadLocalLog.tracef("acc value: %s = %s -> fail", e[0], e[1].value.toJSON);
                     acc.add(e[0], e[1].value); return acc;
                 },
                 (acc, e) {
