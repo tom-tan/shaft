@@ -1,7 +1,7 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"automem": "0.6.9",
+		"automem": "0.6.10",
 		"cachetools": "0.4.1",
 		"cwl-d": "0.3.1",
 		"dyaml": "0.9.2",
