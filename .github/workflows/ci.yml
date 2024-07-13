@@ -87,35 +87,40 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: jirutka/setup-alpine@v1
+        with:
+          branch: edge
+          packages: ldc dub gcc musl-dev git pcre2-dev make
       - uses: actions/cache@v4
         with:
           path: |
-            /tmp/.buildx-cache
             ${{ github.workspace }}/.dub
-          key: ${{ runner.os }}-buildx
-      - name: Build container to build single binary
-        id: dev_container
-        uses: docker/build-push-action@v5
+          key: alpine-${{ runner.arch }}-dub-${{ hashFiles('dub.selections.json') }}
+      - id: njs_cache
+        uses: actions/cache@v4
         with:
-          file: Dockerfile.build
-          load: true
-          tags: shaft-dev
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
-          build-args: |
-            NJS_VERSION=${{ env.NJS_VERSION }}
-      - run: |
-          docker run --rm -i -v $GITHUB_WORKSPACE:/workdir -e GITHUB_REF=$GITHUB_REF shaft-dev \
-            sh -c "dub --cache=local build -b release-static && strip bin/shaft"
-      - name: Setup cache
+          path: |
+            ${{ github.workspace }}/.njs
+          key: alpine-${{ runner.arch }}-njs-${{ env.NJS_VERSION }}
+      - name: Install njs libs
+        if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
-          sudo chown -R $UID:$UID .dub
+          ./.devcontainer/setup-njs.sh ${{ env.NJS_VERSION }} .njs
+      - name: Run tests
+        run: |
+          dub --cache=local test
+        env:
+          NJS_BASE: ${{ github.workspace }}/.njs
+          C_INCLUDE_PATH: ${{ github.workspace }}/.njs/include
+          LIBRARY_PATH: ${{ github.workspace }}/.njs/lib
+      - name: Build a binary
+        run: |
+          dub --cache=local build -b release-static
+          strip bin/shaft
+        env:
+          NJS_BASE: ${{ github.workspace }}/.njs
+          C_INCLUDE_PATH: ${{ github.workspace }}/.njs/include
+          LIBRARY_PATH: ${{ github.workspace }}/.njs/lib
       - name: Test shaft-specific features
         uses: common-workflow-lab/run-tests@v1
         with:
