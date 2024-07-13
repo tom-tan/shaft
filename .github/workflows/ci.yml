@@ -9,7 +9,7 @@ on:
   pull_request: {}
 
 env:
-  NJS_VERSION: 0.8.3
+  NJS_VERSION: 0.8.5
 
 jobs:
   info:
@@ -40,7 +40,7 @@ jobs:
     needs: [info]
     strategy:
       matrix:
-        dc: [dmd-2.107.1, ldc-1.37.0 ]
+        dc: [dmd-2.109.1, ldc-1.39.0 ]
         experimental: [false]
         include:
           - dc: dmd-latest
@@ -148,7 +148,7 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-${{ env.NJS_VERSION }}
       - uses: dlang-community/setup-dlang@v1
         with:
-          compiler: ldc-1.37.0
+          compiler: ldc-1.39.0
       - name: Install njs libs
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
