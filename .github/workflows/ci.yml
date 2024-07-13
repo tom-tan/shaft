@@ -106,9 +106,11 @@ jobs:
         if: steps.njs_cache.outputs.cache-hit != 'true'
         run: |
           ./.devcontainer/setup-njs.sh ${{ env.NJS_VERSION }} .njs
+        shell: alpine.sh {0}
       - name: Run tests
         run: |
           dub --cache=local test
+        shell: alpine.sh {0}
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
           C_INCLUDE_PATH: ${{ github.workspace }}/.njs/include
@@ -117,6 +119,7 @@ jobs:
         run: |
           dub --cache=local build -b release-static
           strip bin/shaft
+        shell: alpine.sh {0}
         env:
           NJS_BASE: ${{ github.workspace }}/.njs
           C_INCLUDE_PATH: ${{ github.workspace }}/.njs/include
