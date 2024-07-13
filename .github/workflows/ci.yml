@@ -133,7 +133,7 @@ jobs:
           result-title: Results of shaft-specific features
       - uses: actions/upload-artifact@v4
         with:
-          name: shaft-linux-${{ runner.arch }}-master
+          name: shaft-linux-${{ runner.arch }}-main
           path: ${{ github.workspace }}/bin/shaft
 
   build-mac:
@@ -177,7 +177,7 @@ jobs:
           LIBRARY_PATH: ${{ github.workspace }}/.njs/lib
       - uses: actions/upload-artifact@v4
         with:
-          name: shaft-osx-${{ runner.arch }}-master
+          name: shaft-osx-${{ runner.arch }}-main
           path: ${{ github.workspace }}/bin/shaft
 
   conformance:
@@ -186,7 +186,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: shaft-linux-${{ runner.arch }}-master
+          name: shaft-linux-${{ runner.arch }}-main
       - run: chmod +x shaft
       - name: Run conformance tests
         id: run-conformance
@@ -232,17 +232,17 @@ jobs:
           tag: ${{ needs.info.outputs.tag }}
       - uses: actions/download-artifact@v4
         with:
-          name: shaft-linux-X64-master
+          name: shaft-linux-X64-main
       - run: |
           chmod +x shaft
           tar cf ${GITHUB_WORKSPACE}/shaft-linux-x86_64.tar.gz shaft
           rm shaft
       - uses: actions/download-artifact@v4
         with:
-          name: shaft-osx-X64-master
+          name: shaft-osx-ARM64-main
       - run: |
           chmod +x shaft
-          tar cf ${GITHUB_WORKSPACE}/shaft-osx-x86_64.tar.gz shaft
+          tar cf ${GITHUB_WORKSPACE}/shaft-osx-aarch64.tar.gz shaft
           rm shaft
       - uses: softprops/action-gh-release@v1
         id: create_release
@@ -250,4 +250,4 @@ jobs:
           body_path: ${{ github.workspace }}/release.md
           files: |
             shaft-linux-x86_64.tar.gz
-            shaft-osx-x86_64.tar.gz
+            shaft-osx-aarch64.tar.gz
