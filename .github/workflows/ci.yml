@@ -206,6 +206,7 @@ jobs:
           badgedir: ${{ steps.run-conformance.outputs.badgedir }}
           repository: ${{ github.repository_owner }}/conformance
           upload-default-branch: true
+          upload-markdown-reports: true
           ssh-key: ${{ secrets.CONFORMANCE_KEY }}
 
   release:
