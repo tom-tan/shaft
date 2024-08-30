@@ -133,23 +133,31 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
             return 0;
         }
 
-        stdThreadLocalLog.info(() {
-            import std : chomp, getcwd, thisProcessID;
-            return JSONValue([
-                "message": JSONValue("Start executor"),
-                "executor": JSONValue(["name": "shaft", "version": import("version").chomp]),
-                "args": JSONValue(args),
-                "pwd": JSONValue(getcwd),
-                "pid": JSONValue(thisProcessID)
-            ]);
-        }());
+        import shaft.logger : SLogEntry;
+        import std : chomp, getcwd, thisProcessID;
+        stdThreadLocalLog.info(
+            SLogEntry()
+                .add("message", "Start executor")
+                .add("executor", ["name": "shaft", "version": import("version").chomp])
+                .add("args", args)
+                .add("pwd", getcwd)
+                .add("pid", thisProcessID)
+        );
         scope(success)
         {
-            stdThreadLocalLog.info(JSONValue(["message": "Finish executor", "result": "success"]));
+            stdThreadLocalLog.info(
+                SLogEntry()
+                    .add("message", "Finish executor")
+                    .add("result", "success")
+            );
         }
         scope(failure)
         {
-            stdThreadLocalLog.info(JSONValue(["message": "Finish executor", "result": "failure"]));
+            stdThreadLocalLog.info(
+                SLogEntry()
+                    .add("message", "Finish executor")
+                    .add("result", "failure")
+            );
         }
 
         stdThreadLocalLog.trace("Setup fetcher");
@@ -219,17 +227,17 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                 new InputCannotBeLoaded("Input should be a mapping but it is not", inp.startMark));
 
         stdThreadLocalLog.info((){
-            import std.json;
+            import shaft.logger : SLogEntry;
             import shaft.type.common : toJSON;
-            auto j = JSONValue([
-                "message": JSONValue("Input object is loaded"),
-                "input": inp.toJSON
-            ]);
+            import std.json;
+            auto e = SLogEntry()
+                .add("message", "Input object is loaded")
+                .add("input", inp.toJSON);
             if (args.length == 3)
             {
-                j["path"] = args[2].absolutePath;
+                e.add("path", args[2].absolutePath);
             }
-            return j;
+            return e;
         }());
 
         if (auto reqs = "cwl:requirements" in inp)
@@ -303,9 +311,9 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
         .ifThrown!DocumentException(e => throw new InvalidDocument(e.msg, e.mark))
         .ifThrown!MarkedYAMLException(e => throw new InputCannotBeLoaded(e.msg.chomp, e.mark));
 
-        stdThreadLocalLog.info((){
-            import std.json;
+        stdThreadLocalLog.info(() {
             import salad.resolver : path_ = path;
+            import shaft.logger : SLogEntry;
             import shaft.type.common : toJSON;
 
             auto n = process.tryMatch!(
@@ -313,11 +321,10 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
                 (ExpressionTool e) => Node(e),
             );
 
-            return JSONValue([
-                "message": JSONValue("Success loading CWL document"),
-                "document": n.toJSON,
-                "path": JSONValue(cwlfile.path_)
-            ]);
+            return SLogEntry()
+                .add("message", "Success loading CWL document")
+                .add("document", n.toJSON)
+                .add("path", cwlfile.path_);
         }());
 
         // 3. If there are multiple process objects (due to $graph) and which process object to start with is not specified in the input object (via a cwl:tool entry)
@@ -437,7 +444,8 @@ EOS".outdent[0 .. $ - 1])(args[0].baseName);
     }
     catch(TypeException e)
     {
-        stdThreadLocalLog.error(JSONValue(["message": "Uncaught TypeException", "detail": e.msg]));
+        import shaft.logger : SLogEntry;
+        stdThreadLocalLog.error(SLogEntry().add("message", "Uncaught TypeException").add("detail", e.msg));
         return 1;
     }
     catch(ShaftException e)

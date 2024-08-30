@@ -120,20 +120,20 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
     // 7. Execute the process.
     auto pid = spawnProcess(args, stdin, stdout, stderr, env, Config.newEnv, runtime.outdir)
         .ifThrown!ProcessException(e => throw new SystemException(e.msg));
-    stdThreadLocalLog.info(() {
-        import std : JSONValue, escapeShellCommand;
-        return JSONValue([
-            "message": JSONValue("Start execution"),
-            "command": JSONValue(escapeShellCommand(args)),
-            "args": JSONValue(args),
-            "env": JSONValue(env),
-            "stdin": JSONValue(stdin.name),
-            "stdout": JSONValue(stdout.name),
-            "stderr": JSONValue(stderr.name),
-            "outdir": JSONValue(runtime.outdir),
-            "pid": JSONValue(pid.processID),
-        ]);
-    }());
+    import shaft.logger : SLogEntry;
+    import std : escapeShellCommand;
+    stdThreadLocalLog.info(
+        SLogEntry()
+            .add("message", "Start execution")
+            .add("command", escapeShellCommand(args))
+            .add("args", args)
+            .add("env", env)
+            .add("stdin", stdin.name)
+            .add("stdout", stdout.name)
+            .add("stderr", stderr.name)
+            .add("outdir", runtime.outdir)
+            .add("pid", pid.processID)
+    );
     scope(failure)
     {
         import std.process : kill;
@@ -148,17 +148,15 @@ int execute(CommandLineTool clt, TypedParameters params, Runtime runtime, Evalua
 
     auto code = wait(pid);
 
-    stdThreadLocalLog.info(() {
-        import std : JSONValue;
-        return JSONValue([
-            "message": JSONValue("Success execution"),
-            "code": JSONValue(code),
-            "outdir": JSONValue(runtime.outdir),
-            "stdout": JSONValue(stdout.name),
-            "stderr": JSONValue(stderr.name),
-        ]);
-    }());
-
+    import shaft.logger : SLogEntry;
+    stdThreadLocalLog.info(
+        SLogEntry()
+            .add("message", "Success execution")
+            .add("code", code)
+            .add("outdir", runtime.outdir)
+            .add("stdout", stdout.name)
+            .add("stderr", stderr.name)
+    );
     return code;
 }
 

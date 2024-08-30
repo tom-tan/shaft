@@ -63,6 +63,27 @@ immutable(TimeZone) getTimeZone() @safe
     }
 }
 
+/// A structured log entry
+struct SLogEntry
+{
+    import std : JSONValue;
+
+    ///
+    typeof(this) add(T)(string key, T value)
+    {
+        log[key] = JSONValue(value);
+        return this;
+    }
+
+    ///
+    string toString() const @safe
+    {
+        return log.toString;
+    }
+
+    JSONValue log;
+}
+
 /// Convert a LogEntry to a JSON string
 auto toJSONLogEntry(LogEntry)(in LogEntry payload, immutable TimeZone tz) @safe
 {
